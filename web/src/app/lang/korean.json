@@ -1098,5 +1098,9 @@
   "This turns on Free roam with others: everyone on this server sees your name, and whether you're driving or in the menus.": "'다른 플레이어와 자유 주행'이 켜져요. 이 서버의 모든 사람이 내 이름과 내가 운전 중인지 메뉴에 있는지를 볼 수 있어요.",
   "The game is open in another tab of this browser: it joins there.": "이 브라우저의 다른 탭에서 게임이 열려 있어요. 참가는 그 탭에서 이뤄져요.",
   "Joined in the other tab.": "다른 탭에서 참가했어요.",
-  "The other tab did not answer. Close it: this tab joins when it takes over.": "다른 탭이 응답하지 않았어요. 그 탭을 닫으세요. 이 탭이 이어받으면 참가해요."
+  "The other tab did not answer. Close it: this tab joins when it takes over.": "다른 탭이 응답하지 않았어요. 그 탭을 닫으세요. 이 탭이 이어받으면 참가해요.",
+  "Donate": "후원하기",
+  "Support the project": "프로젝트 후원",
+  "If you enjoy the project and want to help with the costs of hosting and development, you can buy me a coffee on Ko-fi. It comes with no perks, apart from a role on the Discord server.": "프로젝트가 마음에 들고 호스팅과 개발 비용을 돕고 싶으시다면 Ko-fi에서 커피 한 잔 사 주세요. Discord 서버의 역할 외에 다른 혜택은 없습니다.",
+  "Donate on Ko-fi": "Ko-fi에서 후원하기"
 }

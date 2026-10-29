@@ -1167,5 +1167,9 @@
   "This turns on Free roam with others: everyone on this server sees your name, and whether you're driving or in the menus.": "Det slår Udforskning med andre til: alle på denne server ser dit navn, og om du kører eller er i menuerne.",
   "The game is open in another tab of this browser: it joins there.": "Spillet er åbent i en anden fane i denne browser: du kommer med der.",
   "Joined in the other tab.": "Du er med via den anden fane.",
-  "The other tab did not answer. Close it: this tab joins when it takes over.": "Den anden fane svarede ikke. Luk den: du kommer med, når denne fane tager over."
+  "The other tab did not answer. Close it: this tab joins when it takes over.": "Den anden fane svarede ikke. Luk den: du kommer med, når denne fane tager over.",
+  "Donate": "Donér",
+  "Support the project": "Støt projektet",
+  "If you enjoy the project and want to help with the costs of hosting and development, you can buy me a coffee on Ko-fi. It comes with no perks, apart from a role on the Discord server.": "Hvis du kan lide projektet og vil hjælpe med udgifterne til hosting og udvikling, kan du give mig en kop kaffe på Ko-fi. Det giver ingen fordele, bortset fra en rolle på Discord-serveren.",
+  "Donate on Ko-fi": "Donér på Ko-fi"
 }

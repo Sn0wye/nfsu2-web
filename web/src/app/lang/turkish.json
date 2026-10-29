@@ -1107,5 +1107,9 @@
   "This turns on Free roam with others: everyone on this server sees your name, and whether you're driving or in the menus.": "Bu, Başkalarıyla serbest sürüş ayarını açar: bu sunucudaki herkes adını ve sürüşte mi yoksa menülerde mi olduğunu görür.",
   "The game is open in another tab of this browser: it joins there.": "Oyun bu tarayıcının başka bir sekmesinde açık: katılım orada olur.",
   "Joined in the other tab.": "Diğer sekmede katıldın.",
-  "The other tab did not answer. Close it: this tab joins when it takes over.": "Diğer sekme yanıt vermedi. Onu kapat: bu sekme devralınca katılım gerçekleşir."
+  "The other tab did not answer. Close it: this tab joins when it takes over.": "Diğer sekme yanıt vermedi. Onu kapat: bu sekme devralınca katılım gerçekleşir.",
+  "Donate": "Bağış yap",
+  "Support the project": "Projeyi destekle",
+  "If you enjoy the project and want to help with the costs of hosting and development, you can buy me a coffee on Ko-fi. It comes with no perks, apart from a role on the Discord server.": "Projeyi beğendiysen ve barındırma ile geliştirme masraflarına yardım etmek istersen Ko-fi'de bana bir kahve ısmarlayabilirsin. Discord sunucusunda bir rol dışında hiçbir ayrıcalık sağlamaz.",
+  "Donate on Ko-fi": "Ko-fi'de bağış yap"
 }

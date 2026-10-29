@@ -1167,5 +1167,9 @@
   "This turns on Free roam with others: everyone on this server sees your name, and whether you're driving or in the menus.": "Das schaltet „Freie Fahrt mit anderen“ ein: Alle auf diesem Server sehen deinen Namen und ob du fährst oder in den Menüs bist.",
   "The game is open in another tab of this browser: it joins there.": "Das Spiel ist in einem anderen Tab dieses Browsers offen: Der Beitritt erfolgt dort.",
   "Joined in the other tab.": "Im anderen Tab beigetreten.",
-  "The other tab did not answer. Close it: this tab joins when it takes over.": "Der andere Tab hat nicht geantwortet. Schließ ihn: Dieser Tab tritt bei, sobald er übernimmt."
+  "The other tab did not answer. Close it: this tab joins when it takes over.": "Der andere Tab hat nicht geantwortet. Schließ ihn: Dieser Tab tritt bei, sobald er übernimmt.",
+  "Donate": "Spenden",
+  "Support the project": "Das Projekt unterstützen",
+  "If you enjoy the project and want to help with the costs of hosting and development, you can buy me a coffee on Ko-fi. It comes with no perks, apart from a role on the Discord server.": "Wenn dir das Projekt gefällt und du bei den Kosten für Hosting und Entwicklung helfen möchtest, kannst du mir auf Ko-fi einen Kaffee spendieren. Vorteile gibt es dafür keine, abgesehen von einer Rolle auf dem Discord-Server.",
+  "Donate on Ko-fi": "Auf Ko-fi spenden"
 }

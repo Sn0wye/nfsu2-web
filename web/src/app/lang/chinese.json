@@ -1098,5 +1098,9 @@
   "This turns on Free roam with others: everyone on this server sees your name, and whether you're driving or in the menus.": "這會開啟「與他人自由漫遊」：此伺服器上的所有人都會看到你的名稱，以及你正在開車還是在選單中。",
   "The game is open in another tab of this browser: it joins there.": "遊戲已在此瀏覽器的另一個分頁中開啟：會在那裡加入。",
   "Joined in the other tab.": "已在另一個分頁中加入。",
-  "The other tab did not answer. Close it: this tab joins when it takes over.": "另一個分頁沒有回應。請將它關閉：此分頁接手後就會加入。"
+  "The other tab did not answer. Close it: this tab joins when it takes over.": "另一個分頁沒有回應。請將它關閉：此分頁接手後就會加入。",
+  "Donate": "贊助",
+  "Support the project": "支持這個專案",
+  "If you enjoy the project and want to help with the costs of hosting and development, you can buy me a coffee on Ko-fi. It comes with no perks, apart from a role on the Discord server.": "如果你喜歡這個專案，並想協助負擔主機與開發費用，可以在 Ko-fi 上請我喝杯咖啡。這不會帶來任何福利，只會在 Discord 伺服器上獲得一個身分組。",
+  "Donate on Ko-fi": "在 Ko-fi 上贊助"
 }

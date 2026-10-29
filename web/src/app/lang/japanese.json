@@ -1098,5 +1098,9 @@
   "This turns on Free roam with others: everyone on this server sees your name, and whether you're driving or in the menus.": "「他のプレイヤーとフリーローム」がオンになります。このサーバーの全員に、あなたの名前と、走行中かメニュー画面かが表示されます。",
   "The game is open in another tab of this browser: it joins there.": "このブラウザの別のタブでゲームが開いています。参加はそのタブで行われます。",
   "Joined in the other tab.": "別のタブで参加しました。",
-  "The other tab did not answer. Close it: this tab joins when it takes over.": "別のタブから応答がありませんでした。そのタブを閉じてください。このタブが引き継ぐと参加します。"
+  "The other tab did not answer. Close it: this tab joins when it takes over.": "別のタブから応答がありませんでした。そのタブを閉じてください。このタブが引き継ぐと参加します。",
+  "Donate": "寄付",
+  "Support the project": "プロジェクトを支援",
+  "If you enjoy the project and want to help with the costs of hosting and development, you can buy me a coffee on Ko-fi. It comes with no perks, apart from a role on the Discord server.": "このプロジェクトを気に入っていただけて、ホスティングと開発の費用を支援してくださる方は、Ko-fi でコーヒーをおごってください。Discord サーバーでのロール以外に特典はありません。",
+  "Donate on Ko-fi": "Ko-fi で寄付"
 }

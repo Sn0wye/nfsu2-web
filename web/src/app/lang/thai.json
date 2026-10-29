@@ -1098,5 +1098,9 @@
   "This turns on Free roam with others: everyone on this server sees your name, and whether you're driving or in the menus.": "การทำเช่นนี้จะเปิด “ขับอิสระกับผู้อื่น”: ทุกคนบนเซิร์ฟเวอร์นี้จะเห็นชื่อของคุณ และเห็นว่าคุณกำลังขับรถหรืออยู่ในเมนู",
   "The game is open in another tab of this browser: it joins there.": "เกมเปิดอยู่ในอีกแท็บหนึ่งของเบราว์เซอร์นี้: จะเข้าร่วมที่แท็บนั้น",
   "Joined in the other tab.": "เข้าร่วมในอีกแท็บแล้ว",
-  "The other tab did not answer. Close it: this tab joins when it takes over.": "อีกแท็บไม่ตอบสนอง ปิดแท็บนั้น: แท็บนี้จะเข้าร่วมเมื่อรับช่วงต่อ"
+  "The other tab did not answer. Close it: this tab joins when it takes over.": "อีกแท็บไม่ตอบสนอง ปิดแท็บนั้น: แท็บนี้จะเข้าร่วมเมื่อรับช่วงต่อ",
+  "Donate": "บริจาค",
+  "Support the project": "สนับสนุนโปรเจกต์",
+  "If you enjoy the project and want to help with the costs of hosting and development, you can buy me a coffee on Ko-fi. It comes with no perks, apart from a role on the Discord server.": "ถ้าคุณชอบโปรเจกต์นี้และอยากช่วยค่าโฮสติ้งและค่าพัฒนา คุณสามารถเลี้ยงกาแฟสักแก้วผ่าน Ko-fi ได้ ไม่มีสิทธิพิเศษใด ๆ นอกจากบทบาทในเซิร์ฟเวอร์ Discord",
+  "Donate on Ko-fi": "บริจาคผ่าน Ko-fi"
 }

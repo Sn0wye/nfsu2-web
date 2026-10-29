@@ -1167,5 +1167,9 @@
   "This turns on Free roam with others: everyone on this server sees your name, and whether you're driving or in the menus.": "Dit zet Verkennen met anderen aan: iedereen op deze server ziet je naam en of je aan het rijden bent of in de menu's zit.",
   "The game is open in another tab of this browser: it joins there.": "Het spel staat open in een ander tabblad van deze browser: daar doe je mee.",
   "Joined in the other tab.": "Je doet mee via het andere tabblad.",
-  "The other tab did not answer. Close it: this tab joins when it takes over.": "Het andere tabblad antwoordde niet. Sluit het: je doet mee zodra dit tabblad het overneemt."
+  "The other tab did not answer. Close it: this tab joins when it takes over.": "Het andere tabblad antwoordde niet. Sluit het: je doet mee zodra dit tabblad het overneemt.",
+  "Donate": "Doneren",
+  "Support the project": "Steun het project",
+  "If you enjoy the project and want to help with the costs of hosting and development, you can buy me a coffee on Ko-fi. It comes with no perks, apart from a role on the Discord server.": "Vind je het project leuk en wil je helpen met de kosten van hosting en ontwikkeling, dan kun je via Ko-fi een koffie voor me kopen. Je krijgt er geen voordelen voor, behalve een rol op de Discord-server.",
+  "Donate on Ko-fi": "Doneren via Ko-fi"
 }

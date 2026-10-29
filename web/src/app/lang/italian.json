@@ -1190,5 +1190,9 @@
   "This turns on Free roam with others: everyone on this server sees your name, and whether you're driving or in the menus.": "Questo attiva \"Modalità Esplora con altri giocatori\": tutti su questo server vedono il tuo nome e se stai guidando o sei nei menu.",
   "The game is open in another tab of this browser: it joins there.": "Il gioco è aperto in un'altra scheda di questo browser: l'ingresso avviene lì.",
   "Joined in the other tab.": "Fatto nell'altra scheda.",
-  "The other tab did not answer. Close it: this tab joins when it takes over.": "L'altra scheda non ha risposto. Chiudila: l'ingresso avverrà in questa scheda quando subentrerà."
+  "The other tab did not answer. Close it: this tab joins when it takes over.": "L'altra scheda non ha risposto. Chiudila: l'ingresso avverrà in questa scheda quando subentrerà.",
+  "Donate": "Dona",
+  "Support the project": "Sostieni il progetto",
+  "If you enjoy the project and want to help with the costs of hosting and development, you can buy me a coffee on Ko-fi. It comes with no perks, apart from a role on the Discord server.": "Se il progetto ti piace e vuoi aiutare con i costi di hosting e sviluppo, puoi offrirmi un caffè su Ko-fi. Non dà alcun vantaggio, a parte un ruolo sul server Discord.",
+  "Donate on Ko-fi": "Dona su Ko-fi"
 }

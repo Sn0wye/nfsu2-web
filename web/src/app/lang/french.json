@@ -1190,5 +1190,9 @@
   "This turns on Free roam with others: everyone on this server sees your name, and whether you're driving or in the menus.": "Cela active « Mode Exploration à plusieurs » : tout le monde sur ce serveur voit votre nom, et si vous conduisez ou êtes dans les menus.",
   "The game is open in another tab of this browser: it joins there.": "Le jeu est ouvert dans un autre onglet de ce navigateur : c'est là que l'invitation s'applique.",
   "Joined in the other tab.": "C'est fait dans l'autre onglet.",
-  "The other tab did not answer. Close it: this tab joins when it takes over.": "L'autre onglet n'a pas répondu. Fermez-le : cet onglet appliquera l'invitation quand il prendra le relais."
+  "The other tab did not answer. Close it: this tab joins when it takes over.": "L'autre onglet n'a pas répondu. Fermez-le : cet onglet appliquera l'invitation quand il prendra le relais.",
+  "Donate": "Faire un don",
+  "Support the project": "Soutenir le projet",
+  "If you enjoy the project and want to help with the costs of hosting and development, you can buy me a coffee on Ko-fi. It comes with no perks, apart from a role on the Discord server.": "Si le projet vous plaît et que vous voulez aider à couvrir les frais d'hébergement et de développement, vous pouvez m'offrir un café sur Ko-fi. Cela ne donne droit à aucun avantage, à part un rôle sur le serveur Discord.",
+  "Donate on Ko-fi": "Faire un don sur Ko-fi"
 }

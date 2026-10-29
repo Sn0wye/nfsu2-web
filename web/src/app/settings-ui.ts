@@ -647,7 +647,7 @@ export class SettingsPanel {
           show(true);
           void pv.play(sel.value).catch(() => {}).finally(() => show(false));
         };
-        ctl.append(b);
+        sel.before(b);                                   // the play button on the list's left
       }
       described = sel;
     } else if (c.t === 'crews') {

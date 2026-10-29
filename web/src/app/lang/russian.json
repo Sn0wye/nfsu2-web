@@ -1213,5 +1213,9 @@
   "This turns on Free roam with others: everyone on this server sees your name, and whether you're driving or in the menus.": "Это включит параметр «Свободная езда с другими»: все на этом сервере увидят ваше имя и то, едете вы или находитесь в меню.",
   "The game is open in another tab of this browser: it joins there.": "Игра открыта в другой вкладке этого браузера: присоединение произойдёт там.",
   "Joined in the other tab.": "Вы присоединились в другой вкладке.",
-  "The other tab did not answer. Close it: this tab joins when it takes over.": "Другая вкладка не ответила. Закройте её: присоединение произойдёт, когда эта вкладка возьмёт управление."
+  "The other tab did not answer. Close it: this tab joins when it takes over.": "Другая вкладка не ответила. Закройте её: присоединение произойдёт, когда эта вкладка возьмёт управление.",
+  "Donate": "Поддержать",
+  "Support the project": "Поддержать проект",
+  "If you enjoy the project and want to help with the costs of hosting and development, you can buy me a coffee on Ko-fi. It comes with no perks, apart from a role on the Discord server.": "Если вам нравится проект и вы хотите помочь с расходами на хостинг и разработку, можно угостить меня кофе на Ko-fi. Это не даёт никаких бонусов, кроме роли на сервере Discord.",
+  "Donate on Ko-fi": "Поддержать на Ko-fi"
 }

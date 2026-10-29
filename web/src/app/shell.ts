@@ -1663,6 +1663,9 @@ export async function boot() {
   const pick = $<HTMLSelectElement>('#lang-pick');
   pick.replaceChildren(...LANGUAGES.map(l => Object.assign(document.createElement('option'), { value: l, textContent: NATIVE[l], lang: LOCALE[l] })));
   pick.onchange = () => void settings.set('language', pick.value);
+  // Donate at the top: a popup with the Ko-fi link, closed as Ko-fi opens in its own tab
+  $('#donate-btn').onclick = () => $<HTMLDialogElement>('#donate').showModal();
+  $('#donate-go').onclick = () => $<HTMLDialogElement>('#donate').close();
   // who plays on this server now (Online): only while no game runs here; with free roam on in a room, that room too,
   // and in crews (free roam on or not: the row shows them either way), how many are in each (on the Crews row's lines)
   players = watchPlayers((line, crews) => { settings.setStatus(line); settings.setCrewCounts(crews); }, () => !session && !starting, setReach,
