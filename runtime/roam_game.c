@@ -2480,17 +2480,20 @@ static void crew_arrows(CPU *c, uint32_t w){
  * one of ours, has no object; each gets a copy of the first (fe_clone), and
  * the map is placed again.  The game's own marker stays where the car was
  * when the map opened; while the map is open, friends' cars keep driving,
- * and each second their markers are moved to where the cars are (wm_live).
+ * and their markers are moved to where the cars are WM_STEP_US (wm_live).
  *
  * The players in free roam we have no car for (the hub links us to the 32
  * nearest at most) get the same marker too: the map asks the hub for them
  * as it opens (rc_ask_map: the nearest past our peers, RC_MAP_MAX or as many
- * as the map has room for, where they were in the last half second), and
- * each one's marker is made from a stand-in for a car when the answer comes
- * (0x4B0740 reads only the car's +0x60/+0x64 and its heading +0x40C), a
- * frame or a few later.  A second after each answer it asks again, and the
- * next answer moves the markers made (more made for more players, the ones
- * left over moved off the map).
+ * as the map has room for, where they were in the last half second, how
+ * they move, each by the hub's key for it), and each one's marker is made
+ * from a stand-in for a car when the answer comes (0x4B0740 reads only the
+ * car's +0x60/+0x64 and its heading +0x40C), a frame or a few later.  A
+ * quarter second after each answer it asks again, and the hub answers with
+ * what changed (the players come, gone, or off where we moved them): a
+ * player keeps its marker, one come takes a marker left over or a new one,
+ * and WM_STEP_US each marker is moved on at its player's velocity from where
+ * the hub last placed it (wm_step).
  *
  * Each marker is one more object of the package, and FEng draws a package's
  * objects through two arrays of a fixed size: the renderer's list of the
@@ -2515,9 +2518,11 @@ static void crew_arrows(CPU *c, uint32_t w){
 #define FN_WM_PLACE     0x004b09e0u   /* thiscall WorldMap () */
 #define G_WM_COUNT      0x00835f70u   /* the car markers' running count: AIRACERINDICATOR_<n> */
 #define PKG_SCREEN      0x40u         /* FEPackage: +0x40 an object whose +0x14 is the package's screen */
-#define WM_ASK_US       1500000       /* no answer from the hub in this time: asked again, WM_ASKS times at most */
+#define WM_ASK_US       1000000       /* no answer from the hub in this time: asked again, WM_ASKS times at most */
 #define WM_ASKS         3             /* ...until its first answer (a hub before the map never answers) */
-#define WM_LIVE_US      1000000       /* the open map's markers moved this often (the hub answers a browser once a second) */
+#define WM_LIVE_US      250000        /* asked again this long after each answer (the hub answers a browser every quarter second) */
+#define WM_STEP_US      33333         /* the open map's markers moved this often */
+#define WM_STALE_US     2000000       /* the hub's players' markers moved on this long past its last answer at most */
 #define G_WM_HEADING_K  0x00784240u   /* float: a car's heading (+0x40C, 65536 a turn) to a marker's (0x4B0740) */
 #ifdef ROAM_HOST_WIN
 #define FE_LIST_MAX     1024          /* the FE renderer's list of a package's objects to draw */
@@ -2525,10 +2530,12 @@ static void crew_arrows(CPU *c, uint32_t w){
 #define FE_LIST_MAX     4096          /* ...past its 1024 in a list of overrides.c's */
 #endif
 #define WM_SPARE        16            /* objects left to the package itself */
-static struct { int done, said, copies, asks, others, lobbies, nf; uint32_t map, gen, fake; int64_t asked, got, moved;
+static struct { int done, said, copies, asks, others, lobbies, nf, steps; uint32_t map, gen, fake; int64_t asked, got, moved, step_us;
                 int col_ok; int32_t col[3]; } g_wm;                   /* AIRACERINDICATOR_0's colour as the map opened (b, g, r) */
-static struct { int16_t x, y; uint8_t heading; } g_wm_e[RC_MAP_MAX];
-static struct { uint32_t m; int w; } g_wm_m[RC_MAP_MAX];             /* the hub's players' markers (others of them), their filter entries */
+static rc_mapent g_wm_e[RC_MAP_MAX], g_wm_in[RC_MAP_MAX];           /* the hub's players (wm_n of them), by key; its answer */
+static int16_t g_wm_k[RC_MAP_MAX], g_wm_kin[RC_MAP_MAX];             /* ...each one's marker, -1 none */
+static int g_wm_n;
+static struct { uint32_t m; int w; uint8_t used; } g_wm_m[RC_MAP_MAX];   /* the hub's players' markers (others of them), their filter entries */
 static struct { uint32_t m, id; int k, w; } g_wm_f[NSLOT];           /* the friends' cars' markers (nf): the slot and its friend, the filter entry */
 /* the open map's screen, 0 while it is not made (or not this screen) */
 static uint32_t wm_screen(uint32_t pk){
@@ -2917,35 +2924,60 @@ static int wm_live(CPU *c, uint32_t map, uint32_t pkg, uint32_t pk, uint32_t w){
     }
     return g_wm.nf > 0;
 }
-/* the hub's answer, its n nearest players past our friends: the markers made
- * moved to the first of them, more made for the rest while there is room,
- * the ones left over off the map; 1 when the map is to be placed again */
+/* the hub's answer, its n players past our friends (in g_wm_in, by key):
+ * each one keeps its marker, one come takes a marker left over or a new one
+ * while there is room, the markers left over go off the map; 1 when the map
+ * is to be placed again */
 static int wm_others(CPU *c, uint32_t map, uint32_t pkg, uint32_t pk, int n, int total, int64_t host){
     int first = !g_wm.got;
     g_wm.got = host; g_wm.asks = 0;
 #if MPRACES
     if (!g_wm.lobbies){ g_wm.lobbies = 1; mp_map_icons(c, map, pkg, (uint32_t)wm_room(pk), 1); }
 #endif
-    int moved = n < g_wm.others ? n : g_wm.others;
-    for (int i = 0; i < g_wm.others; i++)
-        wmf_move(g_wm_m[i].m, g_wm_m[i].w, i < n ? (float)g_wm_e[i].x : WMF_AWAY, i < n ? (float)g_wm_e[i].y : WMF_AWAY,
-                 i < n ? (uint16_t)(g_wm_e[i].heading << 8) : 0);
+    for (int k = 0; k < g_wm.others; k++) g_wm_m[k].used = 0;
+    int kept = 0;
+    for (int i = 0, j = 0; j < n; j++){
+        while (i < g_wm_n && g_wm_e[i].id < g_wm_in[j].id) i++;
+        g_wm_kin[j] = i < g_wm_n && g_wm_e[i].id == g_wm_in[j].id ? g_wm_k[i] : -1;
+        if (g_wm_kin[j] >= 0){ g_wm_m[g_wm_kin[j]].used = 1; kept++; }
+    }
     if (!g_wm.fake){ uint32_t sz = 0x410u; g_wm.fake = rh_call(c, FN_MALLOC, 0, 0, 1, &sz); if (!ok(g_wm.fake, 0x410u)) g_wm.fake = 0; }
-    int room = n > g_wm.others ? wm_room(pk) : 0, made = 0;           /* the nearest ones (the hub's order) */
-    for (int i = g_wm.others; g_wm.fake && i < n && made < room; i++){
-        MRF32(g_wm.fake + 0x60u) = (float)g_wm_e[i].x; MRF32(g_wm.fake + 0x64u) = (float)g_wm_e[i].y;
-        MR16(g_wm.fake + 0x40cu) = (uint16_t)(g_wm_e[i].heading << 8);
+    int room = -1, made = 0;
+    for (int j = 0, f = 0; j < n; j++){
+        if (g_wm_kin[j] >= 0) continue;
+        while (f < g_wm.others && g_wm_m[f].used) f++;
+        if (f < g_wm.others){ g_wm_kin[j] = (int16_t)f; g_wm_m[f].used = 1; continue; }
+        if (room < 0) room = wm_room(pk);
+        int i = g_wm.others + made;
+        if (made >= room || !g_wm.fake || i >= RC_MAP_MAX) continue;
+        MRF32(g_wm.fake + 0x60u) = (float)g_wm_in[j].x; MRF32(g_wm.fake + 0x64u) = (float)g_wm_in[j].y;
+        MR16(g_wm.fake + 0x40cu) = (uint16_t)(g_wm_in[j].heading << 8);
         uint32_t m = wm_mark(c, map, pkg, g_wm.fake);
-        if (!m) break;
-        g_wm_m[i].m = m; g_wm_m[i].w = wmf_track(map, m, WMF_PLAYERS);
-        made++;
+        if (!m){ room = 0; continue; }
+        g_wm_m[i].m = m; g_wm_m[i].w = wmf_track(map, m, WMF_PLAYERS); g_wm_m[i].used = 1;
+        g_wm_kin[j] = (int16_t)i; made++;
     }
     int copies = made ? wm_dress(c, map, pkg, room) : 0;
     g_wm.others += made;
+    for (int k = 0; k < g_wm.others; k++) if (!g_wm_m[k].used) wmf_move(g_wm_m[k].m, g_wm_m[k].w, WMF_AWAY, WMF_AWAY, 0);
+    memcpy(g_wm_e, g_wm_in, (size_t)n * sizeof *g_wm_e); memcpy(g_wm_k, g_wm_kin, (size_t)n * sizeof *g_wm_k); g_wm_n = n;
     if (first || made)
         rlog("[roam] f=%ld world map: %d other players in free roam marked, %d of them now (the hub knows %d past your friends; room for %d), %d copies more\n",
-             rh_frame(), g_wm.others, moved + made, total, room, copies);
-    return moved || made || g_wm.others;
+             rh_frame(), g_wm.others, kept + made, total, room, copies);
+    return g_wm.others > 0;
+}
+/* the hub's players' markers where they are now: moved on from where the
+ * hub placed each at its velocity (not past WM_STALE_US from its last
+ * answer); 1 when the map is to be placed again */
+static int wm_step(int64_t host){
+    int64_t until = g_wm.got + WM_STALE_US < host ? g_wm.got + WM_STALE_US : host;
+    for (int i = 0; i < g_wm_n; i++){
+        const rc_mapent *e = &g_wm_e[i];
+        if (g_wm_k[i] < 0) continue;
+        float dt = until > e->at_us ? (float)(until - e->at_us) * 1e-6f : 0.f;
+        wmf_move(g_wm_m[g_wm_k[i]].m, g_wm_m[g_wm_k[i]].w, (float)e->x + (float)e->vx * dt, (float)e->y + (float)e->vy * dt, (uint16_t)(e->heading << 8));
+    }
+    return g_wm_n > 0;
 }
 static void map_update(CPU *c, uint32_t w, int64_t host){
     if (!g_sync_paused || !g_gmem){ g_wm.done = 0; return; }        /* the world stands while the map is open */
@@ -2958,7 +2990,7 @@ static void map_update(CPU *c, uint32_t w, int64_t host){
     if (g_wm.done && map != g_wm.map) g_wm.done = 0;                    /* another map (opened again) */
     if (!g_wm.done){
         g_wm.done = 1; g_wm.map = map; g_wm.copies = 0; g_wm.asks = 0; g_wm.others = 0; g_wm.lobbies = 0;
-        g_wm.got = 0; g_wm.moved = host;
+        g_wm.got = 0; g_wm.moved = host; g_wm_n = 0; g_wm.steps = 0; g_wm.step_us = 0;
         int32_t col[4] = {0}; uint32_t o0 = wm_find(c, pkg, "AIRACERINDICATOR_0");      /* (before a crew's colour) */
         g_wm.col_ok = o0 && fe_colour_get(o0, col);
         for (int i = 0; i < 3; i++) g_wm.col[i] = col[i];
@@ -2987,10 +3019,12 @@ static void map_update(CPU *c, uint32_t w, int64_t host){
     mp_map_labels(c, map);
 #endif
     crew_map_labels(c, map);
-    /* the friends' cars: their markers where the cars are, each second */
-    int place = 0;
-    if (host - g_wm.moved >= WM_LIVE_US){ g_wm.moved = host; place = wm_live(c, map, pkg, pk, w); }
-    /* the other players: asked for as the map opens and a second after each
+    /* the friends' cars: their markers where the cars are; the hub's players'
+     * moved on; WM_STEP_US */
+    int place = 0, step = host - g_wm.moved >= WM_STEP_US;
+    int64_t t0 = step ? roam_plat_now_us() : 0;
+    if (step){ g_wm.moved = host; place = wm_live(c, map, pkg, pk, w) | wm_step(host); }
+    /* the other players: asked for as the map opens and WM_LIVE_US after each
      * answer, marked (or moved) when the answer is in */
     int n = -1, total = 0, ask = host - g_wm.got >= WM_LIVE_US && (g_wm.got || g_wm.asks < WM_ASKS) && (!g_wm.asks || host - g_wm.asked > WM_ASK_US);
     int most = ask ? g_wm.others + wm_room(pk) : 0;                   /* (the markers made, and room for more) */
@@ -2998,13 +3032,14 @@ static void map_update(CPU *c, uint32_t w, int64_t host){
     if (g_s.map_gen != g_wm.gen){
         g_wm.gen = g_s.map_gen;
         n = g_s.map_n < RC_MAP_MAX ? g_s.map_n : RC_MAP_MAX; total = g_s.map_total;
-        for (int i = 0; i < n; i++){ g_wm_e[i].x = g_s.map_e[i].x; g_wm_e[i].y = g_s.map_e[i].y; g_wm_e[i].heading = g_s.map_e[i].heading; }
+        memcpy(g_wm_in, g_s.map_e, (size_t)n * sizeof *g_wm_in);
     } else if (ask && rc_ask_map(&g_s, host, most < RC_MAP_MAX ? most : RC_MAP_MAX)){
         g_wm.asks++; g_wm.asked = host;
     }
     roam_plat_unlock();
-    if (n >= 0) place |= wm_others(c, map, pkg, pk, n, total, host);
+    if (n >= 0) place |= wm_others(c, map, pkg, pk, n, total, host) | wm_step(host);
     if (place) gcall0(c, FN_WM_PLACE, map);
+    if (step && n < 0){ g_wm.steps++; g_wm.step_us += roam_plat_now_us() - t0; }
 }
 
 /* ---- per-frame --------------------------------------------------------------------------------- */
@@ -6277,8 +6312,8 @@ int roam_game_cmd(CPU *c, const char *args, long *wait_start){
                         col[2] & 0xff, col[1] & 0xff, col[0] & 0xff,
                         ok(o, 0x5c) && (MR32(o + 0x1cu) & 1u) ? ", hidden" : "", ok(o, 0x5c) && MR32(o + 0x58u) ? ", drawn" : "");
         }
-        rlog("[roam] f=%ld mp map: %d markers, %d of them cars', %d of those drawn, %d in a crew's colour; %d other players' (from the hub)\n", f,
-                n, cars, drawn, tinted, g_wm.others);
+        rlog("[roam] f=%ld mp map: %d markers, %d of them cars', %d of those drawn, %d in a crew's colour; %d other players' (from the hub), "
+                "moved %d times (%.0f us each)\n", f, n, cars, drawn, tinted, g_wm.others, g_wm.steps, g_wm.steps ? (double)g_wm.step_us / g_wm.steps : 0.0);
         /* the level sorter's most nodes in one package so far (0x50B430): RH_FE_NODES when objects went undrawn */
         rlog("[roam] f=%ld mp map: the package has %d objects, room for %d more; FEng drew %u objects of one package at most (%d nodes)\n",
                 f, fe_objects(pk + 0x4cu, 0), wm_room(pk), rd32(0x00838490u), RH_FE_NODES);
