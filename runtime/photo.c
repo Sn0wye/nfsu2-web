@@ -416,7 +416,7 @@ static void label(void){
         { "french", "Mode photo" }, { "german", "Fotomodus" }, { "italian", "Modalit\xe0 foto" },
         { "spanish", "Modo foto" }, { "dutch", "Fotomodus" }, { "swedish", "Fotol\xe4ge" },
         { "danish", "Fototilstand" }, { "portuguese", "Modo Foto" }, { "polish", "Tryb foto" },
-        { "turkish", "Foto Modu" },
+        { "turkish", "Foto Modu" }, { "hungarian", "Fot\xf3 m\xf3" "d" },
     };
     const char *l = language_name(), *s = "Photo Mode";
     if (l == P.lang) return;
