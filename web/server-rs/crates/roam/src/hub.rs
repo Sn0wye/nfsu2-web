@@ -45,10 +45,13 @@ const MAP_V2_GAP_MS: f64 = 1000.0;
 /// MAPD: the page moves each player's marker on from where the hub last said, at its velocity; the hub says it again
 /// once the marker would be this far (m) from where the player is, or its heading this far off (256 a turn, 45°).  One
 /// pixel or two on the whole city's map, a car turning off now and then, a car standing never: four answers a second
-/// take about a fifth of the bytes the whole list once a second did for cars on a city's roads (40 % of them
-/// standing), and as many for cars going round circles of 40 m all the time (nfsu2-roamload's).
+/// take about half the bytes the whole list once a second did for cars on a city's roads (30 % of them standing, the
+/// rest turning a corner every 3 to 11 s, SNAPs twice a second), and as many for cars going round circles of 40 m all
+/// the time (nfsu2-roamload's).
 const MAP_TOL_M: f64 = 8.0;
 const MAP_TOL_H: u8 = 32;
+/// MAPD: a player's last SNAP moved on at its velocity this long at most (two SNAPs' time)
+const MAP_AHEAD_MS: f64 = 1000.0;
 /// a browser's world map not asked for this long is forgotten (its next answer starts from nothing); its race lobbies
 /// go with every answer a second at most
 const MAP_KEEP_MS: f64 = 10_000.0;
@@ -517,8 +520,9 @@ pub struct Hub {
     /// MAPD: each browser's map as it holds it (`MapHeld`), and when its next race lobbies go
     maps: HashMap<u32, MapHeld>,
     lobbies_at: HashMap<u32, f64>,
-    /// MAPD: each room's players the map shows, by slot, as of this tick (made at the first question of the tick)
-    map_cands: HashMap<u32, Vec<MapCand>>,
+    /// MAPD: each room's players the map shows, by slot, where they are at the time with it (made at the first
+    /// question of a tick)
+    map_cands: HashMap<u32, (f64, Vec<MapCand>)>,
     s: Scratch,
     /// the claimed names (nfsu2-claims): a player under another keyphrase's name plays alone; None: any name is anyone's
     claims: Option<Arc<nfsu2_claims::Claims>>,
@@ -1056,7 +1060,7 @@ impl Hub {
             return;
         }
         let (room, at, vip, port, hub_port, lobbies) = (p.room, p.p.unwrap_or_default(), p.vip, p.port, p.hub_port, p.lobbies);
-        let cands = self.map_cands.remove(&room).unwrap_or_else(|| self.map_room(room, now));
+        let (at_t, cands) = self.map_cands.remove(&room).unwrap_or_else(|| (now, self.map_room(room, now)));
         let Some(p) = self.player(slot) else { return };
         let mut links: Vec<u32> = p.links.iter().map(|l| l.slot).collect();
         links.sort_unstable();
@@ -1069,7 +1073,7 @@ impl Hub {
             })
             .copied()
             .collect();
-        self.map_cands.insert(room, cands);
+        self.map_cands.insert(room, (at_t, cands));
         let total = list.len().min(u16::MAX as usize) as u16;
         if list.len() > max {
             list.select_nth_unstable_by_key(max, |c| order_key(distance(&at, &c.p)));
@@ -1084,10 +1088,10 @@ impl Hub {
             Some((r, l)) if base != 0 && *r == base => l,
             _ => &[],
         };
-        let (mut b, (mut e, mut ends, mut next)) = (if from.is_empty() { 0 } else { base }, map_diff(from, &list, now));
+        let (mut b, (mut e, mut ends, mut next)) = (if from.is_empty() { 0 } else { base }, map_diff(from, &list, at_t));
         let mut parts = map_parts(&ends);
         if parts.len() > wire::MAPD_PARTS {
-            (b, (e, ends, next)) = (0, map_diff(&[], &list, now));
+            (b, (e, ends, next)) = (0, map_diff(&[], &list, at_t));
             parts = map_parts(&ends);
         }
         for (k, &(a, z)) in parts.iter().enumerate() {
@@ -1113,7 +1117,10 @@ impl Hub {
     }
 
     /// the players of `room` a world map shows (MAPD), by slot: in free roam (or paused there), a position younger
-    /// than map_fresh_ms, no impostor
+    /// than map_fresh_ms, no impostor; each where it is now, moved on from its last SNAP at its velocity (MAP_AHEAD_MS
+    /// at most).  A player sends the hub its SNAP twice a second: a position as it came would be up to half a second
+    /// behind where the page has the marker, a car going straight would look off by that much, and each new SNAP
+    /// would put its marker back or forward.
     fn map_room(&self, room: u32, now: f64) -> Vec<MapCand> {
         let fresh = self.o.map_fresh_ms;
         let c = |x: f64| (x + 0.5).floor().clamp(-32767.0, 32767.0) as i16;
@@ -1125,7 +1132,9 @@ impl Hub {
                 let o = self.player(q)?;
                 let pos = o.p?;
                 let shown = q < wire::MAPD_GONE as u32 && o.room == room && !o.impostor && now - o.pos_at <= fresh && matches!(o.status, 2 | 5);
-                shown.then(|| MapCand { slot: q, id: o.id, p: pos, x: c(pos[0]), y: c(pos[1]), heading: o.heading, vx: v(o.v[0]), vy: v(o.v[1]) })
+                let dt = (now - o.pos_at).clamp(0.0, MAP_AHEAD_MS) / 1000.0;
+                let (x, y) = (pos[0] + o.v[0] * dt, pos[1] + o.v[1] * dt);
+                shown.then(|| MapCand { slot: q, id: o.id, p: pos, x: c(x), y: c(y), heading: o.heading, vx: v(o.v[0]), vy: v(o.v[1]) })
             })
             .collect();
         list.sort_unstable_by_key(|c| c.slot);

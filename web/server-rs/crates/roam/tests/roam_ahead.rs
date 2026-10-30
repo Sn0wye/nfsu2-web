@@ -370,7 +370,8 @@ fn the_world_map_sends_what_changed() {
     k.clear();
     k.step(100.0);
     k.from(W(0), &mapreq_base(100, 2, 2048, 1));
-    assert_eq!(mapd_answer(&k), (2, 1, 6, vec![(6, Some((605, 15, 0, 20, 0))), (7, None), (8, Some((-50, 0, 0, 0, 0)))]));
+    // (6 where it is at the question, 100 ms after its SNAP)
+    assert_eq!(mapd_answer(&k), (2, 1, 6, vec![(6, Some((607, 15, 0, 20, 0))), (7, None), (8, Some((-50, 0, 0, 0, 0)))]));
     // within the quarter second: nothing
     k.clear();
     k.step(100.0);
@@ -401,6 +402,43 @@ fn the_world_map_sends_what_changed() {
     assert_eq!((few.1, few.2), (6, 6));
     assert_eq!(few.3.iter().filter(|e| e.1.is_some()).count(), 0, "{few:?}");
     assert_eq!(few.3.iter().filter(|e| e.1.is_none()).map(|e| e.0).collect::<Vec<_>>(), [3, 4, 5, 6], "the nearest, 8 and 2, stay");
+}
+
+// a car going straight is placed once: its SNAPs come twice a second, the questions four times, each SNAP's
+// position as old as it is when asked (moved on at its velocity, it is where the page has the marker); one turning
+// is placed again
+#[test]
+fn the_world_map_places_a_car_going_straight_once() {
+    let mut k = Kit::new(RoamOptions { degree: 1, ..RoamOptions::default() });
+    for i in 0..4 {
+        join(&mut k, i);
+    }
+    k.from(W(0), &snap(100, [0.0, 0.0, 0.0]));
+    k.from(W(1), &snap(101, [5.0, 0.0, 0.0]));
+    let (mut placed, mut base) = (Vec::new(), 0u16);
+    for step in 0..40u32 {
+        let t = step as f64 * 0.125;
+        // 2 straight east at 40 m/s, 3 north at 30 m/s until 2 s, then east; a SNAP each half second, 3's a quarter after 2's
+        if step % 4 == 1 {
+            k.from(W(2), &snap_moving(102, [100.0 + 40.0 * t, 0.0, 0.0], [40.0, 0.0, 0.0], 0.0, 2));
+        }
+        if step % 4 == 3 {
+            let (p, v) = if t < 2.0 { ([0.0, 100.0 + 30.0 * t, 0.0], [0.0, 30.0, 0.0]) } else { ([30.0 * (t - 2.0), 160.0, 0.0], [30.0, 0.0, 0.0]) };
+            k.from(W(3), &snap_moving(103, p, v, 0.0, 2));
+        }
+        if step % 2 == 0 {
+            k.hub.tick();
+            k.clear();
+            k.from(W(0), &mapreq_base(100, step as u16 + 1, 2048, base));
+            let a = mapd_answer(&k);
+            base = a.0;
+            placed.extend(a.3.into_iter().filter(|e| e.0 >= 2).map(|e| (step, e.0)));
+        }
+        k.step(125.0);
+    }
+    assert_eq!(placed.iter().filter(|p| p.1 == 2).count(), 1, "{placed:?}");
+    let turned: Vec<u32> = placed.iter().filter(|p| p.1 == 3).map(|p| p.0).collect();
+    assert!(turned.len() == 2 && turned[0] <= 4 && (16..=22).contains(&turned[1]), "{placed:?}");
 }
 
 // MAPD from nothing for 2048 of 2200: 16 full datagrams; a page before MAPD still gets MAP once a second

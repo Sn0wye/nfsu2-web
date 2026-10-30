@@ -2493,7 +2493,8 @@ static void crew_arrows(CPU *c, uint32_t w){
  * what changed (the players come, gone, or off where we moved them): a
  * player keeps its marker, one come takes a marker left over or a new one,
  * and WM_STEP_US each marker is moved on at its player's velocity from where
- * the hub last placed it (wm_step).
+ * the hub last placed it (wm_step); a player placed again goes from where
+ * its marker was to there over WM_BLEND_US, not at once.
  *
  * Each marker is one more object of the package, and FEng draws a package's
  * objects through two arrays of a fixed size: the renderer's list of the
@@ -2523,6 +2524,7 @@ static void crew_arrows(CPU *c, uint32_t w){
 #define WM_LIVE_US      250000        /* asked again this long after each answer (the hub answers a browser every quarter second) */
 #define WM_STEP_US      33333         /* the open map's markers moved this often */
 #define WM_STALE_US     2000000       /* the hub's players' markers moved on this long past its last answer at most */
+#define WM_BLEND_US     400000        /* a player placed again: its marker comes to its new place in this time */
 #define G_WM_HEADING_K  0x00784240u   /* float: a car's heading (+0x40C, 65536 a turn) to a marker's (0x4B0740) */
 #ifdef ROAM_HOST_WIN
 #define FE_LIST_MAX     1024          /* the FE renderer's list of a package's objects to draw */
@@ -2534,6 +2536,7 @@ static struct { int done, said, copies, asks, others, lobbies, nf, steps; uint32
                 int col_ok; int32_t col[3]; } g_wm;                   /* AIRACERINDICATOR_0's colour as the map opened (b, g, r) */
 static rc_mapent g_wm_e[RC_MAP_MAX], g_wm_in[RC_MAP_MAX];           /* the hub's players (wm_n of them), by key; its answer */
 static int16_t g_wm_k[RC_MAP_MAX], g_wm_kin[RC_MAP_MAX];             /* ...each one's marker, -1 none */
+static struct { float x, y; int64_t at; } g_wm_o[RC_MAP_MAX], g_wm_oin[RC_MAP_MAX];   /* ...where its marker was off its new place, when */
 static int g_wm_n;
 static struct { uint32_t m; int w; uint8_t used; } g_wm_m[RC_MAP_MAX];   /* the hub's players' markers (others of them), their filter entries */
 static struct { uint32_t m, id; int k, w; } g_wm_f[NSLOT];           /* the friends' cars' markers (nf): the slot and its friend, the filter entry */
@@ -2928,8 +2931,21 @@ static int wm_live(CPU *c, uint32_t map, uint32_t pkg, uint32_t pk, uint32_t w){
  * each one keeps its marker, one come takes a marker left over or a new one
  * while there is room, the markers left over go off the map; 1 when the map
  * is to be placed again */
+static void wm_where(int i, int64_t host, float *x, float *y);
 static int wm_others(CPU *c, uint32_t map, uint32_t pkg, uint32_t pk, int n, int total, int64_t host){
     int first = !g_wm.got;
+    /* (a player placed again: where its marker is now, off its new place) */
+    for (int i = 0, j = 0; j < n; j++){
+        while (i < g_wm_n && g_wm_e[i].id < g_wm_in[j].id) i++;
+        g_wm_oin[j].x = g_wm_oin[j].y = 0.f; g_wm_oin[j].at = 0;
+        if (i >= g_wm_n || g_wm_e[i].id != g_wm_in[j].id) continue;
+        if (g_wm_e[i].at_us == g_wm_in[j].at_us){ g_wm_oin[j] = g_wm_o[i]; continue; }
+        float x, y; wm_where(i, host, &x, &y);
+        float dt = host > g_wm_in[j].at_us ? (float)(host - g_wm_in[j].at_us) * 1e-6f : 0.f;
+        g_wm_oin[j].x = x - ((float)g_wm_in[j].x + (float)g_wm_in[j].vx * dt);
+        g_wm_oin[j].y = y - ((float)g_wm_in[j].y + (float)g_wm_in[j].vy * dt);
+        g_wm_oin[j].at = host;
+    }
     g_wm.got = host; g_wm.asks = 0;
 #if MPRACES
     if (!g_wm.lobbies){ g_wm.lobbies = 1; mp_map_icons(c, map, pkg, (uint32_t)wm_room(pk), 1); }
@@ -2960,22 +2976,31 @@ static int wm_others(CPU *c, uint32_t map, uint32_t pkg, uint32_t pk, int n, int
     int copies = made ? wm_dress(c, map, pkg, room) : 0;
     g_wm.others += made;
     for (int k = 0; k < g_wm.others; k++) if (!g_wm_m[k].used) wmf_move(g_wm_m[k].m, g_wm_m[k].w, WMF_AWAY, WMF_AWAY, 0);
-    memcpy(g_wm_e, g_wm_in, (size_t)n * sizeof *g_wm_e); memcpy(g_wm_k, g_wm_kin, (size_t)n * sizeof *g_wm_k); g_wm_n = n;
+    memcpy(g_wm_e, g_wm_in, (size_t)n * sizeof *g_wm_e); memcpy(g_wm_k, g_wm_kin, (size_t)n * sizeof *g_wm_k);
+    memcpy(g_wm_o, g_wm_oin, (size_t)n * sizeof *g_wm_o); g_wm_n = n;
     if (first || made)
         rlog("[roam] f=%ld world map: %d other players in free roam marked, %d of them now (the hub knows %d past your friends; room for %d), %d copies more\n",
              rh_frame(), g_wm.others, kept + made, total, room, copies);
     return g_wm.others > 0;
 }
-/* the hub's players' markers where they are now: moved on from where the
- * hub placed each at its velocity (not past WM_STALE_US from its last
- * answer); 1 when the map is to be placed again */
-static int wm_step(int64_t host){
+/* where the hub's player i's marker is now: moved on from where the hub
+ * placed it at its velocity (not past WM_STALE_US from its last answer),
+ * and the rest of the way it was off when placed again (WM_BLEND_US) */
+static void wm_where(int i, int64_t host, float *x, float *y){
+    const rc_mapent *e = &g_wm_e[i];
     int64_t until = g_wm.got + WM_STALE_US < host ? g_wm.got + WM_STALE_US : host;
+    float dt = until > e->at_us ? (float)(until - e->at_us) * 1e-6f : 0.f;
+    float k = g_wm_o[i].at && host - g_wm_o[i].at < WM_BLEND_US ? 1.f - (float)(host - g_wm_o[i].at) / (float)WM_BLEND_US : 0.f;
+    *x = (float)e->x + (float)e->vx * dt + g_wm_o[i].x * k;
+    *y = (float)e->y + (float)e->vy * dt + g_wm_o[i].y * k;
+}
+/* the hub's players' markers where they are now (wm_where); 1 when the map
+ * is to be placed again */
+static int wm_step(int64_t host){
     for (int i = 0; i < g_wm_n; i++){
-        const rc_mapent *e = &g_wm_e[i];
         if (g_wm_k[i] < 0) continue;
-        float dt = until > e->at_us ? (float)(until - e->at_us) * 1e-6f : 0.f;
-        wmf_move(g_wm_m[g_wm_k[i]].m, g_wm_m[g_wm_k[i]].w, (float)e->x + (float)e->vx * dt, (float)e->y + (float)e->vy * dt, (uint16_t)(e->heading << 8));
+        float x, y; wm_where(i, host, &x, &y);
+        wmf_move(g_wm_m[g_wm_k[i]].m, g_wm_m[g_wm_k[i]].w, x, y, (uint16_t)(g_wm_e[i].heading << 8));
     }
     return g_wm_n > 0;
 }
