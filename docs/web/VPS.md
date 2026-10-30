@@ -243,24 +243,24 @@ compose file's limit), 40 GB of disk and a 1 Gbit/s port with a few TB of traffi
 
 The compose files put every container of theirs (the server, Caddy, or cloudflared and its namespace) into the systemd
 slice `nfsu2.slice` (`cgroup_parent`, `NFSU2_SLICE` to name another), and `web/deploy/nfsu2.slice` gives that slice at
-most 14 of a 16-vCPU VPS (`CPUQuota=1400%`; for another size, its vCPUs less what the rest needs, times 100), so the
-rest of the VPS keeps at least 2 cores whatever the players do. The server and cloudflared share the 14 as their load
-goes. The server sees what the whole slice uses (`cgroup: host` in `compose.yml`: the VPS's cgroup tree, read only),
+most 15 of a 16-vCPU VPS (`CPUQuota=1500%`; for another size, its vCPUs less what the rest needs, times 100), so the
+rest of the VPS keeps at least 1 core whatever the players do (it used about half of one at 5,857 players). The
+server and cloudflared share the 15 as their load goes. The server sees what the whole slice uses (`cgroup: host` in `compose.yml`: the VPS's cgroup tree, read only),
 and over 85 % of the quota the free-roam hub's busy cap gives players fewer friends, as it does when the server's own
 workers are busy: fewer car states to send costs cloudflared less too (bytes, not messages: each player still gets a
 bundle every 50 ms). At the limit they are slowed down, never the rest. The server's console says the quota it found
-at the start (`CPU quota : 14 cores for /nfsu2.slice`; "none seen" in a container without `cgroup: host`), and every
+at the start (`CPU quota : 15 cores for /nfsu2.slice`; "none seen" in a container without `cgroup: host`), and every
 5 minutes what the slice used (`[players] CPU in the last 5 minutes: the server 1.09 cores, its switch's workers 13 %
 busy; /nfsu2.slice 4.51 of its 14 cores (32 %)`).
 
     cp web/deploy/nfsu2.slice /etc/systemd/system/ && systemctl daemon-reload
     docker compose up -d --force-recreate
     systemctl status nfsu2.slice                               # the containers in it
-    systemctl show nfsu2.slice -p CPUQuotaPerSecUSec           # 14s
+    systemctl show nfsu2.slice -p CPUQuotaPerSecUSec           # 15s
 
 A new quota for a slice that runs already needs no recreate: after the `cp` and `daemon-reload`,
-`systemctl set-property --runtime nfsu2.slice CPUQuota=1400%` sets it at once (`cat
-/sys/fs/cgroup/nfsu2.slice/cpu.max`: `1400000 100000`), and the file keeps it after a reboot.
+`systemctl set-property --runtime nfsu2.slice CPUQuota=1500%` sets it at once (`cat
+/sys/fs/cgroup/nfsu2.slice/cpu.max`: `1500000 100000`), and the file keeps it after a reboot.
 
 It needs Docker's systemd cgroup driver (`docker info`: `Cgroup Driver: systemd`, the default with cgroup v2).
 Without the file the containers still start, in a slice systemd makes for them with no limit; with the cgroupfs
