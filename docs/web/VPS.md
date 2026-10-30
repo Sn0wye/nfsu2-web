@@ -193,7 +193,7 @@ minute of a change. A keyphrase deleted from the cloud frees its name.
 
 ## Sizing
 
-For up to 7000 players at once (the image's limit; the Node server's was 2000, [From the Node
+For up to 6500 players at once (the image's limit, of the server's 7000; the Node server's was 2000, [From the Node
 server](#from-the-node-server)): 8 vCPU for 2000 and 16 for 4000 to 6000 (4000 in free roam took the Rust server 6-8 cores of a Ryzen 9 5900X,
 and a Cloudflare Tunnel's cloudflared pays for each message again, `web/server-rs/README.md`), 8 GB of memory (the
 compose file's limit), 40 GB of disk and a 1 Gbit/s port with a few TB of traffic a month.
@@ -338,7 +338,8 @@ NFSU2_IMAGE=ghcr.io/th0mk/nfsu2-web-rs:sha-<commit>
   commit, then `docker compose up -d`. The state volume serves either.
 - `UV_THREADPOOL_SIZE` means nothing to the Rust server; `NFSU2_THREADS` sets its worker threads (by default half
   the cores, 2 to 8). Its console has the Node server's lines.
-- **7000 players** where the Node server took 2000 (`--max-peers` 1 to 7000, the image's `NFSU2_MAX_PEERS=7000`): the
+- **7000 players** where the Node server took 2000 (`--max-peers` 1 to 7000, the image's `NFSU2_MAX_PEERS=6500`: at 5,857 players the game's
+  CPU quota was 82 % full, nfsu2.xyz 2026-10-30): the
   virtual network is 10.77.0.0/19 (addresses in 10.77.0-27.x), and the game module's peer bits cover a /21, so for a player on 10.77.8-27.x the
   game asks that host itself (a LAN race's connect to one who has just gone ends after the same 3 s as "timed out"
   instead of "unreachable"; nothing else differs, and pages and modules of before need no change). Online mode takes
@@ -821,10 +822,10 @@ the origin-pull certificate with a stand-in CA ([What was tested](#what-was-test
 `compose.tunnel.yml` puts `cloudflared` where Caddy was.
 
 1. In Cloudflare's dashboard (Zero Trust, Networks, Tunnels), create a tunnel with the Docker connector and copy
-   its token. Give it a public hostname: your name, service type `UNIX`, path `@nfsu2-http` (the service
-   `unix:@nfsu2-http`: the server's socket in the namespace below, without TCP's work for each message), or type
-   `HTTP`, URL `127.0.0.1:8080`. Both work; a change there reaches new connections at once, players already on stay
-   where they are.
+   its token. Give it a public hostname: your name, service `http://127.0.0.1:8080`. (The server listens on the
+   socket `@nfsu2-http` in the namespace below too, without TCP's work for each message, but the dashboard's Service
+   URL field refuses `unix:@nfsu2-http`, nfsu2.xyz 2026-10-30: only a tunnel run from a config file of its own
+   takes it.)
 2. Copy `web/deploy/compose.tunnel.yml` next to `compose.yml`, and add to `.env`:
 
    ```sh
@@ -989,7 +990,7 @@ paths to the VPS, so pick a VPS location between you.
 - **Keepalive:** the switch pings every connection every 25 s. Proxies and Cloudflare then never cut a quiet player,
   and the switch finds players whose connection died.
 - **Limits:**
-  - 7000 players on the switch with the Rust image (`NFSU2_MAX_PEERS=7000`; the server's own default is 128, and
+  - 6500 players on the switch with the Rust image (`NFSU2_MAX_PEERS=6500`; the server's own default is 128, and
     7000 is the most addresses it hands out on its virtual network, 10.77.0.0/19: 250 in each of 10.77.0-27.x), 2000 with
     the Node image (its network is 10.77.0.0/21);
   - when every place is taken a game waits in line for one, first come first served (nfsu2-lan `queue.rs`): the

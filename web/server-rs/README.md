@@ -131,7 +131,9 @@ drivers too.
 `--http-socket @nfsu2-http` (NFSU2_HTTP_SOCKET; compose.tunnel.yml sets it) serves HTTP on a Unix socket as well, for
 cloudflared's origin `unix:@nfsu2-http`: a name in the network namespace the two share (Linux; else a file's path),
 each connection as from 127.0.0.1.  It spares each message TCP's work on 127.0.0.1 at both ends (a sixth of that hop's
-kernel time with bots in Linux, more where conntrack and AppArmor see every packet, as on nfsu2.xyz).
+kernel time with bots in Linux, more where conntrack and AppArmor see every packet, as on nfsu2.xyz).  Cloudflare's
+dashboard does not take that origin (its Service URL field wants a scheme and `//`, 2026-10-30): only a tunnel run
+from a config file of its own does.
 
 4000 players (2026-10-21, the server on CPUs 0-11, nfsu2-roamload on 12-23, 3999 bots and the probe, spread over
 3 km; other sessions' loads on the machine the same day put 2000 players on 6 workers at the busy cap's edge, 5.0
@@ -247,7 +249,7 @@ players.
 
 ## Where it differs from the Node server
 
-- 7000 players (`--max-peers` 1 to 7000; the image's `NFSU2_MAX_PEERS=7000`), Node's 2000: the switch's network is
+- 7000 players (`--max-peers` 1 to 7000; the image's `NFSU2_MAX_PEERS=6500`), Node's 2000: the switch's network is
   10.77.0.0/19 (the welcome's mask 255.255.224.0; addresses round twenty-eight of its /24s, 10.77.0-27.x), the free-roam
   hub takes 7168 players, Online mode 3500 lobby sessions, 1050 games and 14000 streams.  The game module's peer bits
   (mailbox v4) cover a /21: for a player on 10.77.8-27.x the game asks that host itself (`runtime/web/net_lan.c`): a LAN race's

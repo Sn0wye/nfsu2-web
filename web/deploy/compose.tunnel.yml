@@ -2,8 +2,8 @@
 # connects out to Cloudflare, so the VPS needs no open port for the game at all.  cloudflared and the server
 # share one network namespace (a Docker network, not the VPS's): cloudflared reaches the server there, nothing
 # else can, and the client's address comes from Cloudflare's CF-Connecting-IP.  In Cloudflare's dashboard the
-# tunnel's public hostname is NFSU2_HOST and its service unix:@nfsu2-http (type UNIX, path @nfsu2-http: the
-# server's socket in the namespace, without TCP's work for each message) or http://127.0.0.1:8080 (both work).
+# tunnel's public hostname is NFSU2_HOST and its service http://127.0.0.1:8080 (the dashboard refuses the
+# server's socket, unix:@nfsu2-http, that a tunnel with a config file of its own could take).
 #
 # In .env, besides NFSU2_HOST, NFSU2_DATA and NFSU2_MODULE (compose.yml):
 #   TUNNEL_TOKEN=<the tunnel's token>
@@ -50,5 +50,5 @@ services:
     network_mode: service:net
     environment:
       NFSU2_REAL_IP_HEADER: cf-connecting-ip
-      # HTTP on a Unix socket too, a name in the namespace (no file): the tunnel's service unix:@nfsu2-http
+      # HTTP on a Unix socket too, a name in the namespace (no file): a tunnel's service unix:@nfsu2-http
       NFSU2_HTTP_SOCKET: "@nfsu2-http"
