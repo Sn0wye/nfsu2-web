@@ -1123,6 +1123,11 @@ impl LanSwitch {
         let mut n = Breakdown { players: all.len(), ..Breakdown::default() };
         for p in all.iter() {
             let lan = p.lan();
+            // its flag stays as its last free-roam datagram left it: one gone from free roam's menus to Online mode
+            // or the LAN screens is "not driving" still, and counts there no more
+            if p.away.load(Relaxed) && !online.contains(&p.vip) && lan != Some(true) {
+                n.away += 1;
+            }
             if online.contains(&p.vip) {
                 n.online += 1;
             } else if lan == Some(true) {
@@ -1142,9 +1147,6 @@ impl LanSwitch {
             }
             if p.share.load(Relaxed) < lag::SHARE_FULL {
                 n.thinning += 1;
-            }
-            if p.away.load(Relaxed) {
-                n.away += 1;
             }
         }
         n.thinned = self.stats.thinned.get();
