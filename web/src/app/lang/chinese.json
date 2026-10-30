@@ -685,7 +685,7 @@
   "How big the touch controls on the game are. Auto sizes them for this screen.": "遊戲畫面上觸控操作的大小。自動會依這個螢幕調整。",
   "Auto ({size})": "自動（{size}）",
   "Menu button size": "選單按鈕大小",
-  "How big the game's small menu buttons are: Back, Continue and the others at the bottom, and the arrows. Auto sizes them for a finger.": "遊戲選單小按鈕的大小：底部的返回、繼續等按鈕，以及箭頭。自動會調整成適合手指點按的大小。",
+  "How big the game's small menu buttons are: Back, Continue and the others at the bottom, and the arrows. Auto sizes the arrows for a finger and leaves the buttons at the bottom at the game's size: OK and Back on the touch controls do the same.": "遊戲選單小按鈕的大小：底部的返回、繼續等按鈕，以及箭頭。自動會把箭頭調整成適合手指點按的大小，底部的按鈕則維持遊戲原本的大小：觸控操作的確定和返回有相同功能。",
   "Throttle, brake and reverse": "油門、煞車與倒車",
   "Steer (or W S A D)": "轉向（或 W S A D）",
   "Space": "空白鍵",

@@ -685,7 +685,7 @@
   "How big the touch controls on the game are. Auto sizes them for this screen.": "ゲーム画面に表示されるタッチ操作の大きさです。自動ではこの画面に合わせます。",
   "Auto ({size})": "自動（{size}）",
   "Menu button size": "メニューボタンのサイズ",
-  "How big the game's small menu buttons are: Back, Continue and the others at the bottom, and the arrows. Auto sizes them for a finger.": "ゲームメニューの小さなボタンの大きさです：下部の「戻る」「続ける」などのボタンと矢印。自動では指で押しやすい大きさにします。",
+  "How big the game's small menu buttons are: Back, Continue and the others at the bottom, and the arrows. Auto sizes the arrows for a finger and leaves the buttons at the bottom at the game's size: OK and Back on the touch controls do the same.": "ゲームメニューの小さなボタンの大きさです：下部の「戻る」「続ける」などのボタンと矢印。自動では矢印を指で押しやすい大きさにし、下部のボタンはゲームのままの大きさにします：タッチ操作の「OK」と「戻る」が同じ働きをします。",
   "Throttle, brake and reverse": "アクセル、ブレーキ、バック",
   "Steer (or W S A D)": "ハンドル（W S A Dでも可）",
   "Space": "スペース",

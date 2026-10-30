@@ -769,7 +769,7 @@
   "How big the touch controls on the game are. Auto sizes them for this screen.": "La taille des commandes tactiles sur le jeu. Auto les adapte à cet écran.",
   "Auto ({size})": "Auto ({size})",
   "Menu button size": "Taille des boutons de menu",
-  "How big the game's small menu buttons are: Back, Continue and the others at the bottom, and the arrows. Auto sizes them for a finger.": "La taille des petits boutons des menus du jeu : Retour, Continuer et les autres en bas, et les flèches. Auto les agrandit pour un doigt.",
+  "How big the game's small menu buttons are: Back, Continue and the others at the bottom, and the arrows. Auto sizes the arrows for a finger and leaves the buttons at the bottom at the game's size: OK and Back on the touch controls do the same.": "La taille des petits boutons des menus du jeu : Retour, Continuer et les autres en bas, et les flèches. Auto agrandit les flèches pour un doigt et laisse les boutons du bas à la taille du jeu : OK et Retour des commandes tactiles font la même chose.",
   "Throttle, brake and reverse": "Accélérer, freiner et reculer",
   "Steer (or W S A D)": "Direction (ou W S A D)",
   "Space": "Espace",

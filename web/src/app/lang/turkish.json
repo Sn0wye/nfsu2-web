@@ -694,7 +694,7 @@
   "How big the touch controls on the game are. Auto sizes them for this screen.": "Oyundaki dokunmatik kontrollerin büyüklüğü. Otomatik, bu ekrana göre boyutlandırır.",
   "Auto ({size})": "Otomatik ({size})",
   "Menu button size": "Menü düğmesi boyutu",
-  "How big the game's small menu buttons are: Back, Continue and the others at the bottom, and the arrows. Auto sizes them for a finger.": "Oyunun küçük menü düğmelerinin büyüklüğü: alttaki Geri, Devam Et ve diğerleri ile oklar. Otomatik, parmağa göre boyutlandırır.",
+  "How big the game's small menu buttons are: Back, Continue and the others at the bottom, and the arrows. Auto sizes the arrows for a finger and leaves the buttons at the bottom at the game's size: OK and Back on the touch controls do the same.": "Oyunun küçük menü düğmelerinin büyüklüğü: alttaki Geri, Devam Et ve diğerleri ile oklar. Otomatik, okları parmağa göre boyutlandırır ve alttaki düğmeleri oyunun boyutunda bırakır: dokunmatik kontrollerdeki Tamam ve Geri aynı işi yapar.",
   "Throttle, brake and reverse": "Gaz, fren ve geri vites",
   "Steer (or W S A D)": "Direksiyon (ya da W S A D)",
   "Space": "Boşluk",

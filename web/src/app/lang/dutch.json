@@ -748,7 +748,7 @@
   "How big the touch controls on the game are. Auto sizes them for this screen.": "Hoe groot de touchbesturing op het spel is. Auto past die aan dit scherm aan.",
   "Auto ({size})": "Auto ({size})",
   "Menu button size": "Grootte van menuknoppen",
-  "How big the game's small menu buttons are: Back, Continue and the others at the bottom, and the arrows. Auto sizes them for a finger.": "Hoe groot de kleine menuknoppen van het spel zijn: Terug, Doorgaan en de andere onderaan, en de pijlen. Auto maakt ze groot genoeg voor een vinger.",
+  "How big the game's small menu buttons are: Back, Continue and the others at the bottom, and the arrows. Auto sizes the arrows for a finger and leaves the buttons at the bottom at the game's size: OK and Back on the touch controls do the same.": "Hoe groot de kleine menuknoppen van het spel zijn: Terug, Doorgaan en de andere onderaan, en de pijlen. Auto maakt de pijlen groot genoeg voor een vinger en laat de knoppen onderaan zo groot als in het spel: OK en Terug van de touchbesturing doen hetzelfde.",
   "Throttle, brake and reverse": "Gas geven, remmen en achteruit",
   "Steer (or W S A D)": "Sturen (of W S A D)",
   "Space": "Spatie",

@@ -685,7 +685,7 @@
   "How big the touch controls on the game are. Auto sizes them for this screen.": "ขนาดของปุ่มควบคุมแบบสัมผัสบนเกม อัตโนมัติจะปรับให้เหมาะกับหน้าจอนี้",
   "Auto ({size})": "อัตโนมัติ ({size})",
   "Menu button size": "ขนาดปุ่มเมนู",
-  "How big the game's small menu buttons are: Back, Continue and the others at the bottom, and the arrows. Auto sizes them for a finger.": "ขนาดของปุ่มเล็กในเมนูเกม: ปุ่มกลับ ดำเนินการต่อ และปุ่มอื่นๆ ด้านล่าง รวมถึงลูกศร อัตโนมัติจะปรับให้ใหญ่พอสำหรับนิ้ว",
+  "How big the game's small menu buttons are: Back, Continue and the others at the bottom, and the arrows. Auto sizes the arrows for a finger and leaves the buttons at the bottom at the game's size: OK and Back on the touch controls do the same.": "ขนาดของปุ่มเล็กในเมนูเกม: ปุ่มกลับ ดำเนินการต่อ และปุ่มอื่นๆ ด้านล่าง รวมถึงลูกศร อัตโนมัติจะปรับลูกศรให้ใหญ่พอสำหรับนิ้ว และคงปุ่มด้านล่างไว้ตามขนาดของเกม: ปุ่มตกลงและกลับของปุ่มควบคุมแบบสัมผัสทำงานเหมือนกัน",
   "Throttle, brake and reverse": "คันเร่ง เบรก และถอยหลัง",
   "Steer (or W S A D)": "เลี้ยว (หรือ W S A D)",
   "Space": "Space",

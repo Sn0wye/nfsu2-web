@@ -87,8 +87,9 @@ While you drive:
 - **Sizes**, in the Controls sheet's Touch tab and kept in this browser: **Control size** for the touch controls, and
   **Menu button size** for the game's own small menu buttons (Back, Continue and the others at the bottom of every
   menu, and the arrows of the main menu's and Quick Race's choices). Both are **Auto** by default: the touch controls
-  at 100% on a phone and up to 125% on a tablet, as far as they fit; the menu buttons big enough for a finger, up to
-  200%.
+  at 100% on a phone and up to 125% on a tablet, as far as they fit; the arrows big enough for a finger, up to 200%,
+  and the buttons at the bottom at the game's size (the touch controls' OK and Back do Continue and Back, and bigger
+  they cover the menus' own things, such as the paint list). A size picked by hand makes those bigger too.
 - A keyboard or a controller sends them away until you touch the game again. Android phones buzz on crashes.
 
 ## 3. Controls
