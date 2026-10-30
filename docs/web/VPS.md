@@ -872,55 +872,102 @@ reaches the server on 127.0.0.1, crashes of either side, a reboot.
 
 No Caddy and no `cloudflared`: Cloudflare's proxy connects to the server itself, which does TLS with a Cloudflare
 Origin CA certificate (TLS choice B with C, [Without Docker](#tls-pick-one)). An Origin Rule sends
-`https://<your name>` to a high port (28443 here), so the VPS needs nothing on 80 or 443. On nfsu2.xyz the tunnel
-took about 3/4 of the CPU (1.72 of 2.25 cores per 1000 players, 2026-10-24); without it the port (0.114 Mbit/s a
-player) is the limit, about 7,000-8,000 players on 1 Gbit/s.
+`https://<your name>` to a high port (28443 here), so the VPS needs nothing on 80 or 443. On nfsu2.xyz cloudflared
+took 7.5 of the slice's 11.6 cores at 5,985 players (2026-10-30); without it the 1 Gbit/s port (0.13 Mbit/s a
+player) is the limit, about 7,000-7,500 players.
 
-1. **Cloudflare, before anything on the VPS:**
-   - SSL/TLS, Origin Server, **Create Certificate**: your name and `*.<your name>`, 15 years. Save the certificate
-     as `/srv/nfsu2/tls/origin.pem` and the key as `origin.key`, then `chown -R 1000:1000 /srv/nfsu2/tls && chmod
-     700 /srv/nfsu2/tls && chmod 600 /srv/nfsu2/tls/origin.key` (the container runs as uid 1000).
-   - SSL/TLS, Origin Server, **Authenticated Origin Pulls** on.
-   - SSL/TLS, Overview: **Full (strict)**. SSL/TLS, Edge Certificates: **Always Use HTTPS** on (http:// never reaches
-     the VPS: the Origin Rule sends every request for the name to the TLS port).
-   - Rules, Origin Rules: hostname equals your name, **Destination Port** 28443. Deploy it at step 4 (with the
-     tunnel still in front it is not needed).
-   - The proxy's settings 7-9 above apply as they are (the Cache Rule stays).
-2. **Firewall:** the port from Cloudflare's addresses only (`ufw status` first; with ufw off, `ufw allow 22/tcp`
-   before `ufw enable`):
+The proxy's settings 7-9 above apply as they are. Steps 1-5 change nothing for the players (the tunnel stays in
+front) and try every part with a second name, `origin-test.<your name>`, and a second server of its own; step 6
+switches.
+
+1. **The certificate** (SSL/TLS, Origin Server, Origin Certificates tab, **Create Certificate**): "Generate private
+   key and CSR with Cloudflare", key type **ECC** (cheaper handshakes than RSA: every player's connection is one), the
+   hostnames as they are (your name and `*.<your name>`, which covers the test name), 15 years, **Create**, key format
+   PEM. The key is shown once: on the VPS, `mkdir -p /srv/nfsu2/tls`, paste the certificate into
+   `/srv/nfsu2/tls/origin.pem` and the key into `origin.key`, then `chown -R 1000:1000 /srv/nfsu2/tls && chmod 700
+   /srv/nfsu2/tls && chmod 600 /srv/nfsu2/tls/*` (the container runs as uid 1000).
+2. **Cloudflare, for the test name:**
+   - SSL/TLS, Origin Server, **Authenticated Origin Pulls** tab, section **Global**: **On**. Cloudflare's own
+     certificate, shared by every Cloudflare account, the one the server trusts (built in, valid until 2029-11-01);
+     the Zone-level section is for a certificate of your own, which the server does not take. It changes nothing
+     for the tunnel or an origin that asks for no certificate.
+   - DNS, Records, **Add record**: `A`, name `origin-test`, the VPS's IPv4, proxied (orange).
+   - The encryption mode: SSL/TLS, Overview. If it says Full (strict), nothing to do; otherwise (Automatic, or
+     another mode other names need) a **Configuration Rule** (Rules, Overview, **Create rule**, Configuration Rule):
+     Hostname equals `origin-test.<your name>`, **SSL**: Strict, **Deploy**.
+   - **Origin Rule** (Rules, Overview, **Create rule**, Origin Rule): Hostname equals `origin-test.<your name>`,
+     **Destination Port**: rewrite to `28443`, **Deploy**.
+3. **Firewall:** 28443 for Cloudflare's addresses only, in an nftables table of its own (nothing else on the VPS
+   changes; with ufw on, also `ufw allow 28443/tcp`, and in Hetzner's Robot firewall, if one is on, a rule for TCP
+   28443):
 
    ```sh
-   for r in $(curl -s https://www.cloudflare.com/ips-v4) $(curl -s https://www.cloudflare.com/ips-v6); do
-     ufw allow proto tcp from "$r" to any port 28443 comment cloudflare
-   done
+   cp web/deploy/cloudflare-only.sh /srv/nfsu2/ && cp web/deploy/nfsu2-cloudflare-only.service /etc/systemd/system/
+   systemctl daemon-reload && systemctl enable --now nfsu2-cloudflare-only   # again at boot
+   nft list table inet nfsu2_cloudflare
    ```
 
-3. **Compose:** copy `web/deploy/compose.origin.yml` next to `compose.yml`; in `.env`
-   `COMPOSE_FILE=compose.yml:compose.origin.yml` (and `NFSU2_TLS_DIR=/srv/nfsu2/tls`). Keep `TUNNEL_TOKEN`: it is the
-   way back.
-4. **The switch** (everyone reconnects once, as at a release): `docker compose up -d --remove-orphans` (removes
-   `cloudflared` and `net`), then in Cloudflare's DNS delete the tunnel's record for your name (CNAME to
-   `<id>.cfargotunnel.com`) and add a proxied (orange) `A` record to the VPS's IPv4, and deploy the Origin Rule. In
-   Zero Trust, delete the tunnel's public hostname (the tunnel itself can stay). Leave out `AAAA` unless the firewall
-   step covered IPv6 and you want it.
-5. **Check:** the log says `HTTPS : port 28443` and `cloudflare: its addresses must show its origin-pull
-   certificate`; the page loads; `curl -kv --max-time 5 https://<vps>:28443/` from outside Cloudflare gets no
-   answer (the firewall); players' `[roam]` rtt as before or lower.
+4. **A test server** on the VPS's network, with the running image, the game data and module read only, and a state
+   of its own (its players are its own; `--access-log` names each request's client address):
 
-**Back to the tunnel:** `COMPOSE_FILE=compose.yml:compose.tunnel.yml`, `docker compose up -d --remove-orphans`,
-turn the Origin Rule off, delete the `A` record and add the tunnel's public hostname again (that makes its CNAME).
+   ```sh
+   cd /srv/nfsu2
+   env1() { grep -s "^$1=" .env | tail -1 | cut -d= -f2-; }
+   d=$(env1 NFSU2_DATA); data=$(realpath -m "${d:-./game}")
+   m=$(env1 NFSU2_MODULE); mod=$(realpath -m "${m:-./module}")
+   echo "game data $data, module $mod, image $(env1 NFSU2_IMAGE)"
+   docker run -d --name nfsu2-origintest --network host --read-only --cap-drop ALL \
+     --security-opt no-new-privileges --memory 3g --memory-swap 3g --ulimit nofile=65536 --no-healthcheck \
+     -e NFSU2_HOST=origin-test.<your name> -e NFSU2_HTTP_PORT=0 -e NFSU2_MAX_PEERS=16 -e NFSU2_COMPRESS_THREADS=0 \
+     -e NFSU2_REAL_IP_HEADER=cf-connecting-ip \
+     -v "$data":/game:ro -v "$mod":/module:ro -v /srv/nfsu2/tls:/tls:ro -v nfsu2-origintest-state:/state \
+     "$(env1 NFSU2_IMAGE)" \
+     --port 28443 --tls-cert /tls/origin.pem --tls-key /tls/origin.key --trusted-proxies cloudflare --access-log
+   docker logs nfsu2-origintest 2>&1 | grep -E 'HTTPS|cloudflare'
+   ```
+
+   (The game data and module as `.env` names them, `./game` and `./module` where it names none.)
+5. **Try it:** open `https://origin-test.<your name>`, Play, drive in free roam (alone: it is the test server's
+   world). `docker logs nfsu2-origintest 2>&1 | grep '\[http\]' | tail` names your own address, not Cloudflare's.
+   From any machine, `curl -sk --max-time 5 --resolve origin-test.<your name>:28443:<vps> https://origin-test.<your
+   name>:28443/` gets no answer (the firewall). What a step left out shows: 525 "SSL handshake failed"
+   (Authenticated Origin Pulls off, or the certificate files), 526 (the encryption mode above Full (strict) with
+   another certificate), 521 or 522 (the Origin Rule, the firewall, or the test server not running). Then
+   `docker rm -f nfsu2-origintest && docker volume rm nfsu2-origintest-state`.
+6. **The switch** (at a quiet hour: from the first command until the DNS record, a minute or two, nobody can play;
+   then every page reconnects by itself):
+   - On the VPS: copy `web/deploy/compose.origin.yml` next to `compose.yml`; in `.env`
+     `COMPOSE_FILE=compose.yml:compose.origin.yml` and `NFSU2_TLS_DIR=/srv/nfsu2/tls` (keep `TUNNEL_TOKEN`: it is
+     the way back). Then `docker compose config -q && docker compose up -d --remove-orphans` (`--remove-orphans`
+     stops and removes `cloudflared` and `net`). The log says `HTTPS : port 28443` and `cloudflare: its addresses
+     must show its origin-pull certificate`.
+   - The Origin Rule and the Configuration Rule (if you made one): Hostname is in `<your name>` and the test name.
+   - DNS: delete the tunnel's record for your name (a `CNAME` to `<tunnel id>.cfargotunnel.com`), add an `A` record
+     for it (`@`) to the VPS's IPv4, proxied. Leave out `AAAA`. Leave the tunnel and its published application in
+     Zero Trust as they are: they are the way back, and a DNS record and a tunnel are independent.
+7. **Check:** the page loads, players come back (`./nfsu2 who`), and `measure.sh` says the front is Cloudflare's
+   proxy.
+
+**Back to the tunnel:** in `.env` `COMPOSE_FILE=compose.yml:compose.tunnel.yml`, `docker compose up -d
+--remove-orphans` (brings `net` and `cloudflared` back), then in DNS delete the `A` record and add the `CNAME` again
+(your name to `<tunnel id>.cfargotunnel.com`, proxied), and take your name out of the Origin Rule. The firewall can
+stay (`cloudflare-only.sh --off` and `systemctl disable nfsu2-cloudflare-only` to remove it).
 
 What the handshake lets through: an address outside Cloudflare's ranges never gets past the firewall; one inside
 must show the origin-pull certificate, and every handshake must ask for a name in the certificate (none, or another
-name: no certificate, no answer). Authenticated Origin Pulls' Cloudflare certificate is the same for every
-Cloudflare account, so it proves Cloudflare's proxy, not your zone: another account's proxy would also need to send
-your name as its SNI, which only Enterprise plans can set, and Cloudflare sets `CF-Connecting-IP` there itself.
-A certificate of your own (zone-level Authenticated Origin Pulls) would close that too, but the server trusts
-Cloudflare's CA only (built in).
+name: no certificate, no answer). Authenticated Origin Pulls' Global certificate is the same for every Cloudflare
+account, so it proves Cloudflare's proxy, not your zone: another account's proxy would also need to send your name
+as its SNI, which only Enterprise plans can set, and Cloudflare sets `CF-Connecting-IP` there itself. A certificate
+of your own (Zone-level Authenticated Origin Pulls) would close that too, but the server trusts Cloudflare's CA only
+(built in).
 
-Checked on a Mac (2026-10-24, the arguments of `compose.origin.yml`, a self-signed certificate): the health
-check's 127.0.0.1 port and HTTPS for the name answer, the bare address and another name get no handshake. Through a
-real Cloudflare: **UNVERIFIED**.
+Checked (2026-10-30): the server's built-in Cloudflare ranges and origin-pull CA are Cloudflare's published ones
+(22 ranges; CA fingerprint 9A:1A:...:A2:B9); on a Mac, the arguments of `compose.origin.yml` with an ECC key in
+Cloudflare's format (PKCS#8): your name and a name under the wildcard answer, a WebSocket upgrades with the Host
+Cloudflare sends (no port), the bare address, another name and two labels under the wildcard get no handshake, and
+the local port answers the health check; `cloudflare-only.sh` in Debian 12 (nftables 1.0.6): the port closed to
+another address, another port open, a second run replacing the first, `--off` opening it. Through a real Cloudflare:
+steps 1-5 are that check.
 
 ## A proxy you already have
 
