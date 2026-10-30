@@ -2,7 +2,7 @@
 //! Node server's messages, in its order: the tools, the tests, the systemd unit and the container start this server
 //! with the command lines they started that one with).
 //!
-//!   nfsu2-server --data "<NFSU2 folder>" [--http-port 8080]
+//!   nfsu2-server --data "<NFSU2 folder>" [--http-port 8080] [--http-socket <path>|@<name>]
 //!        [--tls-cert <pem> --tls-key <pem> [--port 8443] [--bind <address>] | --behind-proxy --host <name>[,<name>...]]
 //!        [--host <name>[,<name>...]] [--state <dir>]
 //!        [--trusted-proxies cloudflare,<ip>,<cidr>,...] [--real-ip-header x-forwarded-for|cf-connecting-ip]
@@ -16,12 +16,13 @@ use nfsu2_headers::ProxyTrust;
 
 use crate::paths;
 
-pub const VALUE_OPTS: [&str; 19] = [
+pub const VALUE_OPTS: [&str; 20] = [
     "--data",
     "--dist",
     "--wasm",
     "--port",
     "--http-port",
+    "--http-socket",
     "--bind",
     "--state",
     "--tls-cert",
@@ -59,6 +60,10 @@ pub struct Options {
     pub tests: String,
     pub https_port: u16,
     pub http_port: u16,
+    /// the HTTP port's twin on a Unix socket, for a proxy on this machine (cloudflared: its origin `unix:<the same>`):
+    /// a file's path, or on Linux "@name", a name in the network namespace's own abstract space (no file: the
+    /// containers that share the namespace reach it, nothing else); empty for none
+    pub http_socket: String,
     pub tls_cert: String,
     pub tls_key: String,
     pub dev: bool,
@@ -269,6 +274,10 @@ pub fn parse(argv: &[String], env: &dyn Fn(&str) -> Option<String>, repo: &str, 
     let state = resolve(arg("--state", &paths::join(repo, "out/web/server")))?;
     let https_port = port("--port", "8443")?;
     let http_port = port("--http-port", "8080")?;
+    let http_socket = string(arg("--http-socket", ""));
+    if http_socket.starts_with('@') && !cfg!(target_os = "linux") {
+        return Err(format!("--http-socket {http_socket}: a name (@) is Linux's only; give a file's path"));
+    }
     let behind = flag("--behind-proxy");
     let tls_cert = resolve_if("--tls-cert")?;
     let tls_key = resolve_if("--tls-key")?;
@@ -403,6 +412,7 @@ pub fn parse(argv: &[String], env: &dyn Fn(&str) -> Option<String>, repo: &str, 
         tests,
         https_port,
         http_port,
+        http_socket,
         tls_cert,
         tls_key,
         dev,
@@ -514,7 +524,7 @@ mod tests {
             s.err(&["--no-such-option"], &[]),
             format!(
                 "unknown option --no-such-option\noptions: {}",
-                "--data --dist --wasm --port --http-port --bind --state --tls-cert --tls-key --trusted-proxies --real-ip-header --max-peers \
+                "--data --dist --wasm --port --http-port --http-socket --bind --state --tls-cert --tls-key --trusted-proxies --real-ip-header --max-peers \
              --artifacts --lan-impair --host --online --online-trace --roam-hub --vault-gb --behind-proxy --dev --access-log"
             )
         );

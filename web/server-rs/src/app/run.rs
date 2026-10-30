@@ -2,7 +2,7 @@
 //! the manifest and the module, the timers, the signals, and the start-up lines (the tests wait for "  access    :"
 //! and read others).
 
-use std::os::unix::fs::{DirBuilderExt, MetadataExt, PermissionsExt};
+use std::os::unix::fs::{DirBuilderExt, FileTypeExt, MetadataExt, PermissionsExt};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
@@ -11,7 +11,7 @@ use tokio::signal::unix::{SignalKind, signal};
 use tokio::time::{Instant, interval_at};
 
 use nfsu2_http::tls::TlsState;
-use nfsu2_http::{Limits, bind, serve};
+use nfsu2_http::{Limits, bind, serve, serve_unix};
 use nfsu2_lan::{LanOptions, LanSwitch};
 use nfsu2_online::{LobbyTrace, OnlineHost, OnlineOptions};
 use nfsu2_roam::{RoamHub, RoamOptions};
@@ -77,6 +77,27 @@ fn state_folder(o: &Options) -> String {
         Ok(p) => p.to_string_lossy().into_owned(),
         Err(e) => die(&format!("{}: {e}", o.state)),
     }
+}
+
+/// --http-socket's listener: "@name" in the network namespace's abstract space (Linux), else a file, made anew (a
+/// socket's file stays after its process ends) and open to every user: the proxy may run as a user of its own
+/// (cloudflared's image: 65532), and anything on this machine reaches the HTTP port too.  For each message a page and
+/// the switch exchange, a Unix socket spares both ends TCP's work on 127.0.0.1 (nfsu2.xyz, 2026-10-30, 5,800 players:
+/// the kernel's network work was about 60 % of the CPU, much of it this hop's)
+fn bind_unix(at: &str) -> std::io::Result<tokio::net::UnixListener> {
+    #[cfg(target_os = "linux")]
+    if let Some(name) = at.strip_prefix('@') {
+        use std::os::linux::net::SocketAddrExt;
+        let l = std::os::unix::net::UnixListener::bind_addr(&std::os::unix::net::SocketAddr::from_abstract_name(name)?)?;
+        l.set_nonblocking(true)?;
+        return tokio::net::UnixListener::from_std(l);
+    }
+    if std::fs::symlink_metadata(at).is_ok_and(|m| m.file_type().is_socket()) {
+        std::fs::remove_file(at)?;
+    }
+    let l = tokio::net::UnixListener::bind(at)?;
+    std::fs::set_permissions(at, std::fs::Permissions::from_mode(0o666))?;
+    Ok(l)
 }
 
 /// the certificate file's time, for the check once a minute (0 when it cannot be read, as fs.watchFile has it)
@@ -417,6 +438,11 @@ pub async fn run(o: Options, cores: usize) {
         let (listener, _) = bind("127.0.0.1", o.http_port, None).await.unwrap_or_else(|m| die(&format!("cannot listen: {m}")));
         servers.push(serve(listener, None, limits.clone(), app.clone()));
     }
+    if !o.http_socket.is_empty() {
+        let listener = bind_unix(&o.http_socket).unwrap_or_else(|e| die(&format!("cannot listen on {}: {e}", o.http_socket)));
+        // as from 127.0.0.1: the proxy on this machine it is for is trusted there, and reports the player's address
+        servers.push(serve_unix(listener, ([127, 0, 0, 1], 0).into(), limits.clone(), app.clone()));
+    }
     if let Err(e) = app.refresh_manifest().await {
         die(&format!("the game folder {}: {e}", o.data));
     }
@@ -487,6 +513,12 @@ pub async fn run(o: Options, cores: usize) {
             if o.tls == Tls::Proxy { "  (the proxy forwards here)" } else { "" }
         ),
     ];
+    if !o.http_socket.is_empty() {
+        lines.push(format!(
+            "  socket    : HTTP on {} too, as from 127.0.0.1 (cloudflared's origin unix:{}: no TCP on this machine)",
+            o.http_socket, o.http_socket
+        ));
+    }
     match o.tls {
         Tls::None => lines
             .push("  other PCs : none: they need HTTPS, from --tls-cert/--tls-key or a proxy or tunnel in front (docs/web/VPS.md)".into()),

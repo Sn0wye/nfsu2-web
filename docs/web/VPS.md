@@ -816,7 +816,10 @@ the origin-pull certificate with a stand-in CA ([What was tested](#what-was-test
 `compose.tunnel.yml` puts `cloudflared` where Caddy was.
 
 1. In Cloudflare's dashboard (Zero Trust, Networks, Tunnels), create a tunnel with the Docker connector and copy
-   its token. Give it a public hostname: your name, service `http://127.0.0.1:8080`.
+   its token. Give it a public hostname: your name, service type `UNIX`, path `@nfsu2-http` (the service
+   `unix:@nfsu2-http`: the server's socket in the namespace below, without TCP's work for each message), or type
+   `HTTP`, URL `127.0.0.1:8080`. Both work; a change there reaches new connections at once, players already on stay
+   where they are.
 2. Copy `web/deploy/compose.tunnel.yml` next to `compose.yml`, and add to `.env`:
 
    ```sh
@@ -832,14 +835,16 @@ the origin-pull certificate with a stand-in CA ([What was tested](#what-was-test
 What follows from this setup:
 
 - **cloudflared and the server share one network namespace**, on a Docker network, held by a small `pause`
-  container (`net`), so either can restart on its own. cloudflared reaches the server on 127.0.0.1:8080; nothing
-  else can.
+  container (`net`), so either can restart on its own. cloudflared reaches the server on its socket `@nfsu2-http`
+  (or 127.0.0.1:8080); nothing else can.
 - **The client's address** comes from Cloudflare's `CF-Connecting-IP`, and only from `cloudflared`. It opens a
   connection to the server for each request in progress and has no limit of its own per client: the server's own
   limits per client address hold.
 - **Settings:** 7 and 9 of the proxy's list above apply too (8 is step 4 here). Authenticated Origin Pulls is not
   needed: the server is reached through cloudflared alone.
-- **Four copies of cloudflared** (`nfsu2-web-cloudflared-1` to `-4`), each with 4 connections to Cloudflare.
+- **Four copies of cloudflared** (`nfsu2-web-cloudflared-1` to `-4`), each with 4 connections to Cloudflare and
+  4 threads of Go (`GOMAXPROCS`: with one for each of the slice's cores, a copy's profile on nfsu2.xyz, 2026-10-30,
+  showed a fifth of its CPU in Go waking idle threads that found nothing to do).
   Each player's connection goes over one of them. A connection that went to a far or lossy Cloudflare site slows
   every player on it: on nfsu2.xyz (2026-10-22, 2,950 players) two connections had gone to Amsterdam, and about 600
   players got the other cars seconds late while the server was idle. A copy's sites are in its log:

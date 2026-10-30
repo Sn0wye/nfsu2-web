@@ -128,6 +128,11 @@ first HELLO or SNAP that says it drives again ends it.  40 real-core bots, 20 of
 messages 21.3 in / 11.6 out a second before, 5.8 / 2.0 after; the drivers' as before (21 / 19), car states between
 drivers too.
 
+`--http-socket @nfsu2-http` (NFSU2_HTTP_SOCKET; compose.tunnel.yml sets it) serves HTTP on a Unix socket as well, for
+cloudflared's origin `unix:@nfsu2-http`: a name in the network namespace the two share (Linux; else a file's path),
+each connection as from 127.0.0.1.  It spares each message TCP's work on 127.0.0.1 at both ends (a sixth of that hop's
+kernel time with bots in Linux, more where conntrack and AppArmor see every packet, as on nfsu2.xyz).
+
 4000 players (2026-10-21, the server on CPUs 0-11, nfsu2-roamload on 12-23, 3999 bots and the probe, spread over
 3 km; other sessions' loads on the machine the same day put 2000 players on 6 workers at the busy cap's edge, 5.0
 cores and 81 % busy, on main as on this):
