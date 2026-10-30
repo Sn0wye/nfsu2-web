@@ -295,6 +295,10 @@ pub async fn run(o: Options, cores: usize) {
                         ob as f64 / 1e6
                     ));
                 }
+                // the same and the hosts' messages by kind (nfsu2-lan mix.rs): where the bytes to the pages went
+                if let Some(l) = nfsu2_lan::mix::line(&b.mix, &was.mix, BREAKDOWN_EVERY.as_secs_f64()) {
+                    log::line(&format!("[players] to the pages by kind since the last count: {l}"));
+                }
                 let slice = slice.map_or(String::new(), |q| {
                     format!("; {} {:.2} of its {} cores ({:.0} %)", q.group, q.used, q.cores, q.share() * 100.0)
                 });

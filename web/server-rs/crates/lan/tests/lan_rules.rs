@@ -598,10 +598,11 @@ async fn breakdown_online_lan_screens_free_roam_older_page_leaving_or_starting()
     }
     in_online.lock().unwrap().insert(all[0].vip);
     in_roam.lock().unwrap().extend([all[2].vip, all[3].vip, all[0].vip]);
-    assert_eq!(
-        sw.lan.breakdown().await,
-        Breakdown { players: 6, online: 1, lan: 1, roam: 2, older: 1, other: 1, bundles: 0, ..Breakdown::default() }
-    );
+    // (what the pages were sent by kind left out: nothing yet, a count for each kind)
+    let mut b = sw.lan.breakdown().await;
+    assert!(b.mix.iter().all(|&n| n == 0));
+    b.mix.clear();
+    assert_eq!(b, Breakdown { players: 6, online: 1, lan: 1, roam: 2, older: 1, other: 1, bundles: 0, ..Breakdown::default() });
     // (the Online host is on the peer list, as { vip, name, server: true }; the hub is on none)
     let list = all[1].got().ctl.iter().rev().find(|m| m["t"] == "peers").cloned().unwrap();
     let last = list["peers"].as_array().unwrap().last().unwrap().clone();

@@ -225,6 +225,7 @@ pub mod fpred;
 mod impair;
 mod lag;
 mod members;
+pub mod mix;
 mod queue;
 mod reader;
 mod route;
@@ -239,7 +240,7 @@ use std::time::Duration;
 
 use arc_swap::{ArcSwap, ArcSwapOption};
 use bytes::Bytes;
-use nfsu2_util::{Bucket, Charge, Counter, Host, SendResult, SwitchSend, Tap};
+use nfsu2_util::{Bucket, Charge, Counter, Counters, Host, SendResult, SwitchSend, Tap};
 use parking_lot::Mutex;
 use serde_json::{Map, Value};
 use tokio::io::{AsyncRead, AsyncWrite};
@@ -559,6 +560,8 @@ pub struct Breakdown {
     pub fpred_entries: u64,
     pub other_bytes: u64,
     pub other_entries: u64,
+    /// what the pages were sent so far by kind (mix.rs): the bytes of each, then the entries or messages of each
+    pub mix: Vec<u64>,
     /// not on the switch: the pages waiting in line for a place (those away keeping theirs too), and of those that went
     /// in since the line last began, the longest wait (s)
     pub waiting: usize,
@@ -619,11 +622,16 @@ pub(crate) struct Stats {
     fpred_entries: Counter,
     other_bytes: Counter,
     other_entries: Counter,
+    /// the same and the hosts' messages by kind (mix.rs): bytes, then entries or messages
+    mix: Counters<{ 2 * mix::KINDS }>,
 }
 
 impl Stats {
     /// an entry of a compact bundle that went to a page: `data` the datagram, `e` its entry
-    pub(crate) fn entry_out(&self, data: &[u8], e: &[u8]) {
+    pub(crate) fn entry_out(&self, data: &[u8], dst: u32, e: &[u8]) {
+        let k = mix::of_entry(data, dst);
+        self.mix.add(k, e.len() as u64);
+        self.mix.add(mix::KINDS + k, 1);
         if data.len() > 16 + 5 && data[1] == compact::ROAM_OK && data[16 + 5] == 3 {
             self.snap_bytes.add(e.len() as u64);
             self.snap_entries.inc();
@@ -1071,9 +1079,13 @@ impl LanSwitch {
         if let Some(c) = cause {
             c.spend(1, data.len());
         }
+        let k = mix::of_host(&data, self.roam_vip, self.online_vip);
+        let n = data.len() as u64;
         if !self.send(p, Out::Raw(data)) {
             return SendResult::Full;
         }
+        self.stats.mix.add(k, n);
+        self.stats.mix.add(mix::KINDS + k, 1);
         p.frames_out.fetch_add(1, Relaxed);
         SendResult::Sent
     }
@@ -1153,6 +1165,7 @@ impl LanSwitch {
         let s = &self.stats;
         (n.snap_bytes, n.snap_entries, n.fpred_entries) = (s.snap_bytes.get(), s.snap_entries.get(), s.fpred_entries.get());
         (n.other_bytes, n.other_entries) = (s.other_bytes.get(), s.other_entries.get());
+        n.mix = s.mix.get().to_vec();
         (n.waiting, n.waited) = self.line_view();
         n
     }
@@ -1316,6 +1329,10 @@ impl LanSwitch {
             m.insert(k.into(), c.get().into());
         }
         m.insert("reserved".into(), reserved.into());
+        let v = s.mix.get();
+        let kinds: Map<String, Value> =
+            (0..mix::KINDS).filter(|&i| v[mix::KINDS + i] > 0).map(|i| (mix::name(i), serde_json::json!([v[i], v[mix::KINDS + i]]))).collect();
+        m.insert("mix".into(), Value::Object(kinds));
         m.insert("waiting".into(), waiting.into());
         m.insert("evicted".into(), s.evicted.get().into());
         let mut cuts = Map::new();

@@ -573,7 +573,7 @@ fn bundle_compact(stats: &Stats, items: &[Out], buf: &mut Vec<u8>, c: Compact<'_
         let data = compact::waited(data, if *queued != 0 { now.wrapping_sub(*queued) } else { 0 }, &mut moved);
         let at = body.len();
         compact::entry_fp(body, data, *src, *dst, own, refs.as_deref_mut(), fp.as_deref_mut());
-        stats.entry_out(data, &body[at..]);
+        stats.entry_out(data, *dst, &body[at..]);
         // a bundle takes datagrams while it stays within BUNDLE_OUT (the one that would not fit begins the next; it
         // was written as the next one, in order, so the page reads the same entries the writer made)
         if n > 0 && body.len() > BUNDLE_OUT {
