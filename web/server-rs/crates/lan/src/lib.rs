@@ -134,9 +134,10 @@
 //! [`Hello`]): by the id its page keeps in its storage ("id", at most 64 characters), the ones the page found in its
 //! other stores besides it ("was", at most [`WAS_MAX`] of them), or the keyphrase it plays with ("claim": below, as
 //! its owner).  The switch keeps who was on it for the operator's `who` ([`LanSwitch::who`]): each player's address
-//! and name, the opaque id the server gave its client address (`AttachOpts::ident`, a keyed hash), its page's id and
-//! its keyphrase's owner, and the same of the players who left in the last `GONE_MS`, so that one who just left can
-//! still be banned.  None of it is ever sent to a peer.
+//! and name (with the other names its game shows in free roam: `Host::other_names`), the opaque id the server gave
+//! its client address (`AttachOpts::ident`, a keyed hash), its page's id and its keyphrase's owner, and the same of
+//! the players who left in the last `GONE_MS`, so that one who just left can still be banned.  None of it is ever
+//! sent to a peer.
 //!
 //! ## Claimed names
 //!
@@ -753,6 +754,7 @@ impl Peer {
             since: self.since,
             left,
             doing,
+            game: Vec::new(),
         }
     }
 }
@@ -1160,8 +1162,8 @@ impl LanSwitch {
             Some(h) => h.vips().await.unwrap_or_default(),
             None => Default::default(),
         };
-        let roam = match &self.roam {
-            Some(h) => h.vips().await.unwrap_or_default(),
+        let (roam, mut game) = match &self.roam {
+            Some(h) => (h.vips().await.unwrap_or_default(), h.other_names().await.unwrap_or_default()),
             None => Default::default(),
         };
         let mut v: Vec<Who> = self
@@ -1178,7 +1180,7 @@ impl LanSwitch {
                 } else {
                     ""
                 };
-                p.who(doing, None)
+                Who { game: game.remove(&p.vip).unwrap_or_default(), ..p.who(doing, None) }
             })
             .collect();
         let mut g = self.gone.lock();
@@ -1519,6 +1521,9 @@ pub struct Who {
     /// what it does now: "Online" (in the game's Online mode), "LAN screens" (the LAN or Online screens open),
     /// "free roam", or "" (the menus, starting or leaving; and the ones who left)
     pub doing: &'static str,
+    /// the names its game shows over its car in free roam that are not `name` (`Host::other_names`): a page and its
+    /// game name the player alike, unless one of them was changed.  Empty for the ones who left.
+    pub game: Vec<String>,
 }
 
 /// A reservation as the tests see it.

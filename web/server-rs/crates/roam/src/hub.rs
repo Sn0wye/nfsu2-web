@@ -234,6 +234,26 @@ fn place_word(r: &wire::RaceRep) -> String {
 /// how often a player's claim hears that it plays (the claim holds 180 days from its last game: an hour is plenty)
 const SEEN_EVERY_MS: f64 = 600_000.0;
 
+/// the console's lines a page gets of the other names its game shows (`Hub::name_check`), at most: a game may name
+/// itself anew with each HELLO
+const NAME_LINES: usize = 4;
+/// the longest name a game shows (roam_core.h RC_NAME_MAX)
+const GAME_NAME_MAX: usize = 24;
+
+/// A browser's page as the switch named it (`Hub::page_name`): the name it goes by there, and the other names its
+/// game showed that the console was told of
+struct Page {
+    name: String,
+    told: Vec<String>,
+}
+
+/// whether a game shows the name `page` (a page's on the switch) as `game`: as roam_core.c `rc_name_clean` makes it,
+/// printable ASCII ('?' for any other character) of at most GAME_NAME_MAX, in any case
+fn same_name(page: &str, game: &str) -> bool {
+    let shown: String = page.chars().map(|c| if (' '..='~').contains(&c) { c } else { '?' }).take(GAME_NAME_MAX).collect();
+    shown.trim().eq_ignore_ascii_case(game.trim())
+}
+
 /// a link: the player it is to, and since when
 #[derive(Clone, Copy, Debug)]
 struct Link {
@@ -532,6 +552,8 @@ pub struct Hub {
     by_key: HashMap<u64, u32>,
     /// per browser (virtual address), the players its page blocks (`blocks`), until it leaves the switch
     blocks: HashMap<u32, Block>,
+    /// per browser, its page's name on the switch (`page_name`), until it leaves the switch
+    pages: HashMap<u32, Page>,
     /// the pairs of players kept apart at the last tick (`block_pairs`), as slots, the lower first, sorted: the world
     /// map and the lobby list read them between ticks
     apart: Vec<(u32, u32)>,
@@ -597,6 +619,7 @@ impl Hub {
             holes: 0,
             by_key: HashMap::new(),
             blocks: HashMap::new(),
+            pages: HashMap::new(),
             apart: Vec::new(),
             per_vip: HashMap::new(),
             crewed: 0,
@@ -793,6 +816,8 @@ impl Hub {
             }
             return;
         }
+        // (a new player, or a HELLO with a new name: its name against its page's)
+        let mut renamed = found.is_none();
         let slot = match found {
             Some(s) => s,
             None => {
@@ -868,6 +893,7 @@ impl Hub {
                     p.name.extend(name.iter().map(|&c| c as char));
                     p.canon = nfsu2_claims::canonical(&p.name).unwrap_or_default();
                     p.checked = 0;
+                    renamed = true;
                 }
                 if p.owner.as_ref() != owner {
                     p.owner = owner.cloned();
@@ -925,6 +951,9 @@ impl Hub {
         }
         if check {
             self.check_claim(slot, now);
+        }
+        if renamed {
+            self.name_check(slot);
         }
         if let Some(line) = report {
             self.st.race_reports += 1;
@@ -1223,6 +1252,7 @@ impl Hub {
     /// browser `vip` left the switch
     pub fn peer_gone(&mut self, vip: u32) {
         self.blocks.remove(&vip);
+        self.pages.remove(&vip);
         if !self.per_vip.contains_key(&vip) {
             return;
         }
@@ -1238,6 +1268,52 @@ impl Hub {
         let mut b = Block::new(&names);
         b.owners_of(self.claims.as_deref(), (self.now)());
         self.blocks.insert(vip, b);
+    }
+
+    /// browser `vip`'s page goes by `name` on the switch (its hello's): its players' names are held against it
+    /// (`name_check`)
+    pub fn page_name(&mut self, vip: u32, name: String) {
+        self.pages.insert(vip, Page { name, told: Vec::new() });
+        if self.per_vip.contains_key(&vip) {
+            let mine: Vec<u32> = self.order.iter().copied().filter(|&s| self.player(s).is_some_and(|p| p.vip == vip)).collect();
+            for s in mine {
+                self.name_check(s);
+            }
+        }
+    }
+
+    /// The name over the car of the player in `slot` (its HELLO's) against its page's on the switch: another one is a
+    /// console line, so that the operator finds the player by the name the others see (its `who` finds both).  Each
+    /// name once, NAME_LINES a page at most.  A page that is not known yet is held against it when it is.
+    fn name_check(&mut self, slot: u32) {
+        let Some(Some(p)) = self.slots.get(slot as usize) else { return };
+        let Some(page) = self.pages.get_mut(&p.vip) else { return };
+        if p.name.is_empty() || same_name(&page.name, &p.name) || page.told.len() >= NAME_LINES || page.told.contains(&p.name) {
+            return;
+        }
+        page.told.push(p.name.clone());
+        (self.log)(&format!(
+            "[roam] {} \"{}\": its game shows \"{}\" over its car",
+            vip_str(p.vip),
+            js::printable(&page.name, 32),
+            js::printable(&p.name, 32)
+        ));
+    }
+
+    /// the names over the cars of the players in free roam that are not their pages' on the switch (all of them for a
+    /// page not known), by browser, for the operator's `who`
+    pub fn other_names(&self) -> HashMap<u32, Vec<String>> {
+        let mut by: HashMap<u32, Vec<String>> = HashMap::new();
+        for p in self.players().filter(|p| !p.name.is_empty()) {
+            if self.pages.get(&p.vip).is_some_and(|g| same_name(&g.name, &p.name)) {
+                continue;
+            }
+            let names = by.entry(p.vip).or_default();
+            if !names.contains(&p.name) {
+                names.push(p.name.clone());
+            }
+        }
+        by
     }
 
     /// whether the players in slots a and b (p and q) are kept apart: at the last tick (`apart`, the race lobbies'

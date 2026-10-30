@@ -679,7 +679,7 @@ in the server's container: copy it next to `compose.yml` once (`scp web/deploy/n
 ```sh
 cd /srv/nfsu2
 ./nfsu2 who                              # who is on: address, name, what they do, for how long; and who left in the last hour
-./nfsu2 who bob                          # only names with "bob" in them
+./nfsu2 who bob                          # only names with "bob" in them (theirs, or the one over their car)
 ./nfsu2 kick Bob Stop ramming people     # off now, with that message; reloading the page brings them back
 ./nfsu2 ban Bob 3d Ramming, 3 days       # off, and turned away for 3 days: 30m, 12h, 3d, 2w, or perm for good
 ./nfsu2 ban 10.77.4.17 perm              # a player by address, when two have the same name
@@ -712,6 +712,11 @@ no quotes, but over ssh an apostrophe needs them twice (`"'Don't ram'"`), or log
 - **Who left**: `ban` takes a player who left in the last hour too (`who` lists them), so you can ban someone who
   is gone already, and the player of a `[cheat]` line about a race by its handle (`ban c17`) for a week after the
   line. `kick` needs them on.
+- **Two names**: `who` lists the name a player's page sent when it joined. The name over their car in free roam (and
+  in quick chat) is their game's. The two are the same unless the page was edited. Then `who` shows both
+  (`"player" free roam, 5 min; its game shows "…"`), `who`, `kick` and `ban` find the player by either, and a ban by
+  the name over the car is listed under that name. The log has a line when it happens, `[roam] 10.77.4.17 "player":
+  its game shows "…" over its car`: `grep` it for one who left, and ban the address within the hour.
 - **Banning again** replaces the earlier ban of the same player: `ban Bob perm` after `ban Bob 1d` leaves one ban,
   for good.
 - **Blocks**: players block others by name (Settings, Online, More online settings, Blocked players): the free-roam
