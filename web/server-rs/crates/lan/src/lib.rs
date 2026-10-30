@@ -217,6 +217,7 @@
 //! `terminate()` ends it at once (1006).  A protocol error (nfsu2-ws `ReadError::Protocol`) sends that close
 //! frame (its code only, as ws did) and ends the connection.  Nothing the client sends after a close counts.
 
+mod away;
 mod compact;
 mod conn;
 pub mod fpred;
@@ -377,6 +378,9 @@ pub struct LanOptions {
     pub bundle_budget: u64,
     /// each tick is the tick give or take this share of it, at random (conn.rs `Clock` says why)
     pub bundle_jitter: f64,
+    /// the slow clock's tick: what friends send a player in free roam who is not driving (a race, a shop, the menus)
+    /// waits this long at most (away.rs; 0: as for anyone)
+    pub away_ms: u64,
     /// friends' car states by their fields to a page whose hello asks for them (fpred.rs); false: as byte deltas still
     pub fpred: bool,
     /// SO_SNDBUF for /lan connections (NFSU2_LAN_SNDBUF; 0: the kernel's own, which Linux grows to megabytes)
@@ -424,6 +428,7 @@ impl Default for LanOptions {
             bundle_max_ms: 50,
             bundle_budget: 125_000,
             bundle_jitter: 0.4,
+            away_ms: 500,
             fpred: true,
             send_buffer_os: 0,
             max_payload: 64 << 10,
@@ -542,6 +547,8 @@ pub struct Breakdown {
     pub behind: usize,
     /// getting only a share of free roam's snapshots now (lag.rs)
     pub thinning: usize,
+    /// in free roam and not driving now: a race, a shop, the menus, loading (away.rs)
+    pub away: usize,
     /// the snapshots left out so far (the switch's `thinned`, since it started)
     pub thinned: u64,
     /// what compact bundles carried to pages so far: car states' bytes and entries, how many of those went by their
@@ -709,6 +716,8 @@ pub(crate) struct Peer {
     probe: Mutex<lag::Probe>,
     /// of free roam's snapshots sent to it, the share it gets (lag.rs: SHARE_FULL while its path keeps up)
     share: AtomicU32,
+    /// in free roam and not driving, as its own last HELLO or SNAP said (away.rs)
+    away: AtomicBool,
     /// it follows the whole peer list (its LAN play is not shut: members.rs `list_for`); set under the `members` lock
     listed: AtomicBool,
     /// its client's id for the operator's bans (`AttachOpts::ident`), and when it took its place (ms since 1970)
@@ -825,8 +834,10 @@ pub struct LanSwitch {
     anon: AtomicU64,
     conn_ids: AtomicU64,
     stats: Arc<Stats>,
-    /// the bundle clock (none at bundle_ms 0)
+    /// the bundle clock (none at bundle_ms 0), and the slow one for players who are not driving (away.rs; none at
+    /// away_ms 0)
     clock: Option<Arc<conn::Clock>>,
+    slow: Option<Arc<conn::Clock>>,
     /// the players who left in the last `GONE_MS`, oldest first (`who`)
     gone: Mutex<std::collections::VecDeque<Who>>,
     stopped: CancellationToken,
@@ -873,7 +884,9 @@ impl LanSwitch {
                 m.reserved.insert(v, members::Reservation { hash, until, group: None, site: None });
             }
         }
-        let clock = (o.bundle_ms > 0).then(|| Arc::new(conn::Clock::new(Duration::from_millis(o.bundle_ms), o.bundle_jitter)));
+        let clock = (o.bundle_ms > 0).then(|| Arc::new(conn::Clock::new(Duration::from_millis(o.bundle_ms), o.bundle_jitter, 0)));
+        let slow = (o.bundle_ms > 0 && o.away_ms > o.bundle_ms)
+            .then(|| Arc::new(conn::Clock::new(Duration::from_millis(o.away_ms), o.bundle_jitter, 1)));
         let sw = Arc::new_cyclic(|me| LanSwitch {
             impair: impair::Impair::parse(impair),
             online_vip: online.as_ref().map(|h| h.vip()),
@@ -895,6 +908,7 @@ impl LanSwitch {
             conn_ids: AtomicU64::new(0),
             stats: Arc::new(Stats::default()),
             clock,
+            slow,
             gone: Mutex::new(Default::default()),
             stopped: CancellationToken::new(),
             me: me.clone(),
@@ -951,6 +965,9 @@ impl LanSwitch {
                     sw.probe();
                 }
             });
+        }
+        if let Some(slow) = &self.slow {
+            conn::Clock::start(Arc::downgrade(slow));
         }
         if let Some(clock) = &self.clock {
             conn::Clock::start(Arc::downgrade(clock));
@@ -1123,6 +1140,9 @@ impl LanSwitch {
             }
             if p.share.load(Relaxed) < lag::SHARE_FULL {
                 n.thinning += 1;
+            }
+            if p.away.load(Relaxed) {
+                n.away += 1;
             }
         }
         n.thinned = self.stats.thinned.get();

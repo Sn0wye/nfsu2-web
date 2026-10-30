@@ -11,6 +11,7 @@ use std::sync::atomic::{
 use bytes::{BufMut, Bytes, BytesMut};
 use nfsu2_util::{FrameCtx, mono_ms};
 
+use crate::away;
 use crate::compact;
 use crate::conn::{Conn, Out};
 use crate::lag::{self, SHARE_FULL};
@@ -96,6 +97,10 @@ impl LanSwitch {
         let reached = list.as_ref().map_or(0, |l| l.len().saturating_sub(usize::from(on_list)));
         let costs = dsts.clone().map(|d| if d == BROADCAST { reached.max(1) } else { 1 });
         let (paid, all_paid) = self.charge(peer, mono_ms(), n as f64, costs);
+        // free roam: whether the sender drives, from its own HELLO or SNAP (away.rs)
+        if let Some(st) = away::status(data) {
+            peer.away.store(away::away(st), Relaxed);
+        }
         if paid > 0 {
             self.stats.frames.add(paid as u64);
             self.stats.bytes.add((n * paid) as u64);
@@ -240,11 +245,15 @@ impl LanSwitch {
         if data[0] == KIND_STREAM {
             return self.send_stream(from, p, data, dst);
         }
-        // a player behind on its path gets only its share of free roam's snapshots (lag.rs)
+        // a player behind on its path gets only its share of free roam's snapshots (lag.rs), one not driving its own
+        // (away.rs)
         if data[0] == KIND_UDP {
             let share = p.share.load(Relaxed);
             if share < SHARE_FULL && lag::is_snap(data) && !lag::pick(share) {
                 self.stats.thinned.inc();
+                return false;
+            }
+            if p.away.load(Relaxed) && self.slow.is_some() && lag::is_snap(data) && !lag::pick(away::SHARE) {
                 return false;
             }
         }
@@ -268,7 +277,15 @@ impl LanSwitch {
             self.stats.dropped.inc();
             return false;
         }
-        let clock = if (KIND_LAN_UDP..=KIND_LAN_ICMP).contains(&data[0]) { None } else { self.clock.as_deref() };
+        let clock = if (KIND_LAN_UDP..=KIND_LAN_ICMP).contains(&data[0]) {
+            None
+        } else if p.away.load(Relaxed) && data[1] == compact::ROAM_OK && Some(src) != self.roam_vip && self.slow.is_some() {
+            // free roam from another player to one who is not driving: the slow clock's tick, or sooner with whatever
+            // else goes to it (away.rs)
+            self.slow.as_deref()
+        } else {
+            self.clock.as_deref()
+        };
         p.conn.push_dgram(data.clone(), src, dst, clock);
         true
     }

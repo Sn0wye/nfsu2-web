@@ -119,6 +119,15 @@ for any crowd: at most 20 bundles a second to a page, as many as each friend sen
 cars 100 ms behind the soonest their snapshots came).  LAN play's datagrams (Online and LAN races) never wait for the tick: the game draws the other
 racers from each update as it comes, and a wait of up to 25 ms at random made them wobble.  And the worker count: 2.9 cores on 4 workers, 3.8 on 8, 4.3 on 12, the same latency up to 8.
 
+A player in free roam who is not driving (a race, a shop, the menus, loading: its own HELLOs and SNAPs say so) draws no
+other car, yet kept its 32 links' pings, pongs, HELLOs and car states coming: 70 % of a driving player's messages, and
+on nfsu2.xyz (2026-10-30, 5,800 players) about 2,900 of the 5,060 in free roam were such players.  What its friends
+send it waits for a slow clock (half a second, nfsu2-lan `away.rs`), it gets one in 16 of their car states, and its page
+holds its own as long (web/src/net `TX_HOLD_AWAY_MS`); the hub's messages and LAN play's go as for anyone, and its
+first HELLO or SNAP that says it drives again ends it.  40 real-core bots, 20 of them in a race for 30 s: a racer's
+messages 21.3 in / 11.6 out a second before, 5.8 / 2.0 after; the drivers' as before (21 / 19), car states between
+drivers too.
+
 4000 players (2026-10-21, the server on CPUs 0-11, nfsu2-roamload on 12-23, 3999 bots and the probe, spread over
 3 km; other sessions' loads on the machine the same day put 2000 players on 6 workers at the busy cap's edge, 5.0
 cores and 81 % busy, on main as on this):

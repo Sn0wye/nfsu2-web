@@ -195,6 +195,7 @@ impl LanSwitch {
             last_in: now_ms().into(),
             probe: parking_lot::Mutex::new(crate::lag::Probe::new(now)),
             share: crate::lag::SHARE_FULL.into(),
+            away: false.into(),
             listed: false.into(),
             ident: ctx.ident.clone(),
             since: now_ms(),

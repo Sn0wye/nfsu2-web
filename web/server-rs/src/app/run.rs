@@ -236,13 +236,15 @@ pub async fn run(o: Options, cores: usize) {
                 // how many are behind on their connection (its queues past the server: the kernel's, cloudflared's,
                 // the tunnel's) and get fewer of the other cars' updates meanwhile (nfsu2-lan lag.rs)
                 log::line(&format!(
-                    "[players] {} on the switch: {} in Online mode, {} on the LAN or Online screens, {} in free roam, {} on an older page \
-                     (until its tab closes), {} leaving or starting; {} of all of them bundling (a page loaded since the server has \
-                     bundles); {} more than a second behind on their connection, {} getting fewer car updates ({} left out since the last count)",
+                    "[players] {} on the switch: {} in Online mode, {} on the LAN or Online screens, {} in free roam ({} of them not driving: \
+                     a race, a shop, the menus), {} on an older page (until its tab closes), {} leaving or starting; {} of all of them bundling \
+                     (a page loaded since the server has bundles); {} more than a second behind on their connection, {} getting fewer car \
+                     updates ({} left out since the last count)",
                     b.players,
                     b.online,
                     b.lan,
                     b.roam,
+                    b.away,
                     b.older,
                     b.other,
                     b.bundles,
