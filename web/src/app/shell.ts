@@ -42,7 +42,7 @@ import { blockList, checkSetting, HOST_FIXED, pageOnly, resolveEnv, settingsUpgr
 import { exists, filesOf, listProfiles, PROFILES_DIR, readText, removeSaveDir, writeFile } from './savefs';
 import { turnOnAutosave } from './profile';
 import { crewControl, putKey, SettingsPanel, showCrewCounts } from './settings-ui';
-import { askCrews, queueText, roomHash, roomText, serverAnswers, watchPlayers, type PlayerCounts } from './players';
+import { askCrews, queueText, roomHash, roomText, serverAnswers, watchPlayers, type PlayerCounts, type Reach } from './players';
 import { CREW_MAX, crewList, crewsOf, crewsValue, freeColour, rgbsValue, rgbWords, type Crew } from './crews';
 import { checkInvite, inviteLink, readInvite, sameName, type Invite } from './invite';
 import { privacy, SCRUB_NOTE } from './privacy';
@@ -149,6 +149,10 @@ let download: Predownload;
 /** the server does not answer: the page and the module came from this browser's copies (sw.ts), and a game
  *  runs from the game data on this PC */
 let offline = false;
+/** why the page is offline ('ok' while it is not): what it says (reachText) */
+let reach: Reach = 'ok';
+/** the server's misses in a row, and whether it answered since the page started (setReach) */
+let misses = 0, answered = false;
 /** the profile the running (or last) game saved last, when, and how often it saved one */
 let saved: { name: string; at: number; count: number } | null = null;
 
@@ -243,7 +247,7 @@ function evaluate() {
   if (pending) { if (phase !== 'exited') setPhase('boot', T('Loading'), () => `${label(pending)}: ${detail(pending)}`); return; }
   if (phase === 'exited') { updatePlay(); return; }
   const press = touchFirst() ? N('Press Play to start.') : N('Press Play or Enter to start.');
-  setPhase('ready', T('Ready'), offline ? () => t('Offline: the game runs from this PC, without free roam or Online. {press}', { press: t(press) }) : T(press));
+  setPhase('ready', T('Ready'), offline ? () => t('No connection to the server: you can play, but not free roam with others or Online. {press}', { press: t(press) }) : T(press));
 }
 
 function updatePlay() {
@@ -566,7 +570,7 @@ async function startGame() {
     if (r.env.NOMOVIES !== '1' && !await moviesKept(language(r), r.env.NFSU2_MOVIE_CODEC === 'av1').catch(() => false)) {
       r.env.NOMOVIES = '1';
       log.add('[app] offline: not every movie is on this PC, so the movies are off for this game');
-      offlineNote = t('Offline: the movies are off for this game.') + ' ';
+      offlineNote = t('No connection to the server: the movies are off for this game.') + ' ';
     }
   }
   // the log is for sharing when asking for help: it names neither the server (a private server's address) nor
@@ -700,16 +704,36 @@ async function startGame() {
 }
 
 function logLine(s: string) { log.add(s); }
-/** whether the server answered (the start page's /players, or the check at Play): offline mode when not */
-function setReach(ok: boolean) {
-  if (offline === !ok) return;
-  offline = !ok;
-  log.add(ok ? '[app] the server answers again' : '[app] the server does not answer: offline');
-  if (!ok) settings.setStatus(T('Not connected to the server: free roam and Online need it.'));
+/** whether the server answered (the start page's /players, or the check at Play): offline mode when not.  One miss
+ *  after it answered is not offline yet (an answer that was slow, a phone's network gone for a moment): the next
+ *  question decides, 15 s later on the start page, or the check at Play. */
+function setReach(r: Reach) {
+  misses = r === 'ok' ? 0 : misses + 1;
+  if (r === 'ok') answered = true;
+  else if (answered && misses < 2 && r !== 'no-network') { log.add(`[app] the server did not answer once (${REACH_LOG[r]})`); return; }
+  if (r === reach) return;
+  reach = r;
+  offline = r !== 'ok';
+  log.add(offline ? `[app] the server does not answer: offline (${REACH_LOG[r]})` : '[app] the server answers again');
+  if (offline) settings.setStatus(REACH_TEXT[r]);
   evaluate();
+  if (offline) return;
   // the page may have started from offline mode's copies while the server was away (a deploy restarts it)
-  if (ok) void checkNewer();
+  void checkNewer();
+  void vault.start();                 // the cloud saves, when the server did not answer as the page started
+  players?.now();                     // the Online section's line again (offline's, after the check at Play)
 }
+const REACH_LOG: Record<Reach, string> = {
+  ok: '', down: 'a 5xx: the server is down or restarting', unreachable: 'no answer: blocked on the way, or too slow',
+  'no-network': 'the browser says this device has no network',
+};
+/** the Online section's line while offline, by why */
+const REACH_TEXT: Record<Reach, Msg> = {
+  ok: () => '',
+  down: T('The server is not answering right now: it may be restarting. This page checks again every 15 seconds.'),
+  unreachable: T('This device cannot reach the server. If other sites work, your network may be blocking it: try mobile data or another Wi-Fi, or turn off a VPN, ad blocker or private DNS. This page checks again every 15 seconds.'),
+  'no-network': T('This device has no internet connection. This page checks again once it has.'),
+};
 /** Offline mode (sw.ts) keeps the page, its scripts, the module and the list of game files in this browser.  Asked
  *  for once the module has loaded, so a first visit downloads the module once (the copy is the HTTP cache's). */
 function keepForOffline() {
