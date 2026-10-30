@@ -220,11 +220,11 @@ impl Marker {
 
 /// the address and name a `[cheat]` line of a race begins with: `[cheat] 10.77.3.41 "Bob": won the online race "..."`
 /// or `finished 2 in the online race "..."` (nfsu2-online lobby.rs), `[cheat] 10.77.3.41 "Bob": won the race of lobby
-/// ...` (nfsu2-roam results.rs); None for any other line
+/// ...` (nfsu2-roam results.rs) or `raced in the race of lobby ...` (an edited car, hub.rs); None for any other line
 fn race_cheat(line: &str) -> Option<(u32, &str)> {
     let (vip, rest) = line.strip_prefix("[cheat] ")?.split_once(" \"")?;
     let (name, what) = rest.split_once("\": ")?;
-    let race = what.contains(" the online race \"") || what.starts_with("won the race of lobby ");
+    let race = what.contains(" the online race \"") || what.contains(" the race of lobby ");
     let vip = vip_num(vip);
     (race && vip != 0).then_some((vip, name))
 }
@@ -452,6 +452,11 @@ mod tests {
                 "W p",
             ),
             ("[cheat] 10.77.1.3 \"Bob\": won the race of lobby 0000abcd (race 00001234: sprint, 1 lap) in 0:10.0", "Bob"),
+            (
+                "[cheat] 10.77.1.3 \"Ed\": raced in the race of lobby 0000abcd (race 00001234: drag, 1 lap) in an edited car, \
+                 1st of 3: 350Z",
+                "Ed",
+            ),
         ] {
             assert_eq!(race_cheat(line), Some((vip, name)), "{line}");
         }

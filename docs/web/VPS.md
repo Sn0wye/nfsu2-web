@@ -593,15 +593,26 @@ the player left: `./nfsu2 ban c17 2w Cheating in races`. Free roam's lines get n
   first, at the slowest time any report gave it, and the race's length is what another finisher's own game says it
   drove. A line (`won the race of lobby …`) when the winner averaged 350 km/h or more over it, which no car does (a
   free-roam sprint's average: 107 km/h); won in under half the race's quickest clean win the server saw since it
-  started (two reports, another finisher), which a teleport to the finish with nobody else over the line does; or
-  came under half the way by every report, as a cheat that ends the race at once does ("having driven 0.6 % of the
-  way"). One player's report cannot make a winner or a time, and the line says how many of the race's reports saw it.
+  started (two reports, another finisher), which a teleport to the finish with nobody else over the line does; won,
+  once the race had 10 clean wins, in under 70 % of the third quickest other winner's time (a car made faster than
+  any tuning makes it: the honest wins of a day came at 78 % of it or more); or came under half the way by two
+  reports or more, as a cheat that ends the race at once does ("having driven 0.6 % of the way"). One player's report
+  cannot make a winner or a time, and the line says how many of the race's reports saw it. A car no tuning makes (an
+  edited save's: 600 kW, 420 km/h or a rating of 1000 or more; the game's best cars make 450 kW, 380 km/h and 800) is
+  a line of its own, `raced in the race of lobby … in an edited car`, whether it won or not.
   In Online mode each racer is judged by its own game's figures (`won the online race …`, "by its own game"): a time
   under the shortest its race type takes (the result is not taken either), 350 km/h or more on average, or a way
-  under half another racer's own (both by their own games: "each by its own game"); and a race won in under 40 % of
-  the next finisher's time, by the result. An Online line names the track and laps and the racer's own top speed;
+  under half another racer's own (both by their own games: "each by its own game"), or a top speed of 420 km/h or
+  more, finished or not ("an edited car": of 39,000 players' top speed records 5 went over it); a race won in under
+  40 % of the next finisher's time, by the result; and, once the track (race type, track, direction, laps) had 10
+  clean wins since the start, one won in under 70 % of the third quickest other winner's time there. A report that
+  leaves out a player of the race (one who joined as it started and never raced) is taken and looked at, as any
+  other. An Online line names the track and laps and the racer's own top speed;
   the other racers' times are on that race's `[online]` lines (`grep -F '"<race name>"'`). A drift race is won by
   points and is left out.
+- **Speed hacks in races**: a game whose clock runs fast does not get past a free-roam race lobby's start (a test's
+  1.25 and 1.5 times as fast kept both racers on the pre-race screen); the race's finish times are the same in every
+  game, so they cannot show one either.
 - **In free roam**: a teleport (the car went 300 m or more farther than any car drives, in one jump or in short hops),
   a car over 450 km/h for 2 s, or a game whose clock runs 1.3 times as fast as the server's or more for a minute (a
   speed hack); a teleport's or a fast car's line names the players within 40 m of where it came to, and a race lobby
@@ -612,7 +623,7 @@ the player left: `./nfsu2 ban c17 2w Cheating in races`. Free roam's lines get n
   save) unless it does one of those, an honest winner over racers who stood still or were still on the way, what one
   player's game shows of another's car (a racer who left the race is put far away: 462 km in a 4-minute sprint), a
   race report the server could not read as the race's (a racer named twice, other players: `race report not taken:
-  players named twice`). The World Map's jump stays in free roam, so a teleport that lands within 25 m of an event's
+  players named twice`), a race whose other racers quit, by the one report that came. The World Map's jump stays in free roam, so a teleport that lands within 25 m of an event's
   start or 45 m of a shop's door is taken for one, whoever made it.
 
 The races won by cheating: `docker compose logs -t server --since 24h | grep '\[cheat\]' | grep 'race'`; and the

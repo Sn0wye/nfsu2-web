@@ -157,20 +157,7 @@ const CREW_GROUP_MAX: usize = 64;
 /// its lobby), for evening out the cars: the race, how the player did, the car as its game rated it.  Grep `[race]`.
 fn race_line(player: &str, r: &wire::RaceRep) -> String {
     let mode = results::mode_name(r.mode);
-    let how = match r.place {
-        0 if r.quit => "quit".to_string(),
-        0 => "did not finish".to_string(),
-        n => format!(
-            "{n}{} of {}",
-            match n {
-                1 => "st",
-                2 => "nd",
-                3 => "rd",
-                _ => "th",
-            },
-            r.players
-        ),
-    };
+    let how = place_word(r);
     let time = if r.time > 0.0 { format!(" in {:.2} s", r.time) } else { String::new() };
     let name: String = r.name.iter().map(|&c| c as char).collect();
     format!(
@@ -192,6 +179,56 @@ fn race_line(player: &str, r: &wire::RaceRep) -> String {
         r.kmh,
         r.factor
     )
+}
+
+/// what no car of the game has, however tuned: engine power (kW), top speed (km/h), the game's rating (nfsu2.xyz,
+/// 2026-10-30: of 8,143 cars in lobby races the most were 452 kW, 381 km/h and a rating of 804; an edited save's 350Z
+/// had 2351 kW, 444 km/h and 639 kg, rated 5000, the most a report carries, and won lobby races with it)
+const CAR_KW: f64 = 600.0;
+const CAR_KMH: f64 = 420.0;
+const CAR_RATING: f64 = 1000.0;
+
+/// A player's race report's `[cheat]` line when its car is one no tuning makes (an edited save's): `who` its address
+/// and name (`10.77.3.41 "Bob"`)
+fn edited_car_line(who: &str, r: &wire::RaceRep) -> Option<String> {
+    if r.players < 2 || (r.kw < CAR_KW && r.kmh < CAR_KMH && r.rating < CAR_RATING) {
+        return None;
+    }
+    let name: String = r.name.iter().map(|&c| c as char).collect();
+    Some(format!(
+        "[cheat] {who}: raced in the race of lobby {:08x} (race {:08x}: {}, {} lap{}) in an edited car, {}: {name} (type {}), \
+         {:.0} kW, {:.0} kg, {:.0} km/h, rated {:.0}; no car of the game makes {CAR_KW:.0} kW, {CAR_KMH:.0} km/h or a \
+         rating of {CAR_RATING:.0}",
+        r.lobby,
+        r.race,
+        results::mode_name(r.mode),
+        r.laps,
+        if r.laps == 1 { "" } else { "s" },
+        place_word(r),
+        r.car_type,
+        r.kw,
+        r.kg,
+        r.kmh,
+        r.rating
+    ))
+}
+
+/// how a race report's player did: "2nd of 4", "did not finish", "quit"
+fn place_word(r: &wire::RaceRep) -> String {
+    match r.place {
+        0 if r.quit => "quit".to_string(),
+        0 => "did not finish".to_string(),
+        n => format!(
+            "{n}{} of {}",
+            match n {
+                1 => "st",
+                2 => "nd",
+                3 => "rd",
+                _ => "th",
+            },
+            r.players
+        ),
+    }
 }
 
 /// how often a player's claim hears that it plays (the claim holds 180 days from its last game: an hour is plenty)
@@ -805,6 +842,7 @@ impl Hub {
         p.hub_port = dport;
         let mut ask = None;
         let mut report = None;
+        let mut edited = None;
         let mut seen = [None, None];
         let mut res = None;
         let mut heard = None;
@@ -871,6 +909,7 @@ impl Hub {
             Msg::RaceRep(r) if sender == p.id && !p.reported.is_some_and(|(l, t)| l == r.lobby || now - t < REPORT_GAP_MS) => {
                 p.reported = Some((r.lobby, now));
                 report = Some(race_line(&p.name, &r));
+                edited = edited_car_line(&format!("{} \"{}\"", vip_str(p.vip), p.name), &r);
             }
             Msg::RaceRes(r) if sender == p.id && !p.resulted.is_some_and(|(l, t)| l == r.lobby || now - t < REPORT_GAP_MS) => {
                 p.resulted = Some((r.lobby, now));
@@ -889,6 +928,10 @@ impl Hub {
         }
         if let Some(line) = report {
             self.st.race_reports += 1;
+            (self.log)(&line);
+        }
+        if let Some(line) = edited {
+            self.st.cheat_lines += 1;
             (self.log)(&line);
         }
         for s in seen.into_iter().flatten() {
