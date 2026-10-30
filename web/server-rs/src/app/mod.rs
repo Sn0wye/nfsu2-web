@@ -12,6 +12,7 @@
 
 mod blocks;
 pub mod control;
+pub mod days;
 mod etag;
 mod files;
 mod kept;
@@ -152,7 +153,7 @@ const STATUS: [(u16, &str); 8] = [
     (503, "Service Unavailable"),
 ];
 
-pub const ROBOTS_TXT: &str = "User-agent: *\nAllow: /\nDisallow: /data/\nDisallow: /data-manifest\nDisallow: /game.wasm\nDisallow: /game.json\nDisallow: /players\nDisallow: /lan\nDisallow: /vault\nDisallow: /names";
+pub const ROBOTS_TXT: &str = "User-agent: *\nAllow: /\nDisallow: /data/\nDisallow: /data-manifest\nDisallow: /game.wasm\nDisallow: /game.json\nDisallow: /players\nDisallow: /seen\nDisallow: /lan\nDisallow: /vault\nDisallow: /names";
 
 /// what a client may ask a file to be sent as
 const TYPES: [(&str, &str); 11] = [
@@ -230,6 +231,8 @@ pub struct App {
     pub names: Option<names::NamesRoute>,
     /// the operator's bans (the control socket: control.rs), checked at /lan
     pub bans: Arc<nfsu2_bans::Bans>,
+    /// how many come each day (days.rs: /seen, the hellos, the sweep)
+    pub days: Arc<days::Days>,
     /// SO_SNDBUF for /lan connections (NFSU2_LAN_SNDBUF, a measurement knob; 0: the kernel's own, which Linux grows
     /// to megabytes, ahead of the switch's own queue rules)
     lan_sndbuf: usize,
@@ -255,6 +258,7 @@ impl App {
         vault: Option<Arc<nfsu2_vault::Vault>>,
         names: Option<names::NamesRoute>,
         bans: Arc<nfsu2_bans::Bans>,
+        days: Arc<days::Days>,
         pool_threads: usize,
         lan_sndbuf: usize,
         compress_threads: usize,
@@ -347,6 +351,7 @@ impl App {
             vault: vault.map(vault::VaultRoute::new),
             names,
             bans,
+            days,
             lan_sndbuf,
             o,
         }
@@ -582,6 +587,9 @@ impl App {
         if p == "/players" {
             return self.send_players(q, s, &u).await;
         }
+        if p == "/seen" {
+            return self.send_seen(q, s, &u).await;
+        }
         if p == "/robots.txt" {
             return self.plain(q, s, 200, ROBOTS_TXT, &[], Cache::Revalidate, false).await;
         }
@@ -707,6 +715,22 @@ impl App {
         if q.method != "HEAD" {
             send(s, body.as_bytes()).await?;
         }
+        finish(s).await
+    }
+
+    /// /seen?at=page|play&id=<the page's id>: a browser opened the page or pressed Play, counted for the day
+    /// (days.rs); 204, no body, whatever it said
+    async fn send_seen(&self, q: &Request, s: &mut Response, u: &url::Url) -> Res {
+        let what = match u.param("at").as_deref() {
+            Some("page") => Some(days::Seen::Page),
+            Some("play") => Some(days::Seen::Play),
+            _ => None,
+        };
+        if let (Some(what), Some(id), "GET") = (what, u.param("id"), q.method.as_str()) {
+            self.days.seen(&id, what, nfsu2_util::now_ms());
+        }
+        let h = self.headers(q, Cache::Store, true);
+        s.head(204, h.0);
         finish(s).await
     }
 

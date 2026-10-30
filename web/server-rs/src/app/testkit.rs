@@ -87,7 +87,8 @@ impl Kit {
         });
         let bans = Arc::new(nfsu2_bans::Bans::open(std::path::Path::new(&o.state)).expect("the bans"));
         let names = vault.as_ref().map(|_| super::names::NamesRoute::new(Arc::new(nfsu2_claims::Claims::in_memory()), None));
-        let app = Arc::new(App::new(o, real_state, key, lan, None, None, vault, names, bans, 2, 0, compress_threads));
+        let days = Arc::new(super::days::Days::open(&o.state, nfsu2_util::now_ms()));
+        let app = Arc::new(App::new(o, real_state, key, lan, None, None, vault, names, bans, days, 2, 0, compress_threads));
         app.refresh_manifest().await.expect("the manifest");
         let (listener, _) = nfsu2_http::bind("127.0.0.1", 0, None).await.expect("a port");
         let addr = listener.local_addr().expect("its address");

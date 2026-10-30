@@ -59,7 +59,7 @@ import { groupsOf, phrasesOf } from './phrases';
 import { GameSession } from './game';
 import { AwayCheck, AWAY_LIMITS, type AwayLimits } from './away';
 import { PlayTime, SMS_AFTER_MS } from './playtime';
-import { keepPageId, PAGE_ID_FILE, pageId } from './page-id';
+import { keepPageId, PAGE_ID_FILE, pageId, seen } from './page-id';
 import { NameClaims, onlineName } from './claim';
 import { claimQuietly, NameRow, quietCheck, settleName, type PlayNameDeps } from './claim-ui';
 import { RenderCheck, RENDER_CHECK_TIMES, type RenderCheckTimes } from './rendercheck';
@@ -655,6 +655,7 @@ async function startGame() {
   }
   setPhase('playing', T('Playing'), () => '');
   vault.played();                     // counted for the cloud saves question (askCloud)
+  if (!offline && !testPage()) seen('play');   // counted for the server's day (page-id.ts)
   keeper.start(loaded!.info.rev, gameHeld);
   $('#lastgame').hidden = true;           // about the game before this one
   document.body.dataset.phase = 'playing';
@@ -1623,8 +1624,10 @@ export async function boot() {
   const asked = TEST_PARAMS.some(k => addr.has(k));
   const dev = asked && await devServer();
   const given = takeParams(dev);
-  // this browser's id, put back in a store that lost it before anything reads it (page-id.ts)
+  // this browser's id, put back in a store that lost it before anything reads it (page-id.ts); counted for the day
+  // (a test page is not)
   void keepPageId();
+  if (!asked) seen('page');
   instance = claimInstance(`nfsu2-saves:${SAVE}`);
   // the last game of this save folder that did not get to its end (Safari stopped the page, say): its log is offered
   keeper = new LastGameKeeper(SAVE, log, logLine, text => privacy.scrub(text));

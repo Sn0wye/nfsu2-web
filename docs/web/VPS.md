@@ -632,6 +632,26 @@ cheats that bother others in free roam: `... | grep -e 'next to' -e 'race lobby'
 
 The console names paths and addresses: it is yours.
 
+## Players a day
+
+The server counts how many come each day (UTC), each browser once: the ones that opened the page, played (pressed
+Play, or used free roam, LAN or Online), drove in free roam, and were in Online mode. On the VPS:
+
+```sh
+cd /srv/nfsu2
+./nfsu2 days         # the last 30 days, then today so far
+./nfsu2 days 90      # the last 90
+```
+
+The log has a `[days]` line every 5 minutes with today's counts so far, and one when a day ends. The days that ended
+are kept in the state folder's `days.csv` (`docker compose cp server:/state/days.csv .` copies it out), the day so
+far in `days.json`, so a restart counts on.
+
+A browser is the random id its page keeps (the one bans use); the server keeps only a hash of it with a key that is
+new each day, and forgets the day's hashes when it ends. The same person on two devices counts twice, a private window
+once a load. Players with a page from before this server only count once they play with others. Cloudflare's own
+"Unique visitors" (Analytics, Traffic) counts addresses instead: many players share one on mobile networks.
+
 ## Kick and ban
 
 You can take a player out of playing with others (free roam, Online mode and LAN races) for now, for a while or for

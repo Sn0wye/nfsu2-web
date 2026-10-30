@@ -10,6 +10,7 @@
 //!                                 <player> may be a `[cheat]` line's handle (c17) too
 //!   unban <name | #ban>           the bans of that name, or with that number, lifted
 //!   bans                          the bans: number, name, until when, the message
+//!   days [n]                      how many came each day (UTC; days.rs), the last n days (30), then today so far
 //!
 //! A player is a virtual address (10.77.x.y, as `who` and the log show it) or a name (any case).  A name that two
 //! players on the switch have (and not one player in two tabs, or on two devices with one keyphrase) needs the
@@ -47,6 +48,7 @@ pub const USAGE: &str = "commands:
   unban <name | #ban>           lift the bans of that name, or that number
   bans                          the bans
   unclaim <name>                the name's claim goes: anyone may take it again
+  days [n]                      how many came each day (UTC), the last n days (30) and today so far
 <player>: an address (10.77.x.y) or a name, as who shows them; for ban also a [cheat] line's handle (c17), for a week";
 
 /// The socket's file as this server made it, for its stop (`remove`)
@@ -336,6 +338,14 @@ impl App {
                 let t = gone.iter().map(|b| format!("#{} \"{}\"", b.id, b.name)).collect::<Vec<_>>().join(", ");
                 log::line(&format!("[ban] lifted {t}"));
                 Ok(format!("lifted {t}"))
+            }
+            "days" => {
+                let n = if word(1).is_empty() { 30 } else { word(1).parse().map_err(|_| format!("days {}: a number of days", word(1)))? };
+                let (day, c) = self.days.today(now);
+                let mut t = vec![super::days::CSV_HEAD.to_string()];
+                t.extend(self.days.history(n));
+                t.push(format!("{day},{},{},{},{} (today so far)", c[0], c[1], c[2], c[3]));
+                Ok(t.join("\n"))
             }
             "bans" => {
                 let list = self.bans.list(now);

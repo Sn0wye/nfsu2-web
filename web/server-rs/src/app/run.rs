@@ -26,6 +26,8 @@ use crate::paths;
 
 /// what the players on the switch do, every 5 minutes while any are on (counts only)
 const BREAKDOWN_EVERY: Duration = Duration::from_secs(5 * 60);
+/// who is in free roam or Online, for the day's counts (days.rs): often enough to see a short visit
+const DAYS_SWEEP_EVERY: Duration = Duration::from_secs(30);
 /// SO_SNDBUF of a /lan connection (NFSU2_LAN_SNDBUF; 0: the kernel's own), which Linux doubles: what a player's path
 /// does not take waits in the switch's own queue then, where its rules see it (roam_queue), not in the kernel's,
 /// which Linux grows to 4 MB (nfsu2.xyz, 2026-10-22: up to 4 MB waiting there for one player, seconds of free roam)
@@ -119,6 +121,8 @@ pub async fn run(o: Options, cores: usize) {
     // the operator's bans, and the control socket that makes them (control.rs); the hosts' [cheat] lines of races get
     // a handle that `ban` takes for a week (control.rs Marker)
     let bans = Arc::new(nfsu2_bans::Bans::open(Path::new(&o.state)).unwrap_or_else(|e| die(&format!("{}/bans.json: {e}", o.state))));
+    // how many come each day (days.rs): the day so far, from before a restart
+    let days = Arc::new(super::days::Days::open(&o.state, nfsu2_util::now_ms()));
     let marker = super::control::Marker::new(bans.clone());
     let online = o.online.then(|| {
         let m = marker.clone();
@@ -197,6 +201,7 @@ pub async fn run(o: Options, cores: usize) {
         vault.clone(),
         names,
         bans,
+        days.clone(),
         (cores / 2).max(2),
         lan_sndbuf,
         // the threads that keep the game data's blocks at brotli's best (kept.rs; 0: none)
@@ -293,6 +298,43 @@ pub async fn run(o: Options, cores: usize) {
             }
         });
     }
+    // the day's counts (days.rs): who is in free roam or Online now, every SWEEP_EVERY; the day so far written and on
+    // the console when it changed
+    {
+        let (lan, days) = (lan.clone(), days.clone());
+        tokio::spawn(async move {
+            let mut every = interval_at(Instant::now() + DAYS_SWEEP_EVERY, DAYS_SWEEP_EVERY);
+            let mut shown = [0; 4];
+            let mut ticks = 0u64;
+            loop {
+                every.tick().await;
+                let now = nfsu2_util::now_ms();
+                for w in lan.who().await.iter().filter(|w| w.left.is_none()) {
+                    let what = match w.doing {
+                        "Online" => super::days::Seen::Online,
+                        "free roam" => super::days::Seen::Roam,
+                        _ => continue,
+                    };
+                    if let Some(id) = &w.browser {
+                        days.seen(id, what, now);
+                    }
+                }
+                ticks += 1;
+                if ticks % (BREAKDOWN_EVERY.as_secs() / DAYS_SWEEP_EVERY.as_secs()) != 0 {
+                    continue;
+                }
+                let (_, c) = days.today(now);
+                if c != shown {
+                    shown = c;
+                    log::line(&format!("[days] today so far (UTC): {}", super::days::counts_text(c)));
+                }
+                let d = days.clone();
+                if let Ok(Err(e)) = tokio::task::spawn_blocking(move || d.save()).await {
+                    log::error(&format!("days.json: {e}"));
+                }
+            }
+        });
+    }
     // the /lan openers' buckets that are full again hold nothing worth keeping
     {
         let app = app.clone();
@@ -384,11 +426,11 @@ pub async fn run(o: Options, cores: usize) {
         });
     }
 
-    // SIGTERM, SIGINT: the switch saves its addresses, the hosts stop, the claimed names are written, the control
+    // SIGTERM, SIGINT: the switch saves its addresses, the hosts stop, the claimed names and the day so far are written, the control
     // socket's file goes, then the process ends
     let control_up = control.is_some();
     {
-        let (lan, trace, claims) = (lan.clone(), trace.clone(), claims.clone());
+        let (lan, trace, claims, days) = (lan.clone(), trace.clone(), claims.clone(), days.clone());
         let mut term = signal(SignalKind::terminate()).unwrap_or_else(|e| die(&format!("SIGTERM: {e}")));
         let mut int = signal(SignalKind::interrupt()).unwrap_or_else(|e| die(&format!("SIGINT: {e}")));
         tokio::spawn(async move {
@@ -405,6 +447,9 @@ pub async fn run(o: Options, cores: usize) {
                     && let Err(e) = c.save(nfsu2_util::now_ms())
                 {
                     log::error(&format!("names.json: {e}"));
+                }
+                if let Err(e) = days.save() {
+                    log::error(&format!("days.json: {e}"));
                 }
                 if let Some(c) = &control {
                     c.remove();
