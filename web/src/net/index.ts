@@ -568,13 +568,12 @@ class Link implements NetLink {
     ws.binaryType = 'arraybuffer';
     this.ws = ws;
     ws.onopen = () => {
-      // deltas: the switch sends what changed on the peer list, not the whole list each time (nfsu2-lan); lan: LAN
-      // play is open, so it takes LAN broadcasts; bundle, compact: this page takes compact bundles; delta: and in those
+      // lan: LAN play is open, so it takes LAN broadcasts and the peer list (nfsu2-lan); bundle, compact: this page takes compact bundles; delta: and in those
       // a free-roam datagram as what changed since its source's last one (proto.ts unpackCompact; `refs`, kept for this
       // connection); fpred: and a friend's car state by its fields, rounded (proto.ts fpredTake; `fp`); ldelta: and
       // every other datagram (a race's) as what changed since its source's last one of its kind (`others`)
       this.lanSent = this.lanOpen();
-      ws.send(JSON.stringify({ t: 'hello', name: this.o.name ?? 'player', deltas: 1, lan: this.lanSent ? 1 : 0, bundle: 1, compact: 1, delta: 1, fpred: 1, ldelta: 1,
+      ws.send(JSON.stringify({ t: 'hello', name: this.o.name ?? 'player', lan: this.lanSent ? 1 : 0, bundle: 1, compact: 1, delta: 1, fpred: 1, ldelta: 1,
         ...(this.o.id ? { id: this.o.id } : {}), ...(this.o.id && this.o.was?.length ? { was: this.o.was } : {}),
         ...(this.o.claim ? { claim: this.o.claim } : {}), ...(this.o.block?.length ? { block: this.o.block } : {}),
         ...(this.vipNum && this.token ? { vip: P.ipStr(this.vipNum), token: this.token } : {}), ...(this.ticket ? { ticket: this.ticket } : {}) }));

@@ -155,8 +155,8 @@ renderer, AudioWorklet sound, keyboard, mouse and pad input, and free roam over 
     best in its state folder (`web/server-rs/src/app/kept.rs`, threads of its own at the lowest priority that wait
     while the CPU quota is 70 % used, the blocks asked for first, then the manifest's), or as it is where that found
     it does not compress; until it is kept, as
-    above, and Cloudflare keeps that answer 10 minutes only (`EDGE_WHILE`). `v2` since: Cloudflare's copies of the
-    answers from before are at the old addresses, which still answer. The address carries the file's
+    above, and Cloudflare keeps that answer 10 minutes only (`EDGE_WHILE`). `v2` since, so that Cloudflare's copies
+    of the answers from before are never asked for again. The address carries the file's
     mtime and size (`m`, `s`), and the server lets a shared cache (Cloudflare) keep a run for good when they are the
     file's (read from the one open file it answers from), the run is compressed or does not compress, the movies too
     (`EDGE_KEEP`). A run whose probe read fails is compressed, never kept as it is. A request that fails on the way (no connection, 408, 429, 5xx) or stalls (no byte for 20 s) is
