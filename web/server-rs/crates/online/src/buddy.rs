@@ -295,9 +295,6 @@ impl Buddies {
         let Some(file) = self.file() else { return };
         let Ok(bytes) = std::fs::read(&file) else { return };
         let Ok(j) = crate::jsonparse::parse(&String::from_utf8_lossy(&bytes)) else { return };
-        // (a file of version 2 or older keeps only the friends: one of before the Online audit also has the blocked
-        // lists of then, I, which are not read)
-        let v3 = j.get("v").and_then(Value::as_f64).is_some_and(|v| v >= 3.0);
         let mut rows: Vec<(&serde_json::Map<String, Value>, String, String)> = match j.get("personas") {
             Some(Value::Array(a)) => a
                 .iter()
@@ -324,31 +321,29 @@ impl Buddies {
                 .filter(|o| o.len() == 22 && o.bytes().all(|c| c.is_ascii_alphanumeric() || c == b'-' || c == b'_'))
                 .map(Arc::from);
             read_names(r.get("B"), &mut l.b);
-            if v3 {
-                read_names(r.get("I"), &mut l.i);
-                if let Some(Value::Array(a)) = r.get("R") {
-                    for e in a.iter().take(MAX_ASKED) {
-                        if let Some([n, t]) = e.as_array().map(Vec::as_slice)
-                            && let Some(n) = n.as_str().filter(|n| valid_name(n))
-                            && let Some(t) = when(t)
-                        {
-                            l.r.insert(lower(n), (n.to_string(), t));
-                        }
+            read_names(r.get("I"), &mut l.i);
+            if let Some(Value::Array(a)) = r.get("R") {
+                for e in a.iter().take(MAX_ASKED) {
+                    if let Some([n, t]) = e.as_array().map(Vec::as_slice)
+                        && let Some(n) = n.as_str().filter(|n| valid_name(n))
+                        && let Some(t) = when(t)
+                    {
+                        l.r.insert(lower(n), (n.to_string(), t));
                     }
                 }
-                if let Some(Value::Array(a)) = r.get("M") {
-                    // (the newest MAX_MAIL)
-                    for e in a.iter().skip(a.len().saturating_sub(MAX_MAIL)) {
-                        let Some(o) = e.as_object() else { continue };
-                        let (Some(from), Some(t)) =
-                            (o.get("from").and_then(Value::as_str).filter(|n| valid_name(n)), o.get("t").and_then(when))
-                        else {
-                            continue;
-                        };
-                        let text = |k: &str, n: usize| o.get(k).and_then(Value::as_str).map_or(String::new(), |s| clean_text(s, n));
-                        let kind = o.get("type").and_then(Value::as_str).map_or("C", |s| jsx::slice16(s, 4)).to_string();
-                        l.m.push(Mail { from: from.to_string(), body: text("body", 500), subj: text("subj", 64), kind, t });
-                    }
+            }
+            if let Some(Value::Array(a)) = r.get("M") {
+                // (the newest MAX_MAIL)
+                for e in a.iter().skip(a.len().saturating_sub(MAX_MAIL)) {
+                    let Some(o) = e.as_object() else { continue };
+                    let (Some(from), Some(t)) =
+                        (o.get("from").and_then(Value::as_str).filter(|n| valid_name(n)), o.get("t").and_then(when))
+                    else {
+                        continue;
+                    };
+                    let text = |k: &str, n: usize| o.get(k).and_then(Value::as_str).map_or(String::new(), |s| clean_text(s, n));
+                    let kind = o.get("type").and_then(Value::as_str).map_or("C", |s| jsx::slice16(s, 4)).to_string();
+                    l.m.push(Mail { from: from.to_string(), body: text("body", 500), subj: text("subj", 64), kind, t });
                 }
             }
             if l.is_empty() {
@@ -1524,12 +1519,11 @@ mod tests {
                 r#"{"v":2,"note":"NFSU2 online friends lists (persona names only)","personas":[{"name":"Alpha","seen":"2026-10","B":["Bravo","Charlie"]}]}"#,
                 r#"{"name":"Alpha","seen":"2026-10","B":["Bravo","Charlie"]}"#,
             ),
-            // a friend twice: the later spelling in the earlier one's place; friends that are no name; the blocked
-            // list of a file of version 2 (I) not read; an owner twice: the more recently seen list, in the other
-            // one's place
+            // a friend twice: the later spelling in the earlier one's place; friends that are no name; an owner twice:
+            // the more recently seen list, in the other one's place
             (
                 r#"{"personas":[{"name":"Alpha","seen":"2026-10","B":["Bravo","bravo","x y",5,null,"Delta"],"I":["Mallory"]},{"name":"alpha","seen":"2026-09","B":["Echo"]}]}"#,
-                r#"{"name":"Alpha","seen":"2026-10","B":["bravo","Delta"]}"#,
+                r#"{"name":"Alpha","seen":"2026-10","B":["bravo","Delta"],"I":["Mallory"]}"#,
             ),
             // owners that are no name not read; of the others the 3 most recently seen (no month: the oldest), of
             // those the lists with anything in them
