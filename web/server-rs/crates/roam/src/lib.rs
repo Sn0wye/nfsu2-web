@@ -10,8 +10,8 @@
 //! - player -> hub: a HELLO every second (its id, room, status, name, and its crews), a SNAP twice a second (where
 //!   its car is), a BYE when it stops.
 //! - hub -> player: twice a second (`tick_ms`) a PEERS message: the players linked to it, { virtual address, port, id }, at most
-//!   `degree` (32: roam_core's group of 33 with itself); an empty one says the hub is there.  To a player in a crew whose HELLO says
-//!   it reads them (core 8), the list ends in crew marks: its own crews, then which of them each listed player is in.
+//!   `degree` (32: roam_core's group of 33 with itself); an empty one says the hub is there.  To a player in a crew the list ends in
+//!   crew marks: its own crews, then which of them each listed player is in.
 //! - player -> hub -> player: when its world map opens, and a quarter second after each answer while it is open, a
 //!   MAPREQ naming the answer it holds; the hub answers with MAPD datagrams (at most 16): the other players of its
 //!   room in free roam, past its links, map_max (2048) of them at most (the nearest), or as many as the MAPREQ asks
@@ -57,8 +57,7 @@
 //! grow as the square of its players): they link by distance as everyone does.  /players counts each crew's players
 //! for the start page (`in_crews()`).  A player learns which of its peers share a crew from the hub's marks on its
 //! list, never from the peers: a crew's hash in a stranger's hands is all it takes to be linked with that player
-//! anywhere on the map, and a short crew name is quickly found from its hash (a core before 8 still sends its crews to
-//! the peers that read them, and colours a crew-mate of core 8 no more).
+//! anywhere on the map, and a short crew name is quickly found from its hash.
 //!
 //! A busy server gives every player fewer links: each link is two players' snapshots to each other, 20 a second each
 //! way (fewer for far ones), so a crowd costs its players times their links, all through the switch; a switch that

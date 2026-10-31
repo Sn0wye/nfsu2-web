@@ -38,9 +38,6 @@ pub(crate) const HF_LOBBY: u16 = 0x0080;
 pub(crate) const HF_CREW: u16 = 0x0200;
 /// the most crews a player is in (roam_core.h RC_CREW_MAX: the start page's four words)
 pub(crate) const CREWS: usize = 4;
-/// HELLO's flag: this player reads the crew marks of the hub's PEERS (roam_core.h RC_HF_HUBCREW, core 8): HF_CREW on a
-/// PEERS says the list ends in them (`write_peers`).  A core before it counts the longer list as bad, so it gets none.
-pub(crate) const HF_HUBCREW: u16 = 0x0400;
 /// the most ids a HELLO names (roam_core.h RC_MAX_PEERS: its decoder takes no more)
 const SEEN_MAX: usize = 32;
 /// a LOBBY's ops (roam_core.h RC_LOBBY_*) the hub keeps: the host's advert and its end, and a player's ask to join
@@ -75,8 +72,6 @@ pub(crate) enum Msg<'a> {
         name: &'a [u8],
         /// its flags say it takes race lobbies (HF_LOBBY)
         lobbies: bool,
-        /// its flags say it reads the crew marks of the hub's PEERS (HF_HUBCREW)
-        marks: bool,
         /// its crews as it sent them (HF_CREW), 0 after them: none for a HELLO without the flag, or with the flag
         /// and nothing after its ids
         crews: [u32; CREWS],
@@ -334,7 +329,7 @@ pub(crate) fn decode(d: &[u8]) -> Option<(u8, u32, Msg<'_>)> {
                     }
                 }
             }
-            Msg::Hello { sender, core, status, room, name, lobbies: flags & HF_LOBBY != 0, marks: flags & HF_HUBCREW != 0, crews }
+            Msg::Hello { sender, core, status, room, name, lobbies: flags & HF_LOBBY != 0, crews }
         }
         MSG_SNAP => {
             if end < 22 + 52 {

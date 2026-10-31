@@ -193,15 +193,13 @@ fn the_wire_a_sessions_hello_to_the_hub_names_its_crews() {
     }
 }
 
-// the hub's crew marks as the C core takes them: a session's own HELLO (core 8: it reads the marks, HF_HUBCREW) and
-// four players near it, in its "Night Owls", in "Red", in its "Blue Room", in none; the list the hub makes for it,
+// the hub's crew marks as the C core takes them: a session's own HELLO and four players near it, in its "Night Owls", in "Red", in its "Blue Room", in none; the list the hub makes for it,
 // given to a session in those two crews, colours each player as the hub marked it (rc_peer_crew), and names no crew but
 // the session's own
 #[test]
 fn the_wire_the_hubs_crew_marks_colour_a_sessions_peers() {
     let Some(run) = hubwire("roam_hubwire_marks.wasm") else { return };
     let h = unhex(&run(&["hellocrew"]));
-    assert!(u16::from_le_bytes([h[14], h[15]]) & HF_HUBCREW != 0, "a core 8 HELLO reads the marks: {}", hex(&h));
     let (blue, owls, red) = (room_hash("Blue Room"), room_hash("Night Owls"), room_hash("Red"));
     let mut k = Kit::new(RoamOptions { view_m: 1e-9, ..RoamOptions::default() });
     k.from(V(0), &h);
@@ -209,7 +207,7 @@ fn the_wire_the_hubs_crew_marks_colour_a_sessions_peers() {
     let who: [Option<&[u32]>; 4] = [Some(&[owls]), Some(&[red]), Some(&[red, blue]), None];
     for (i, crews) in who.iter().enumerate() {
         let i = i as u32 + 1;
-        k.from(V(i), &hello_with(100 + i, &HelloOpts { core: 8, crews: *crews, hubcrew: true, ..Default::default() }));
+        k.from(V(i), &hello_with(100 + i, &HelloOpts { crews: *crews, ..Default::default() }));
         k.from(V(i), &snap(100 + i, [i as f64 * 10.0 + 0.25, 0.25, 0.0]));
     }
     k.hub.tick();

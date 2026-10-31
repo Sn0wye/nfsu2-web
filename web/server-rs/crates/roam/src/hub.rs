@@ -283,9 +283,6 @@ struct Player {
     /// its crews as its last HELLO named them (wire::HF_CREW), each once, 0 after them: its crew-mates of its room are
     /// linked with it first (`crew_pairs`), and /players counts them (`crew_counts`)
     crews: [u32; wire::CREWS],
-    /// its HELLO says it reads the crew marks of our lists (wire::HF_HUBCREW): its lists end in them while it is in
-    /// a crew (`lists`)
-    marks: bool,
     /// the race lobby it hosts, as its last advert to the hub had it, and when that came
     lobby: Option<(HubLobby, f64)>,
     /// the lobby it asked to join (its id), and when
@@ -840,7 +837,6 @@ impl Hub {
                     seen: 0.0,
                     lobbies: false,
                     crews: [0; wire::CREWS],
-                    marks: false,
                     lobby: None,
                     join: None,
                     reported: None,
@@ -871,7 +867,7 @@ impl Hub {
         // (a HELLO: its name against the claims)
         let mut check = false;
         match m {
-            Msg::Hello { sender, status, room, name, lobbies, marks, crews, .. } => {
+            Msg::Hello { sender, status, room, name, lobbies, crews, .. } => {
                 // another start of the game on the same endpoint (where its car was, and its clock's epochs, start again)
                 if p.id != sender {
                     p.links.clear();
@@ -897,7 +893,6 @@ impl Hub {
                 check = true;
                 p.degree = degree;
                 p.lobbies = lobbies;
-                p.marks = marks;
                 let was = p.crews[0] != 0;
                 p.crews = distinct(crews);
                 crewed = Some((was, p.crews[0] != 0));
@@ -1392,9 +1387,9 @@ impl Hub {
             let Some(Some(p)) = self.slots.get(slot as usize) else { continue };
             let links = &s.fresh[slot as usize];
             let slots = &self.slots;
-            // its crews and, a link each, which of them that player is in too: only to a player that reads them and
-            // is in a crew (so no crews but its own go out)
-            let mine = if p.marks && self.crewed > 0 { &p.crews[..crews_of(p).count()] } else { &[][..] };
+            // its crews and, a link each, which of them that player is in too: only to a player in a crew (so no crews
+            // but its own go out)
+            let mine = if self.crewed > 0 { &p.crews[..crews_of(p).count()] } else { &[][..] };
             s.marks.clear();
             if !mine.is_empty() {
                 s.marks.extend(links.iter().map(|l| match slots.get(l.slot as usize) {
