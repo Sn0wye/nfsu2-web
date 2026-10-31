@@ -159,8 +159,7 @@ renderer, AudioWorklet sound, keyboard, mouse and pad input, and free roam over 
     answers from before are at the old addresses, which still answer. The address carries the file's
     mtime and size (`m`, `s`), and the server lets a shared cache (Cloudflare) keep a run for good when they are the
     file's (read from the one open file it answers from), the run is compressed or does not compress, the movies too
-    (`EDGE_KEEP`). A run whose probe read fails is compressed, never kept as it is. An older server: byte ranges
-    of `/data/`. A request that fails on the way (no connection, 408, 429, 5xx) or stalls (no byte for 20 s) is
+    (`EDGE_KEEP`). A run whose probe read fails is compressed, never kept as it is. A request that fails on the way (no connection, 408, 429, 5xx) or stalls (no byte for 20 s) is
     asked again after a growing pause, for as long as it takes: a failed read would give the game 0 bytes. After two
     tries with no answer at all, every other try asks for the block as a byte range of `/data/` (another address, not
     in Cloudflare's cache, uncompressed). A block the OPFS cache has no room for (a full disk) ends the keeping for

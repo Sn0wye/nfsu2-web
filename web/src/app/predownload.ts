@@ -55,7 +55,7 @@ export class Predownload {
     this.samples = [];
     w.onmessage = (e: MessageEvent<FromPredownload>) => this.message(w, e.data);
     w.onerror = e => this.message(w, { t: 'error', msg: e.message || 'it stopped unexpectedly' });
-    w.postMessage({ t: 'start', manifestUrl: MANIFEST_URL, dataBase: DATA_BASE, language: this.language(), texpack: this.texpack() } satisfies ToPredownload);
+    w.postMessage({ t: 'start', manifestUrl: MANIFEST_URL, language: this.language(), texpack: this.texpack() } satisfies ToPredownload);
     this.set({ state: 'running', have: 0, total: 0, rate: 0, error: undefined });     // counted again by the worker
     this.log('[app] predownload: started');
   }

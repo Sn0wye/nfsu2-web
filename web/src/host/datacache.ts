@@ -11,15 +11,17 @@ export const CACHE_DIR = 'cache';
 export const MANIFEST_URL = '/data-manifest', DATA_BASE = '/data/';
 
 /** the server's /data-manifest: every file and folder of the install folder it serves, and where it serves runs
- *  of their blocks compressed (an older server has no "blocks": byte ranges of /data/ then) */
+ *  of their blocks compressed */
 export interface Manifest {
   files: { p: string; d?: number; s?: number; m?: number }[];
-  blocks?: { url: string; size: number; max: number };
+  blocks: { url: string; size: number; max: number };
 }
-/** The manifest's compressed runs, if it has them in this cache's block size: [url, most blocks a request]. */
-export function blockRuns(m: Manifest): { url: string; max: number } | null {
+/** The manifest's compressed runs in this cache's block size: [url, most blocks a request]; throws when it names
+ *  none. */
+export function blockRuns(m: Manifest): { url: string; max: number } {
   const b = m.blocks;
-  return b && typeof b.url === 'string' && b.url.startsWith('/') && b.size === BLOCK && b.max >= 1 ? { url: b.url, max: b.max } : null;
+  if (b && typeof b.url === 'string' && b.url.startsWith('/') && b.size === BLOCK && b.max >= 1) return { url: b.url, max: b.max };
+  throw new Error(`the list of game files names no blocks of ${BLOCK} bytes (${JSON.stringify(b ?? null)})`);
 }
 /** blocks first .. first+n-1 of a file, compressed: a 200 whose body (decoded by the browser) is exactly their bytes.  The
  *  file's mtime and size (m, s) make a changed file a new address, so the server lets Cloudflare keep the answer for
