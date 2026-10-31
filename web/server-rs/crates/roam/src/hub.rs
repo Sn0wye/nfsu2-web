@@ -232,7 +232,7 @@ fn place_word(r: &wire::RaceRep) -> String {
     }
 }
 
-/// how often a player's claim hears that it plays (the claim holds 180 days from its last game: an hour is plenty)
+/// how often a player's claim hears that it plays (the claim holds two years from its last game: an hour is plenty)
 const SEEN_EVERY_MS: f64 = 600_000.0;
 
 /// the console's lines a page gets of the other names its game shows (`Hub::name_check`), at most: a game may name

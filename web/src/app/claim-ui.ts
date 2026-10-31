@@ -1,7 +1,7 @@
 // Claimed names on the start page (claim.ts): the line under Your name (Settings, Online) with its Claim button, and
 // what Play asks about the name (shell.ts settleName):
 // - Your name: as typed, the line says what the name is to this player: free (Claim; without a keyphrase, Claim
-//   turns cloud saves on first), claimed by this keyphrase (until when), another player's (the digits it plays
+//   turns cloud saves on first), claimed by this keyphrase (as long as it lasts), another player's (the digits it plays
 //   under), NAME (the game's default, which nobody claims), or a change of name (Change name, once a week).  A claim
 //   runs Cloudflare's check in the row when the server asks for it.
 // - Play: NAME asks once for a name of the player's own; a name another player claimed asks once (per name) for
@@ -10,7 +10,7 @@
 // The texts and their look follow the page's own rows and dialogs (one line, coloured by its state).
 
 import { dateLocale, t } from './i18n';
-import { digitsFor, GRACE_DAYS, HOLD_DAYS, NameClaims, onlineName, readsAsSlur, turnstile, type Claimed, type Mine, type NameInfo } from './claim';
+import { digitsFor, GRACE_DAYS, NameClaims, onlineName, readsAsSlur, turnstile, type Claimed, type Mine, type NameInfo } from './claim';
 
 /** a day as the page writes dates: "26 Apr 2027" in the page's language */
 export function day(ms: number): string {
@@ -145,7 +145,7 @@ export class NameRow {
       case 'default':
         return show(t('{name} is the game\'s default and can\'t be claimed. Pick your own.', { name }), 'env', null, this.alt);
       case 'yours':
-        return show(t('Claimed with your passphrase. Yours while you play at least once every {n} days (now until {date}).', { n: HOLD_DAYS, date: day(i.until ?? 0) }), 'ok');
+        return show(t('Claimed with your passphrase. It stays yours as long as the passphrase does.'), 'ok');
       case 'old':
         if (mine && mine.next <= Date.now()) return show(t('{name} was your name before your change: yours until {date}.', { name, date: day(i.until ?? 0) }), 'ok', t('Change name'));
         return show(t('{name} was your name before your change: yours until {date}.', { name, date: day(i.until ?? 0) }), 'ok');

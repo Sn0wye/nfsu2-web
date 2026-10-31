@@ -85,7 +85,7 @@ fn the_owner_takes_its_name_back() {
     assert_eq!(persona(&w, l), "Speedy");
     assert!(w.c(other).fin || w.c(other).reset, "the other session dropped");
     assert!(w.logged("the name's owner logged in"), "{:?}", w.text());
-    // playing holds the claim 180 days from now
+    // playing holds the claim HOLD_DAYS from now
     w.advance(10.0 * 86_400_000.0);
     let (_, _) = player(&mut w, "10.77.0.3", "Speedy", Some('A'));
     let m = claims.mine(&owner_of_token(&token('A')).unwrap(), now(&w)).unwrap();

@@ -52,7 +52,7 @@
   "Use {name}": "{name} használata",
   "A quick check that you're human. Once per name.": "Egy gyors ellenőrzés, hogy ember vagy-e. Névenként egyszer.",
   "Claiming": "Lefoglalás…",
-  "Claimed with your passphrase. Yours while you play at least once every {n} days (now until {date}).": "A jelmondatoddal lefoglalva. A tiéd marad, amíg legalább {n} naponta egyszer játszol (a mostani lejárat: {date}).",
+  "Claimed with your passphrase. It stays yours as long as the passphrase does.": "A jelmondatoddal lefoglalva. Addig a tiéd marad, amíg a jelmondat megvan.",
   "{name} was your name before your change: yours until {date}.": "{name} volt a neved a módosítás előtt, és még a tiéd marad (lejárat: {date}).",
   "Change name": "Névváltás",
   "Another player claimed {name}, so you play as {alt}. Pick another name, or if it's yours, enter your passphrase under Cloud saves.": "Egy másik játékos lefoglalta ezt a nevet: {name}, ezért {alt} néven játszol. Válassz másik nevet, vagy ha a tiéd, add meg a jelmondatodat a Felhőmentés résznél.",

@@ -80,7 +80,7 @@
 //! claimed (its page's hello to the switch named the keyphrase it plays with: `FrameCtx::owner`) gets no links, is on
 //! nobody's map and counts nowhere, and the console says so once.  The page plays under the name with four digits
 //! then (as the Online lobby gives it), so only a page that ignores that plays alone.  A player's own claim hears that
-//! it plays (it holds 180 days from its last game).
+//! it plays (it holds two years from its last game).
 //!
 //! A page may block players by the name over their car (its hello to the switch: `Host::blocks`, `Hub::blocks`): the
 //! hub links it with none of them, either way, nor with the host of a race lobby one of them is in, and leaves each

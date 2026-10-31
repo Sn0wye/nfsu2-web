@@ -1114,7 +1114,7 @@
   "Use {name}": "Brug {name}",
   "A quick check that you're human. Once per name.": "Et hurtigt tjek af, at du er et menneske. Én gang pr. navn.",
   "Claiming": "Reserverer",
-  "Claimed with your passphrase. Yours while you play at least once every {n} days (now until {date}).": "Reserveret med din adgangssætning. Det er dit, så længe du spiller mindst én gang hver {n}. dag (nu indtil {date}).",
+  "Claimed with your passphrase. It stays yours as long as the passphrase does.": "Reserveret med din adgangssætning. Det er dit, så længe adgangssætningen findes.",
   "{name} was your name before your change: yours until {date}.": "{name} var dit navn før skiftet: dit indtil {date}.",
   "Change name": "Skift navn",
   "Another player claimed {name}, so you play as {alt}. Pick another name, or if it's yours, enter your passphrase under Cloud saves.": "En anden spiller har reserveret {name}, så du spiller som {alt}. Vælg et andet navn, eller indtast din adgangssætning under Gemte spil i skyen, hvis det er dit.",

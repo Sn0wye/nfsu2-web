@@ -1054,7 +1054,7 @@
   "Use {name}": "{name} adını kullan",
   "A quick check that you're human. Once per name.": "İnsan olduğuna dair kısa bir doğrulama. Her ad için bir kez.",
   "Claiming": "Sahipleniliyor",
-  "Claimed with your passphrase. Yours while you play at least once every {n} days (now until {date}).": "Parola ifadenle sahiplenildi. En az {n} günde bir oynadığın sürece senin (şu an {date} tarihine kadar).",
+  "Claimed with your passphrase. It stays yours as long as the passphrase does.": "Parola ifadenle sahiplenildi. Parola ifaden durduğu sürece senin.",
   "{name} was your name before your change: yours until {date}.": "{name} değişiklikten önceki adındı: {date} tarihine kadar senin.",
   "Change name": "Adını değiştir",
   "Another player claimed {name}, so you play as {alt}. Pick another name, or if it's yours, enter your passphrase under Cloud saves.": "Başka bir oyuncu {name} adını sahiplendi, bu yüzden {alt} olarak oynuyorsun. Başka bir ad seç ya da ad seninse parola ifadeni Bulut kayıtları altına gir.",

@@ -1045,7 +1045,7 @@
   "Use {name}": "ใช้ {name}",
   "A quick check that you're human. Once per name.": "ตรวจสอบสั้น ๆ ว่าคุณเป็นคน ชื่อละครั้งเดียว",
   "Claiming": "กำลังจอง",
-  "Claimed with your passphrase. Yours while you play at least once every {n} days (now until {date}).": "จองด้วยวลีรหัสของคุณแล้ว ชื่อนี้เป็นของคุณตราบที่คุณเล่นอย่างน้อยหนึ่งครั้งทุก {n} วัน (ตอนนี้ถึงวันที่ {date})",
+  "Claimed with your passphrase. It stays yours as long as the passphrase does.": "จองด้วยวลีรหัสของคุณแล้ว ชื่อนี้เป็นของคุณตราบที่วลีรหัสนี้ยังอยู่",
   "{name} was your name before your change: yours until {date}.": "{name} คือชื่อของคุณก่อนเปลี่ยน: ยังเป็นของคุณจนถึงวันที่ {date}",
   "Change name": "เปลี่ยนชื่อ",
   "Another player claimed {name}, so you play as {alt}. Pick another name, or if it's yours, enter your passphrase under Cloud saves.": "ผู้เล่นคนอื่นจองชื่อ {name} แล้ว คุณจึงเล่นในชื่อ {alt} เลือกชื่ออื่น หรือหากชื่อนี้เป็นของคุณ ให้ใส่วลีรหัสของคุณในส่วน “เซฟบนคลาวด์”",

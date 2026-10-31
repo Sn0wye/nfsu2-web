@@ -1045,7 +1045,7 @@
   "Use {name}": "{name}を使う",
   "A quick check that you're human. Once per name.": "人間であることの簡単な確認です。名前ごとに1回だけです。",
   "Claiming": "登録中",
-  "Claimed with your passphrase. Yours while you play at least once every {n} days (now until {date}).": "パスフレーズで登録済みです。{n}日に1回以上プレイしている間はあなたのものです（現在は{date}まで）。",
+  "Claimed with your passphrase. It stays yours as long as the passphrase does.": "パスフレーズで登録済みです。パスフレーズがある限り、あなたのものです。",
   "{name} was your name before your change: yours until {date}.": "{name}は変更前のあなたの名前です: {date}まではあなたのものです。",
   "Change name": "名前を変更",
   "Another player claimed {name}, so you play as {alt}. Pick another name, or if it's yours, enter your passphrase under Cloud saves.": "{name}は他のプレイヤーが登録済みのため、{alt}としてプレイします。別の名前を選ぶか、あなたの名前なら「クラウドセーブ」でパスフレーズを入力してください。",

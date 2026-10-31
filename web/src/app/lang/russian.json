@@ -1160,7 +1160,7 @@
   "Use {name}": "Взять {name}",
   "A quick check that you're human. Once per name.": "Быстрая проверка, что вы человек. Один раз на каждое имя.",
   "Claiming": "Закрепление",
-  "Claimed with your passphrase. Yours while you play at least once every {n} days (now until {date}).": "Закреплено вашей парольной фразой. Имя ваше, пока вы играете хотя бы раз в {n} дней (сейчас — до {date}).",
+  "Claimed with your passphrase. It stays yours as long as the passphrase does.": "Закреплено вашей парольной фразой. Имя ваше, пока существует эта парольная фраза.",
   "{name} was your name before your change: yours until {date}.": "{name} — ваше имя до смены: оно остаётся за вами до {date}.",
   "Change name": "Сменить имя",
   "Another player claimed {name}, so you play as {alt}. Pick another name, or if it's yours, enter your passphrase under Cloud saves.": "Имя {name} закрепил за собой другой игрок, поэтому вы играете как {alt}. Выберите другое имя, а если оно ваше, введите парольную фразу в разделе «Облачные сохранения».",

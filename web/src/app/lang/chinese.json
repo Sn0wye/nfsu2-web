@@ -1045,7 +1045,7 @@
   "Use {name}": "使用 {name}",
   "A quick check that you're human. Once per name.": "這是一次簡單的真人驗證。每個名稱只需一次。",
   "Claiming": "認領中",
-  "Claimed with your passphrase. Yours while you play at least once every {n} days (now until {date}).": "已用你的通關密語認領。只要你每 {n} 天至少玩一次，它就屬於你（目前到 {date} 為止）。",
+  "Claimed with your passphrase. It stays yours as long as the passphrase does.": "已用你的通關密語認領。只要這組通關密語還在，它就一直屬於你。",
   "{name} was your name before your change: yours until {date}.": "{name} 是你變更前的名稱：在 {date} 之前仍屬於你。",
   "Change name": "變更名稱",
   "Another player claimed {name}, so you play as {alt}. Pick another name, or if it's yours, enter your passphrase under Cloud saves.": "另一位玩家已認領 {name}，所以你會以 {alt} 遊玩。請選擇其他名稱；若這是你的名稱，請在「雲端存檔」中輸入你的通關密語。",

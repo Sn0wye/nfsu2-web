@@ -1114,7 +1114,7 @@
   "Use {name}": "{name} gebruiken",
   "A quick check that you're human. Once per name.": "Een snelle controle dat je een mens bent. Eén keer per naam.",
   "Claiming": "Aan het claimen",
-  "Claimed with your passphrase. Yours while you play at least once every {n} days (now until {date}).": "Geclaimd met je wachtwoordzin. Van jou zolang je minstens eens per {n} dagen speelt (nu tot {date}).",
+  "Claimed with your passphrase. It stays yours as long as the passphrase does.": "Geclaimd met je wachtwoordzin. Van jou zolang de wachtwoordzin bestaat.",
   "{name} was your name before your change: yours until {date}.": "{name} was je naam vóór je wijziging: van jou tot {date}.",
   "Change name": "Naam wijzigen",
   "Another player claimed {name}, so you play as {alt}. Pick another name, or if it's yours, enter your passphrase under Cloud saves.": "Een andere speler heeft {name} geclaimd, dus je speelt als {alt}. Kies een andere naam, of voer je wachtwoordzin in onder Opgeslagen spellen in de cloud als hij van jou is.",

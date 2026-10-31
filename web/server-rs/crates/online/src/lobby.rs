@@ -1310,7 +1310,7 @@ impl Core {
         } else {
             mine
         };
-        // a claim holds 180 days from its owner's last game
+        // a claim holds HOLD_DAYS (two years) from its owner's last game
         if let (Some(c), Some(o)) = (&self.claims, &self.lobby.s(s).owner) {
             c.seen(&mine, o, self.now() as i64);
         }

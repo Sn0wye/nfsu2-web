@@ -1045,7 +1045,7 @@
   "Use {name}": "{name} 사용",
   "A quick check that you're human. Once per name.": "사람인지 간단히 확인해요. 이름마다 한 번만 해요.",
   "Claiming": "등록 중",
-  "Claimed with your passphrase. Yours while you play at least once every {n} days (now until {date}).": "암호 문구로 등록했어요. {n}일에 한 번 이상 플레이하면 계속 내 이름이에요(지금은 {date}까지).",
+  "Claimed with your passphrase. It stays yours as long as the passphrase does.": "암호 문구로 등록했어요. 암호 문구가 있는 동안 계속 내 이름이에요.",
   "{name} was your name before your change: yours until {date}.": "{name} 이름은 바꾸기 전의 내 이름이에요: {date}까지 내 것이에요.",
   "Change name": "이름 바꾸기",
   "Another player claimed {name}, so you play as {alt}. Pick another name, or if it's yours, enter your passphrase under Cloud saves.": "다른 플레이어가 {name} 이름을 등록해서 {alt} 이름으로 플레이해요. 다른 이름을 정하거나, 내 이름이라면 '클라우드 저장'에서 암호 문구를 입력하세요.",

@@ -1160,7 +1160,7 @@
   "Use {name}": "Użyj {name}",
   "A quick check that you're human. Once per name.": "Szybkie sprawdzenie, czy jesteś człowiekiem. Raz na nazwę.",
   "Claiming": "Rezerwowanie",
-  "Claimed with your passphrase. Yours while you play at least once every {n} days (now until {date}).": "Zarezerwowana twoją frazą dostępu. Należy do ciebie, dopóki grasz co najmniej raz na {n} dni (teraz do {date}).",
+  "Claimed with your passphrase. It stays yours as long as the passphrase does.": "Zarezerwowana twoją frazą dostępu. Należy do ciebie, dopóki istnieje ta fraza dostępu.",
   "{name} was your name before your change: yours until {date}.": "{name} to twoja nazwa sprzed zmiany: należy do ciebie do {date}.",
   "Change name": "Zmień nazwę",
   "Another player claimed {name}, so you play as {alt}. Pick another name, or if it's yours, enter your passphrase under Cloud saves.": "Inny gracz zarezerwował nazwę {name}, więc grasz jako {alt}. Wybierz inną nazwę, a jeśli jest twoja, wpisz frazę dostępu w sekcji „Zapisy w chmurze”.",

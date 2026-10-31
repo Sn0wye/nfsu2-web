@@ -1114,7 +1114,7 @@
   "Use {name}": "Använd {name}",
   "A quick check that you're human. Once per name.": "En snabb kontroll av att du är en människa. En gång per namn.",
   "Claiming": "Reserverar",
-  "Claimed with your passphrase. Yours while you play at least once every {n} days (now until {date}).": "Reserverat med din lösenfras. Det är ditt så länge du spelar minst en gång var {n}:e dag (nu till {date}).",
+  "Claimed with your passphrase. It stays yours as long as the passphrase does.": "Reserverat med din lösenfras. Det är ditt så länge lösenfrasen finns.",
   "{name} was your name before your change: yours until {date}.": "{name} var ditt namn före bytet: ditt till {date}.",
   "Change name": "Byt namn",
   "Another player claimed {name}, so you play as {alt}. Pick another name, or if it's yours, enter your passphrase under Cloud saves.": "En annan spelare har reserverat {name}, så du spelar som {alt}. Välj ett annat namn, eller ange din lösenfras under Sparfiler i molnet om det är ditt.",

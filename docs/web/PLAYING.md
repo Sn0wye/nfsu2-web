@@ -636,8 +636,8 @@ Good to know:
     digits added (`Alex` becomes `Alex4821`; a name longer than 11 characters loses its end to them), the same
     digits each time for their browser. If someone was online under it before you came, the lobby gives it back to
     you.
-  - It stays yours while you play (free roam or Online) at least once every 180 days. In another browser, load your
-    passphrase under Cloud saves and the name is yours there too.
+  - It stays yours as long as your passphrase does: until you delete your cloud saves, or they go unused for two
+    years. In another browser, load your passphrase under Cloud saves and the name is yours there too.
   - One name a passphrase. **Change name** (type another name) changes it once a week; the old name stays yours for
     14 more days, and your EA Messenger friends move to the new one (their lists show it).
   - `NAME`, the game's default profile name, and `Player` can't be claimed: Play asks once for a name of your own,
@@ -651,8 +651,8 @@ Good to know:
   Nothing is checked and nothing is kept: there are no accounts. Type a password you use nowhere else: the game
   sends it to the server only lightly scrambled (the server never reads it).
 - **Kept on the server:** only race results per name (Rankings; a name not seen for a year is forgotten), the claimed
-  names (each with a code made from its passphrase, never the passphrase, and when it was claimed and last played: 180
-  days after that), and the EA Messenger lists of claimed names, with their passphrase's code: your friends and the
+  names (each with a code made from its passphrase, never the passphrase, and when it was claimed and last played or
+  used: kept as long as the passphrase), and the EA Messenger lists of claimed names, with their passphrase's code: your friends and the
   players you block (names), the friend requests you sent until they are answered (30 days at most), and your
   friends' messages that came while you were away until you are back (7 days at most). Lists of names nobody claimed
   are kept only while their player is online; the lists kept before names could be claimed went to the first

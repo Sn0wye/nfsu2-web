@@ -182,10 +182,11 @@ sees a keyphrase, a key or a save, and its files name no player.
 ## Claimed names
 
 With keyphrase saves on, a player's keyphrase can claim their name (PLAYING.md, Online: "Your name is yours"): while
-the claim holds (180 days after they last played under it) nobody else plays under it in the Online menu or free
-roam, and EA Messenger keeps its lists for it. The server keeps `names.json` in the state folder: each name, a code
-made from its keyphrase's token (never the keyphrase), when it was claimed and last played. Written whole within a
-minute of a change. A keyphrase deleted from the cloud frees its name.
+the claim holds (as long as the keyphrase: two years after they last played under it or used the keyphrase) nobody
+else plays under it in the Online menu or free roam, and EA Messenger keeps its lists for it. The server keeps
+`names.json` in the state folder: each name, a code made from its keyphrase's token (never the keyphrase), when it was
+claimed and last played or used. Written whole within a minute of a change. A keyphrase deleted from the cloud frees
+its name.
 
 - **Cloudflare Turnstile** (a check that a person, not a script, claims a name): create a widget in the Cloudflare
   dashboard (Turnstile, Add widget: the site's hostname, mode Managed), then put its two keys in `.env`:
