@@ -14,7 +14,8 @@
 //             (Ctrl and Shift on the keyboard would be modifiers too)
 //   small     pause, camera (held: look back), reset; in free roam also the map, messages, drift mode (X, lit while it
 //             is on: drift.ts), the career's status (the game's Legend: the controller's D-pad Down, the keyboard has
-//             no key for it), and the horn and quick chat (quickchat.ts) while a friend's car is within a horn's reach;
+//             no key for it), and the horn and quick chat (quickchat.ts; not with its setting off) while a friend's car
+//             is within a horn's reach;
 //             Start (Engage) only while Engage does something: an event's or a shop's marker, an outrun offer, a race
 //             spot or lobby (the game's status "roam_near" and "engage", runtime/web/status_web.c; a game without them
 //             shows these always).  The steering button held opens the touch settings (deps.settings)
@@ -283,6 +284,8 @@ export interface TouchDeps {
   log(s: string): void;
   /** the chat button: quick chat's phrases (quickchat.ts) */
   chat?(): void;
+  /** quick chat is on in this game (its setting): else no chat button */
+  chatOn?(): boolean;
   /** the steering button held: the touch settings (the Controls sheet's touch tab) */
   settings?(): void;
 }
@@ -496,9 +499,10 @@ export class TouchControls {
     this.root.toggleAttribute('data-roam', (this.drive & 3) === 2);
     this.root.toggleAttribute('data-gears', (this.drive & 4) !== 0);
     // free roam's buttons for now and then: Start while Engage does something, Horn and Quick chat with friends near
-    // (one that goes from under a finger lets go)
+    // (one that goes from under a finger lets go), Quick chat only with its setting on
     this.root.toggleAttribute('data-no-engage', this.engage === 0);
     this.root.toggleAttribute('data-alone', this.near === 0);
+    this.root.toggleAttribute('data-no-chat', this.deps.chatOn?.() === false);
     if (this.engage === 0) this.letGo('start');
     if (this.near === 0) this.letGo('horn');
     this.ctls.get('drift')!.el.classList.toggle('lit', (this.drift & 1) !== 0);
