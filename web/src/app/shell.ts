@@ -150,6 +150,8 @@ let friendsPanel: FriendsPanel;          // ...and the friends on the start page
 let settings: SettingsPanel;
 let players: { now(): void; last(): PlayerCounts | null; fresh(ms: number): Promise<PlayerCounts | null> } | null = null;
 let playersPanel: PlayersPanel;
+/** the name the linked passphrase claims, as the line under Your name last heard (undefined: not asked yet) */
+let claimedName: string | null | undefined;
 let saves: SavesPanel;
 let vault: VaultPanel;
 /** the claimed names (claim.ts), and the line under Your name (claim-ui.ts) */
@@ -1237,7 +1239,7 @@ function drawPopCrews(focus?: (root: HTMLElement) => Element | null | undefined)
   if (had && focus) ((focus(box) ?? box.querySelector('input:enabled')) as HTMLElement | null)?.focus({ focusVisible: true } as FocusOptions);
 }
 /** a Leave, Join or colour in the popup: the game takes the crews and their colours at once (its HELLO again to the
- *  hub), and settings.ini keeps them for the next game, as Online, Crews would */
+ *  hub), and settings.ini keeps them for the next game, as the Crews setting would */
 async function menuCrews(list: Crew[], focus: (root: HTMLElement) => Element | null | undefined) {
   if (roamCrews === null || !session?.net?.crews) return;
   roamCrews = list;
@@ -1828,7 +1830,9 @@ export async function boot() {
     claims, seed: pageId, linked: () => !!vault?.linked(), enable: enableCloud, showPassphrase,
     profileName: async () => (await newestProfile())?.name ?? null,
     save: n => settings.putName(n), writable: () => instance.owner,
-    kept: n => vault?.showClaim(n), say: pageToast, log: logLine,
+    // (a name claimed, or another passphrase's: the Friends & crews tab's list at once, not at its next minute)
+    kept: n => { vault?.showClaim(n); if (claimedName !== undefined && n !== claimedName) void friendsPanel.refresh(true); claimedName = n; },
+    say: pageToast, log: logLine,
   });
   vault = new VaultPanel($('#vault'), {
     saveDir: SAVE, owner: () => instance.owner, playing: () => !!session, busy: () => !!session || starting || !instance.owner,

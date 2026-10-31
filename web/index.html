@@ -121,7 +121,7 @@
       <div class="tabs big" role="tablist">
         <button type="button" class="tab" role="tab" data-tab="saves" data-i18n>Saves</button>
         <button type="button" class="tab" role="tab" data-tab="online" data-i18n>Online</button>
-        <button type="button" class="tab" role="tab" data-tab="friends" data-i18n>Friends</button>
+        <button type="button" class="tab" role="tab" data-tab="friends" data-i18n>Friends &amp; crews</button>
         <button type="button" class="tab" role="tab" data-tab="game" data-i18n>Game</button>
         <button type="button" class="tab" role="tab" data-tab="controls" data-i18n>Controls</button>
         <button type="button" class="tab" role="tab" data-tab="other" data-i18n>Other</button>
@@ -188,8 +188,11 @@
         <div id="online-body"></div>
       </div>
 
-      <!-- friends.ts FriendsPanel -->
-      <div class="pane" role="tabpanel" data-tab="friends" id="friends" hidden></div>
+      <!-- the Crews setting (settings-ui.ts), then the friends (friends.ts FriendsPanel) -->
+      <div class="pane" role="tabpanel" data-tab="friends" hidden>
+        <div id="crews-body"></div>
+        <div id="friends"></div>
+      </div>
 
       <div class="pane" role="tabpanel" data-tab="game" hidden>
         <p class="hint" id="settings-note">Changes apply the next time you press Play.</p>
@@ -271,7 +274,7 @@
 
       <div class="pane" role="tabpanel" data-tab="other" hidden>
         <div id="game-data">
-          <h3 data-i18n>Game data on this PC</h3>
+          <h3 data-i18n>Game data on this device</h3>
           <p class="hint" id="cache-info">Counting…</p>
           <div class="bar" id="data-bar" role="progressbar" data-i18n-attr="aria-label" aria-label="Game data preload" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" hidden>
             <div class="bar-fill"></div>

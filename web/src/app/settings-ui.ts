@@ -37,9 +37,10 @@ type Control =
 
 /** link: the words of help that link to a page (a mod's, say), opened in a new tab */
 interface Item { key: string; label: string; help: string; link?: { text: string; href: string }; c: Control; more?: boolean }
-/** own: the group is a tab of its own (Online), named by that tab; at: the id of the element it goes in (the Controls
- *  tab's Controller part), else the Game tab's; head: its heading there, else its title; more: the title of its "more"
- *  part.  The texts are English (N), translated where they are drawn. */
+/** own: the group has no heading of its own, its tab's name says it (Online; Friends & crews' Crews); at: the id of the
+ *  element it goes in (Crews in Friends & crews, the Controls tab's Controller part), else the Online tab's (own) or the
+ *  Game tab's; head: its heading, else its title; more: the title of its "more" part.  The texts are English (N),
+ *  translated where they are drawn. */
 interface Group { title: string; more: string; items: Item[]; own?: boolean; at?: string; head?: string }
 
 /** each language's name in English (translated where it is shown), beside its own name */
@@ -54,7 +55,6 @@ const GROUPS: Group[] = [
   { title: N('Online'), more: N('More online settings'), own: true, items: [
     { key: 'roam', label: N('Free roam with others'), help: N('See other players\' cars in career free roam, and they see yours.'), c: { t: 'switch' } },
     { key: 'roam_name', label: N('Your name'), help: N('Shown over your car and in the Online menu: 3 to 15 letters, digits, - or _.'), c: { t: 'text', placeholder: N('profile name') } },
-    { key: 'roam_crew', label: N('Crews'), help: N('Players with the same crew name always see each other in free roam, with names and map arrows in the crew\'s colour. Anyone who types the name joins. Up to 4 crews.'), c: { t: 'crews', placeholder: N('Crew name') } },
     { key: 'horn', label: N('Your horn'), help: N('N or the left stick click, with other players.'), c: { t: 'select', opts: [
       ['dual', N('Dual tone')], ['single', N('Single tone')], ['truck', N('Air horn')], ['train', N('Train horn')], ['klaxon', N('Klaxon')],
       ['cucaracha', N('La Cucaracha')], ['clown', N('Clown horn')], ['trombone', N('Sad trombone')]], preview: { play: playHorn, stop: stopHorn } } },
@@ -65,6 +65,9 @@ const GROUPS: Group[] = [
     { key: 'quick_chat_phrases', label: N('Your phrases'), help: N('Four groups of four. Others read them in their own language.'), c: { t: 'phrases' } },
     { key: 'online', label: N('Online mode'), help: N('The game\'s Online menu skips the EA login: lobby, chat and races with everyone on this server.'), c: { t: 'switch' }, more: true },
     { key: 'roam_max_cars', label: N('Players\' cars shown'), help: N('The nearest ones. Phones start at 16 and tablets at 24, to save memory.'), c: { t: 'seg', opts: [['16', '16'], ['20', '20'], ['24', '24'], ['28', '28'], ['32', '32']] }, more: true },
+  ] },
+  { title: N('Crews'), more: '', own: true, at: 'crews-body', items: [
+    { key: 'roam_crew', label: N('Crews'), help: N('Players with the same crew name always see each other in free roam, with names and map arrows in the crew\'s colour. Anyone who types the name joins. Up to 4 crews.'), c: { t: 'crews', placeholder: N('Crew name') } },
   ] },
   { title: N('Game'), more: N('More game settings'), items: [
     { key: 'language', label: N('Language'), help: N('Menus, subtitles, dubbed voices and this page.'), c: { t: 'select', opts: LANGUAGE_OPTS } },
@@ -467,7 +470,7 @@ export class SettingsPanel {
     this.root.querySelector('#settings-body')!.replaceChildren(...GROUPS.filter(g => !g.own && !g.at).map(g => this.group(g)));
     for (const g of GROUPS.filter(g => g.at)) this.root.querySelector(`#${g.at}`)?.replaceChildren(this.group(g));
     this.root.querySelector('#settings-lines')!.replaceChildren(...this.others());
-    this.online.querySelector('#online-body')!.replaceChildren(...GROUPS.filter(g => g.own).map(g => this.group(g)));
+    this.online.querySelector('#online-body')!.replaceChildren(...GROUPS.filter(g => g.own && !g.at).map(g => this.group(g)));
     this.syncRaw();
     const row = focusKey ? this.find<HTMLElement>(`.set[data-key="${focusKey}"]`) : null;
     if (row) this.focusRow(row);
@@ -726,7 +729,7 @@ export class SettingsPanel {
     // a room or crews with free roam off do nothing: new players often never turned it on (the first Play does not ask
     // while the server's free roam is busy), and saw nobody in the room their friends named
     if (ROAM_ROWS.includes(it.key) && cur && this.current('roam') !== 'on')
-      this.state(row, t('Needs Free roam with others (above).'), 'env');
+      this.state(row, it.key === 'roam_crew' ? t('Needs Free roam with others (Online).') : t('Needs Free roam with others (above).'), 'env');
     // who is in the room now (setRoomLine), while free roam is on in one
     if (it.key === 'roam_room') {
       const p = document.createElement('p'); p.className = 'set-state free'; p.id = 'set-roam_room-count';

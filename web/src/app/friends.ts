@@ -9,7 +9,7 @@
 //   gone once the cars part.  It also tells the server the room's name once the player has friends (their Join), asks
 //   where the friends play every minute ("where"), says in the notices when one comes into free roam, and fills the
 //   page menu's Friends popup (Join a friend's room).
-// - FriendsPanel, on the start page (its Friends tab): one line a friend, where it plays after its name and a
+// - FriendsPanel, on the start page (its Friends & crews tab): one line a friend, where it plays after its name and a
 //   Join in free roam, the requests to answer, the ones sent; icons for what each line does.
 // - FriendsApi: /friends, asked with the keyphrase's token (claim.ts NameClaims does the same for /names).
 import type { GameSession } from './game';
@@ -395,6 +395,7 @@ export class FriendsPanel {
   private lists: FriendLists | null = null;
   private timer = 0;
   private busy = false;
+  private again = false;
 
   constructor(private root: HTMLElement, private deps: FriendsPanelDeps) {
     document.addEventListener('visibilitychange', () => { if (!document.hidden) void this.refresh(); });
@@ -403,7 +404,9 @@ export class FriendsPanel {
 
   /** the list now (the keyphrase or its name changed, a game ended) */
   async refresh(force = false) {
-    if (this.busy || (!force && (!this.deps.idle() || document.hidden))) return;
+    // (one asked for while a list is on its way runs after it: a name claimed or a passphrase entered meanwhile)
+    if (this.busy) { if (force) this.again = true; return; }
+    if (!force && (!this.deps.idle() || document.hidden)) return;
     this.busy = true;
     try {
       this.lists = await this.deps.api.list();
@@ -413,6 +416,7 @@ export class FriendsPanel {
       this.busy = false;
     }
     this.render();
+    if (this.again) { this.again = false; void this.refresh(true); }
   }
 
   private async act(op: 'accept' | 'decline' | 'remove' | 'block', name: string) {
@@ -426,13 +430,20 @@ export class FriendsPanel {
     this.render();
   }
 
-  /** the Friends tab (no lists: no passphrase, or a server without friends; no name: none claimed) */
+  /** the Friends & crews tab's Friends (no lists: no passphrase, or a server without friends; no name: none claimed) */
   render() {
     const l = this.lists, root = this.root;
-    const nodes: Node[] = [];
-    const help = (s: string) => { const p = document.createElement('p'); p.className = 'hint fl-hint'; p.textContent = s; return p; };
+    // a row as the Crews setting's above it: the name, a line of help, the list
+    const row = (help: string, list?: HTMLElement) => {
+      const r = document.createElement('div'); r.className = 'set set-list';
+      const label = document.createElement('div'); label.className = 'set-label'; label.textContent = t('Friends');
+      const p = document.createElement('p'); p.className = 'set-help'; p.textContent = help;
+      r.append(label, p);
+      if (list) { const c = document.createElement('div'); c.className = 'set-control'; c.append(list); r.append(c); }
+      return r;
+    };
     if (!l?.me) {
-      root.replaceChildren(help(t('Claim your name (Online, Your name) to add friends.')));
+      root.replaceChildren(row(t('Claim your name (Online, Your name) to add friends.')));
       return;
     }
     const lines: Line[] = [];
@@ -453,9 +464,7 @@ export class FriendsPanel {
     for (const name of l.sent) {
       lines.push({ name, state: t('request sent'), off: true, acts: [icon('fl-del', t('Take back'), CROSS, () => this.act('remove', name))] });
     }
-    if (lines.length) nodes.push(friendList(lines));
-    nodes.push(help(t('Touch front bumpers in free roam for 3 s to add a player.')));
-    root.replaceChildren(...nodes);
+    root.replaceChildren(row(t('Touch front bumpers in free roam for 3 s to add a player.'), lines.length ? friendList(lines) : undefined));
   }
 
   dispose() { clearInterval(this.timer); }

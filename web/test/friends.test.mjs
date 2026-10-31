@@ -268,12 +268,27 @@ test('the start page\'s Friends', async () => {
   assert.deepEqual((await did()).acts, [['remove', 'Bo_'], ['remove', 'Eve']]);
   // nobody yet; a keyphrase without a claimed name; no keyphrase
   await panel(p, { me: 'Al_', asks: [], sent: [], friends: [] });
-  assert.equal(await p.$eval('#friends', e => e.textContent), 'Touch front bumpers in free roam for 3 s to add a player.', 'nobody yet: how to');
+  assert.equal(await p.$eval('#friends', e => e.textContent), 'FriendsTouch front bumpers in free roam for 3 s to add a player.', 'nobody yet: how to');
   await panel(p, { me: null, asks: [], sent: [], friends: [] });
-  assert.equal(await p.$eval('#friends', e => e.textContent), 'Claim your name (Online, Your name) to add friends.');
+  assert.equal(await p.$eval('#friends', e => e.textContent), 'FriendsClaim your name (Online, Your name) to add friends.');
   assert.deepEqual(await rows(p), []);
   await panel(p, null);
-  assert.equal(await p.$eval('#friends', e => e.textContent), 'Claim your name (Online, Your name) to add friends.', 'no keyphrase: how to have friends');
+  assert.equal(await p.$eval('#friends', e => e.textContent), 'FriendsClaim your name (Online, Your name) to add friends.', 'no keyphrase: how to have friends');
+  // a name claimed while the list is on its way: asked again once it has come, so the claim shows at once
+  const asked = await p.evaluate(async () => {
+    const w = /** @type {any} */ (window);
+    let n = 0, answer;
+    w.panel.deps.api.list = () => { n++; return new Promise(r => { answer = r; }); };
+    const first = w.panel.refresh(true);
+    await w.panel.refresh(true);                    // the claim's, while the first waits for its answer
+    answer(null); await first;
+    await new Promise(r => setTimeout(r, 0));
+    const again = n;
+    answer({ me: 'Al_', asks: [], sent: [], friends: [] });
+    await new Promise(r => setTimeout(r, 0));
+    return { again, text: document.getElementById('friends').textContent };
+  });
+  assert.deepEqual(asked, { again: 2, text: 'FriendsTouch front bumpers in free roam for 3 s to add a player.' });
   await p.close();
 });
 

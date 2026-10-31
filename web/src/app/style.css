@@ -762,7 +762,7 @@ html:has(> body > .stage:not([hidden])) { overflow: hidden; }
 .fl .fl-del { color: var(--edge); opacity: 0.6; }
 .fl .fl-del:is(:hover, :focus-visible) { color: var(--bad); opacity: 1; }
 .fl-contact { flex-basis: 100%; margin-top: -8px; padding-bottom: 8px; color: var(--muted); font-size: 14px; line-height: 20px; }
-.fl-hint { margin-top: 8px; }
+#friends > .set { box-shadow: inset 0 1px var(--line); }   /* under the Crews row, as the rows of a group */
 .friends-pop-box { margin-bottom: 16px; }
 .friends-pop-box .hint:last-child { margin-bottom: 0; }
 /* the away check (away.ts): in the middle, until the player is back; a kick or a ban (shell.ts netRemoved) the same,

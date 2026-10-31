@@ -39,7 +39,7 @@ the ways to set that up. Each player then opens that `https://` address in the l
 
 The first start on a PC downloads about 7 MB of game code and, while playing, the game data it needs, compressed on
 the way. That PC keeps the data, so later starts are quick. To load it up front, press **Preload the game data** in
-Game data on this PC, in the start page's Other tab (the button shows the size): about 2 GB (all but the movies),
+Game data on this device, in the start page's Other tab (the button shows the size): about 2 GB (all but the movies),
 a little over 1 GB over the network.
 After that no loading screen waits on the network, which matters on a slow line to a remote server. The movies
 stream from the server as they play; with Movies off (Game, Movies) the game never asks for them.
@@ -197,15 +197,17 @@ The start page shows these keys under **Controls**, and F9, Controls shows them 
 
 ## 4. Settings
 
-The start page's big panel has six tabs: **Saves**, **Online**, **Friends**, **Game**, **Controls** and **Other**.
-Online, Game and the Controller part of Controls hold this browser's `settings.ini`, the same file and keys as the Mac
-app; Other has the file as text and Reset all settings. Each change is saved at once and applies the next time you
-press Play. Under Play, **Playing now** shows how many play on this server now: in total, in free roam, and in the
-game's Online mode (its races and lobbies); with a Room set, the Room row says how many are in that room.
+The start page's big panel has six tabs: **Saves**, **Online**, **Friends & crews**, **Game**, **Controls** and
+**Other**. Online, the crews, Game and the Controller part of Controls hold this browser's `settings.ini`, the same
+file and keys as the Mac app; Other has the file as text and Reset all settings. Each change is saved at once and
+applies the next time you press Play. Under Play, **Playing now** shows how many play on this server now: in total, in
+free roam, and in the game's Online mode (its races and lobbies); with a Room set, the Room row says how many are in
+that room.
 
 | Where | Settings |
 |---|---|
-| Online | free roam with others, your name (in free roam and online), crews (with their colours), your horn, room, ghost mode, quick chat and your phrases; more: the game's Online mode (on by default), players' cars shown (16 to 32; phones start at 16, tablets at 24) |
+| Online | free roam with others, your name (in free roam and online), your horn, room, ghost mode, quick chat and your phrases; more: the game's Online mode (on by default), players' cars shown (16 to 32; phones start at 16, tablets at 24) |
+| Friends & crews | crews (with their colours), and your friends (once your name is claimed) |
 | Game, Game | language, movies, subtitles, autosave; more: show hidden races, startup movies (skippable, original or off), sound, pause or keep running in the background, sound output latency, highest graphics for a new save |
 | Game, Display | full screen on Play (off: the game plays in the browser window; on by default on phones), resolution scale (phones start at 75%, 100% once one shows it has the room), frame rate (auto follows the screen: 120 on a 120 Hz display, 240 on a 240 Hz one; 30, 60, 120 or 240, where 30 keeps a phone that cannot hold 60 steady; Online and LAN races at most 120); more: menus and HUD (original or upscaled), HUD layout (wide, or 4:3 as phones start), movie framing, cutscene bars, other cars' headlights (players, all cars, off), frame-rate counter, fixed render size, pixel limit |
 | Controls, Controller | rumble; more: controller (on, hotplug or off), menu buttons, dead zones, trigger full press |
@@ -361,12 +363,12 @@ game's Online mode (its races and lobbies); with a Room set, the Room row says h
   promised to keep it. Chrome decides that by itself, and the page cannot see how full the disk is, so it does not warn.
   Firefox asks by the address bar (the Saves section says so while it asks): allow it. Make a backup now and then,
   or use cloud saves.
-- **Preloading the game data:** "Preload the game data" in Game data on this PC fetches the game folder but the
+- **Preloading the game data:** "Preload the game data" in Game data on this device fetches the game folder but the
   movies into this browser, compressed on the way, with its progress and the time left. You can play meanwhile:
   preloading pauses while the game runs and goes on when it ends. Stop it whenever you like; what came is kept, and
   "Preload the rest" goes on from there, also after a reload. It needs about 2 GB of free disk space. The page says
   so before it starts when the browser has less room.
-- **Game data on this PC:** "Delete the game data on this PC" frees disk space on this PC. Your saves stay; the game
+- **Game data on this device:** "Delete game data" frees the space it takes on this device. Your saves stay; the game
   loads the data from the server again when it needs it.
 
 ## 6. Free roam with other players
@@ -544,7 +546,7 @@ Good to know:
     host's game waits a minute at most for the others in the LAN race's room, then starts with those who are ready.
     A race that cannot come together (the host's game gone, nobody else in the game in time) ends the trip: every game
     goes back to free roam by itself and says why. Players on an older version or the Windows plugin see no lobbies.
-- **Crews:** friends who type the same crew name (Online, Crews, or the page menu (F9) while you play)
+- **Crews:** friends who type the same crew name (Friends & crews, Crews, or the page menu (F9) while you play)
   always see each other, however far apart and however busy the server: the server pairs crew-mates first, before the
   nearest players (up to 16 crew-mates each, 8 while the server is busy), and your game gives their cars a place
   first. Their names show over their cars at any distance, with the distance past 100 m ("Sam (1.2 km)"), in front of
@@ -561,7 +563,7 @@ Good to know:
   line, or use the page menu (F9, ☰, or Home on a controller). The other player's line then says **Al wants to be
   friends: accept**; once both said yes you are friends. Touching the side or the back of a car offers nothing, nor
   does a race, an outrun or a race lobby. Both of you need a claimed name ("Your name": a claim needs cloud saves);
-  without one the line says so. Your friends are listed in the start page's **Friends** tab, one line
+  without one the line says so. Your friends are listed in the start page's **Friends & crews** tab, one line
   each: where each one plays now after the name (free roam and its room, the game's Online lobby, offline),
   with a Join arrow to drive in their room and a grey bin to remove them; a request you could not answer in the game
   waits there (30 days), with ✓ and ✕, and one you sent has a ✕ to take it back.
