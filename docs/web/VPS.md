@@ -99,7 +99,8 @@ only the page or the server, the image's commit is what is live. `NFSU2_DIR` nam
 
 **The changelog:** the start page's Changelog button lists `CHANGELOG.md`, which is part of the image. Before a
 release, add its section at the top: the commits after the newest section's commit, up to the release's, as one line
-per change written for players (the file's head says how). Commit it, wait for its image, and release with that commit
+per change written for players (the file's head says how). One section a day: a second release that day adds its
+lines to the day's section and moves its commit on. Commit it, wait for its image, and release with that commit
 (`release.sh root@<vps> <folder> <changelog commit>`: it changed only the page). `release.sh` notes when the image's
 `CHANGELOG.md` ends before the module's commit.
 
