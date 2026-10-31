@@ -518,7 +518,7 @@ export class TouchControls {
         this.deps.log(`[app] touch controls: ${n} of ${held} finger(s) cancelled by the phone`);
         if (n < 3 || this.mode !== 'drive' || toldCancel) return;
         toldCancel = true;
-        this.deps.toast(t('The phone took your fingers off the controls: on many phones, three fingers on the screen take a screenshot. Nitro gives gas too, so slide your thumb up to it from Gas, or turn the three-finger gesture off in the phone\'s settings.'), 10000);
+        this.deps.toast(t('The phone took over your touches: on many phones, three fingers take a screenshot. Slide your thumb from Gas up to Nitro (it gives gas too), or turn off the three-finger gesture in the phone\'s settings.'), 10000);
       }, 50);
     }
     this.cancelled.n++;
@@ -655,7 +655,7 @@ export class TouchControls {
     clearTimeout(this.tiltCheck);
     this.tiltCheck = setTimeout(() => {
       if (!this.tiltHeard && this.mode === 'drive' && this.steering === 'tilt')
-        this.deps.toast(t('Tilt has no motion sensor to read in this browser. The steering button (top right) switches to buttons.'), 6000);
+        this.deps.toast(t('Tilt can\'t read a motion sensor in this browser. The steering button (top right) switches to buttons.'), 6000);
     }, 2000) as unknown as number;
   }
   private tiltOff() {

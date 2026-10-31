@@ -231,11 +231,11 @@ function evaluate() {
   if (phase === 'starting' || phase === 'playing') return;
   const bad = blocking();
   if (bad) {
-    setPhase('error', T('Not ready'), bad.id === 'module' ? T('The game did not load. It is tried again by itself, or press Retry.') : T('Fix the problem below, then reload this page.'));
+    setPhase('error', T('Not ready'), bad.id === 'module' ? T('The game didn\'t load. It retries by itself, or press Retry.') : T('Fix the problem below, then reload this page.'));
     return;
   }
   if (!instance.owner) {
-    setPhase('waiting', T('Open elsewhere'), T('This browser is already running the game in another tab. Switch to that tab, or close it: this page takes over when it does.'));
+    setPhase('waiting', T('Open elsewhere'), T('The game is running in another tab. Switch to it, or close it and this page takes over.'));
     return;
   }
   const pending = ORDER.map(id => checks.get(id)).find(c => c?.state === 'pending');
@@ -246,8 +246,8 @@ function evaluate() {
   }
   if (pending) { if (phase !== 'exited') setPhase('boot', T('Loading'), () => `${label(pending)}: ${detail(pending)}`); return; }
   if (phase === 'exited') { updatePlay(); return; }
-  const press = touchFirst() ? N('Press Play to start.') : N('Press Play or Enter to start.');
-  setPhase('ready', T('Ready'), offline ? () => t('No connection to the server: you can play, but not free roam with others or Online. {press}', { press: t(press) }) : T(press));
+  const press = N('Press Play to start.');
+  setPhase('ready', T('Ready'), offline ? () => t('No connection to the server: you can play, but not with others. {press}', { press: t(press) }) : T(press));
 }
 
 function updatePlay() {
@@ -311,14 +311,14 @@ async function askRoam(): Promise<boolean> {
   const name = (r.source.NFSU2_ROAM_NAME === 'settings.ini' ? r.env.NFSU2_ROAM_NAME : '') || (await newestProfile())?.name || '';
   const p = (text: string) => Object.assign(document.createElement('p'), { textContent: text });
   const body = document.createElement('div');
-  body.append(p(t('Other players on this server can drive in your career\'s free roam with you. You see their cars with their names over them, they see yours, and you can challenge each other to outruns. Races, traffic and money stay your own.')),
-    p(t('With this on, everyone on this server sees your picked name and whether you\'re driving or in the menus. Players near you also see your car and where it is.')));
+  body.append(p(t('Drive in your career\'s free roam with other players and challenge each other to outruns. Races, traffic and money stay your own.')),
+    p(t('Everyone on this server sees your name and whether you\'re driving or in the menus; players near you also see your car.')));
   const c = players?.last();
   if (c?.full === true) {
     const n = Number.isInteger(c.queue) && c.queue! > 0 ? c.queue! : 0;
-    const turn = t('With this on, you wait in line too and drive alone until it is your turn; then the others join you by themselves.');
-    body.append(p(`${n ? tn(n, 'The server is full right now: {n} player is waiting in line for a place.', 'The server is full right now: {n} players are waiting in line for a place.')
-      : t('The server is full right now.')} ${turn}`));
+    const turn = t('You wait in line too, driving alone until it\'s your turn.');
+    body.append(p(`${n ? tn(n, 'The server is full: {n} player is in line.', 'The server is full: {n} players are in line.')
+      : t('The server is full.')} ${turn}`));
   }
   let field: HTMLInputElement | null = null;
   if (name) {
@@ -332,7 +332,7 @@ async function askRoam(): Promise<boolean> {
     row.append(label, f);
     body.append(row);
   }
-  body.append(p(t('You can change this any time under Online on the start page.')));
+  body.append(p(t('You can change this under Online on the start page.')));
   const answer = confirmBox(t('Free roam with others?'), body, t('Turn on'), false, '', t('Not now'));
   $<HTMLButtonElement>('#confirm-ok').focus();
   const on = await answer;
@@ -358,13 +358,13 @@ async function askCloud() {
   vault.offered();
   const p = (text: string) => Object.assign(document.createElement('p'), { textContent: text });
   const body = document.createElement('div');
-  body.append(p(t('Your career is saved only in this browser. Browsers sometimes clear a website\'s data, for example when the device runs low on space or when browsing data is cleared, and your saves go with it.')),
-    p(t('Cloud saves keep a copy on this server under a passphrase that only you have. With it you get your saves back, here or in another browser.')));
+  body.append(p(t('Your career is saved only in this browser, and browsers sometimes clear site data (low disk space, cleared history).')),
+    p(t('Cloud saves keep a copy on this server under a passphrase only you have, so you can get your saves back here or in another browser.')));
   // the name, when it is free to claim: the new keyphrase claims it at once, and its popup says so
   const name = onlineName(await typedName());
   const info = name ? await claims.check(name) : null;
   if (name && info?.state === 'free' && !info.mine) body.append(p(t('It also claims your name {name}, so no one else can play under it.', { name })));
-  body.append(p(t('You can change this any time under Cloud saves on the start page.')));
+  body.append(p(t('You can change this under Cloud saves on the start page.')));
   const answer = confirmBox(t('Turn on cloud saves?'), body, t('Turn on'), false, '', t('Not now'));
   $<HTMLButtonElement>('#confirm-ok').focus();
   const on = await answer;
@@ -405,7 +405,7 @@ async function showPassphrase(phrase: string, claimed: string | null) {
   const kept = document.createElement('div');
   if (claimed) {
     kept.append(p(t('{name} is yours, held by this passphrase. Cloud saves are on too.', { name: claimed })),
-      p(t('Keep it safe: it is the only way to play as {name} again, in another browser or here after this browser\'s data is cleared, and the only way back to your saves.', { name: claimed })),
+      p(t('Keep it safe: it\'s the only way to get {name} and your saves back, here or in another browser.', { name: claimed })),
       box, row, p(t('To use it in another browser, enter it under Cloud saves on the start page.')));
   } else {
     kept.append(p(t('Passphrase made. Keep it safe: it is the only way back to these saves.')), box, row,
@@ -460,10 +460,9 @@ async function askFull(c: PlayerCounts | null): Promise<boolean> {
   const n = Number.isInteger(c.queue) && c.queue! > 0 ? c.queue! : 0;
   const p = (text: string) => Object.assign(document.createElement('p'), { textContent: text });
   const body = document.createElement('div');
-  body.append(p(n ? tn(n, 'Every place on this server is taken, and {n} player is waiting in line for one.', 'Every place on this server is taken, and {n} players are waiting in line for one.')
-      : t('Every place on this server is taken.')),
-    p(t('Wait in line: the game starts now and you play alone. You join free roam and Online by yourself when it is your turn; the top of the screen shows your place in line.')),
-    p(t('Play offline: this game runs without free roam or Online, and waits for nothing. Your settings stay as they are.')));
+  if (n) body.append(p(tn(n, '{n} player is waiting in line.', '{n} players are waiting in line.')));
+  body.append(p(t('Wait in line: play alone now and join the others when it\'s your turn. The top of the screen shows your place.')),
+    p(t('Play offline: no free roam with others or Online this time.')));
   const answer = choiceBox(t('The server is full'), body, t('Wait in line'), t('Play offline'));
   $<HTMLButtonElement>('#confirm-ok').focus();
   const alone = await answer === 'cancel';
@@ -690,7 +689,7 @@ async function startGame() {
   const key = cap(menuKey());
   const hint = offlineNote + (fsNote || (full ? (touchFirst() ? t('{key} opens the menu.', { key }) : t('{key} opens the menu. Hold Esc to leave full screen.', { key }))
     : t('{key} opens the menu: full screen, controls, quit.', { key })));
-  if (autosaved.length) toast(t('Autosave is now on for {names}: the game saves by itself (Options, Gameplay, Save). {hint}', { names: listOf(autosaved), hint }), 9000);
+  if (autosaved.length) toast(t('Autosave is now on for {names} (Options, Gameplay, Save). {hint}', { names: listOf(autosaved), hint }), 9000);
   else toast(hint, 6000);
   void st.exited.then(code => { clearInterval(waitStatus); onExit(st, code); });
   // Chrome may keep the sound off until a click or a key press (its autoplay
@@ -698,8 +697,8 @@ async function startGame() {
   setTimeout(() => {
     if (session !== st || !st.audio || st.audio.state() === 'running' || r.env.NOSOUND === '1') return;
     log.add(`[app] the AudioContext is ${st.audio.state()} after Play`);
-    toast(touchFirst() ? t('No sound yet: tap the game to turn it on (a controller button cannot).')
-      : t('No sound yet: click the game or press a key to turn it on (a controller button cannot).'), 8000);
+    toast(touchFirst() ? t('No sound yet: tap the game (a controller button can\'t turn it on).')
+      : t('No sound yet: click the game or press a key (a controller button can\'t turn it on).'), 8000);
   }, 3000);
 }
 
@@ -730,9 +729,9 @@ const REACH_LOG: Record<Reach, string> = {
 /** the Online section's line while offline, by why */
 const REACH_TEXT: Record<Reach, Msg> = {
   ok: () => '',
-  down: T('The server is not answering right now: it may be restarting. This page checks again every 15 seconds.'),
-  unreachable: T('This device cannot reach the server. If other sites work, your network may be blocking it: try mobile data or another Wi-Fi, or turn off a VPN, ad blocker or private DNS. This page checks again every 15 seconds.'),
-  'no-network': T('This device has no internet connection. This page checks again once it has.'),
+  down: T('The server isn\'t answering: it may be restarting. Checking again every 15 seconds.'),
+  unreachable: T('This device can\'t reach the server. If other sites work, your network may be blocking it: try mobile data or another Wi-Fi, or turn off a VPN, ad blocker or private DNS. Checking again every 15 seconds.'),
+  'no-network': T('No internet connection.'),
 };
 /** Offline mode (sw.ts) keeps the page, its scripts, the module and the list of game files in this browser.  Asked
  *  for once the module has loaded, so a first visit downloads the module once (the copy is the HTTP cache's). */
@@ -777,7 +776,7 @@ function otherBuild(why: string) {
 }
 
 /** what to do on an iPhone, whose browsers have no full screen for a page */
-const HOME_SCREEN = N('On an iPhone a web page cannot go full screen: add this page to the Home Screen (in the Share menu) and play from its icon.');
+const HOME_SCREEN = N('For full screen on iPhone, add this page to the Home Screen (Share menu) and play from its icon.');
 function toggleFullscreen() {
   if (isFullscreen()) exitFullscreen();
   else if (homeScreenInstead()) toast(t(HOME_SCREEN), 8000);
@@ -885,7 +884,7 @@ function onExit(s: GameSession, code: number) {
   const f = fatal;
   gpuGone = f?.code === 'GPU-LOST';
   // the graphics lost on the way: a reload starts them again (Safari: only a reload), at Play
-  if (gpuGone) setPhase('exited', T('Stopped'), () => t('The game was stopped: {what}. Play reloads this page, which starts the graphics again; then press Play once more. Your saves and settings stay.',
+  if (gpuGone) setPhase('exited', T('Stopped'), () => t('The game was stopped: {what}. Play reloads the page; then press Play again. Your saves and settings stay.',
     { what: t(f!.what) }) + ' ' + t('Download the log first if you want to keep it: the reload clears it.'), f!.code);
   // the graphics: a restart of the browser, then a newer driver (where to send the log is under it)
   else if (f) setPhase('exited', s.renderer ? T('Stopped') : T('Did not start'), () => t('The game was stopped: {what}. Restart {browser}, then press Play. If it happens again, update the graphics driver.',
@@ -1079,13 +1078,13 @@ function toast(msg: string, ms: number) {
  *  saves (Saves on the start page shows it) */
 async function screenshot() {
   const r = session?.renderer;
-  if (!r?.dump) { toast(t('No screenshot: the picture is not there yet.'), 2500); return; }
+  if (!r?.dump) { toast(t('No screenshot: nothing on screen yet.'), 2500); return; }
   try {
     const png = await r.dump('screenshot');
     if (!png.size) throw new Error('the game ended first');
     const name = await saveScreenshot(SAVE, png);
     log.add(`[app] screenshot ${name}, ${fmtBytes(png.size)}`);
-    toast(t('Screenshot saved: Saves on the start page shows it.'), 2500);
+    toast(t('Screenshot saved (see Saves on the start page).'), 2500);
   } catch (e) {
     log.add(`[app] the screenshot failed: ${e}`);
     toast(t('The screenshot failed: {error}', { error: e instanceof Error ? e.message : String(e) }), 4000);
@@ -1296,7 +1295,7 @@ async function offerInvite(inv: Invite) {
   if (d.full) { p(t(CREWS_FULL)); await choiceBox(title, body, t('OK'), ''); return; }
   if (inv.room) p(t('Free roam then shows only the players in room "{room}".', v) + (d.room && now.room ? ' ' + t('You leave room "{old}".', v) : ''));
   else if (d.room) p(t('You leave room "{old}", so free roam shows everyone again.', v));
-  if (inv.crew) p(t('Crew-mates see each other in free roam however far apart, with names and map arrows in the crew\'s colour.'));
+  if (inv.crew) p(t('Crew-mates always see each other in free roam, with names and map arrows in the crew\'s colour.'));
   if (d.roam) p(t('This turns on Free roam with others: everyone on this server sees your name, and whether you\'re driving or in the menus.'));
   p(!owner ? t('The game is open in another tab of this browser: it joins there.') : t(inviteLive(inv) ? JOINED_NOW : JOINED_NEXT), 'hint');
   if (session) $('#stage').classList.add('cursor');
@@ -1393,7 +1392,7 @@ async function menuAction(act: string) {
       m.close();
       if (!inLine || !session?.net?.offline) break;
       session.net.offline();
-      toast(t('Playing offline: you left the line. Free roam and Online stay off until the next game.'), 5000);
+      toast(t('Playing offline: you left the line until the next game.'), 5000);
       break;
     case 'log': downloadLog(); break;
     case 'quit': {
@@ -1554,7 +1553,7 @@ async function checkNewer() {
   const playing = !!session || starting;
   if (!playing && calm() && await reloadFor(rev, 'nothing on the page to lose', true)) return;
   log.add(`[app] the server has game ${rev} now, this page ${loaded.info.rev}: ${playing ? 'said over the game, offered when it ends' : 'Reload offered'}`);
-  if (playing) toast(t('A new version of the game is on the server. Quit when it suits you: the start page offers it, and your saves stay.'), 10000);
+  if (playing) toast(t('A new version is out. Quit when it suits you to get it; your saves stay.'), 10000);
   showNewer();
 }
 /** nothing on the start page a reload would lose, and no tool driving it */
@@ -1595,10 +1594,10 @@ function afterUpdate() {
  *  this page is the new version */
 function showNewer() {
   const line = $('#newer'), byP = byPlay(), log = !!lastExit, n = newer, u = updated;
-  live(line, () => n ? (byP ? t('A new version of the game is on the server: Play reloads this page with it. Your saves and settings stay.')
-    : t('A new version of the game is on the server. Reload this page to play it: your saves and settings stay.')) +
+  live(line, () => n ? (byP ? t('A new version is out: Play reloads the page with it. Your saves and settings stay.')
+    : t('A new version is out. Reload the page to play it; your saves and settings stay.')) +
     (log ? ' ' + t('Download the log first if you want to keep it: the reload clears it.') : '')
-    : u ? t('This page reloaded for the new version of the game. Your saves and settings stayed.') : '');
+    : u ? t('Updated to the new version. Your saves and settings stayed.') : '');
   line.hidden = !newer && !updated;
   $('#reload').hidden = !newer;
 }
@@ -1634,7 +1633,7 @@ function showOverrides(given: string[], dev: boolean) {
   o.hidden = !given.length;
   if (!given.length) return;
   if (!dev) {
-    live(o, T('This page\'s address carries test settings ({names}). They work only on a development server and are ignored here: the game runs with your own settings.', { names: given.join(', ') }));
+    live(o, T('This page\'s address has test settings ({names}), which work only on a development server and are ignored here.', { names: given.join(', ') }));
     return;
   }
   const env = Object.entries(ENVIRONMENT).map(([k, v]) => `${k}=${v}`);
@@ -1662,7 +1661,7 @@ export async function boot() {
     const end = lastGameEnd(lastGame), why = lastGame.ended?.why;
     live($('#lastgame'), end === 'stopped' ? T('Your last game stopped without warning. Phones do this when they run low on memory.')
       : end === 'error' ? T('Your last game stopped with an error.')
-      : T('Reloaded because something went wrong? Download log still has what happened in your last game.'),
+      : T('Reloaded after a problem? Download log still has your last game\'s log.'),
       end === 'error' && why !== 'exit' ? why : undefined);
     $('#log-btn').hidden = $('#lastgame').hidden = false;
     $('#report').hidden = end === 'left';

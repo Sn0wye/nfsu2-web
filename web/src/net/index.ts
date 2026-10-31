@@ -663,7 +663,7 @@ class Link implements NetLink {
         if (!this.queuedAt) {
           this.queuedAt = now(); this.full = true;
           this.log(`the server is full: in line for a place, ${m.pos} of ${m.of}`);
-          this.o.onNotice?.(N('The server is full: you are in line for a place, and join the others by yourself when it is your turn'));
+          this.o.onNotice?.(N('The server is full: you\'re in line and join the others when it\'s your turn'));
         } else this.log(`back in line, ${m.pos} of ${m.of}`);
       }
       this.o.onQueue?.({ pos: m.pos, of: m.of, ...(typeof m.eta === 'number' ? { eta: m.eta } : {}) });

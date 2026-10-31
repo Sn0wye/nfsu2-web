@@ -282,7 +282,7 @@ export class VaultPanel {
     if (!r) return;
     if (this.d.busy()) { this.msg(() => t(QUIT_FIRST), true); return; }
     const body = document.createElement('div');
-    body.append(para(t('The saves this browser had before cloud saves replaced them ({when}) come back in place of the ones here. The saves here now are kept instead, so you can switch back.', { when: when(r.at) })),
+    body.append(para(t('This browser\'s saves from before cloud saves replaced them ({when}) come back. The current ones are kept, so you can switch back.', { when: when(r.at) })),
       sidesOf(r.side));
     if (!await this.d.confirm(t('Put back the replaced saves?'), body, t('Put back'), true)) return;
     if (this.d.busy()) { this.msg(() => t(QUIT_FIRST), true); return; }
@@ -416,7 +416,7 @@ export class VaultPanel {
     try { got = await s.peek(p.phrase); } catch { return; }
     if (!got) { this.msg(() => t('No cloud saves for this passphrase. Check it for typos.'), true); return; }
     if (await this.replace(got, t('Load cloud saves?'),
-      t('They replace the profiles and settings.ini here with the ones saved {when}. Screenshots stay, and so do this device\'s graphics, frame rate, sound output and controller settings.', { when: when(got.remote.saved) }), t('Load'))) {
+      t('They replace the profiles and settings.ini here with the ones saved {when}. Screenshots and this device\'s graphics, sound and controller settings stay.', { when: when(got.remote.saved) }), t('Load'))) {
       await s.adopt(p.phrase, got.remote).catch(() => {});
       this.msg(() => t('Loaded. This browser syncs from now on.'));
       this.d.log('[app] keyphrase: loaded its saves, this browser syncs with it');
@@ -448,7 +448,7 @@ export class VaultPanel {
     try { await s.pull(); await s.push(); } catch { return; /* the state says why */ }
     // the server has no saves for the keyphrase: the ones here go there again, if the player says so
     if (!s.link?.gone || !await this.d.confirm(t('Send these saves to the cloud again?'),
-      t('The cloud has no saves for this passphrase now. The saves here go there under the same passphrase, and your other browsers with it sync again.'), t('Send'))) return;
+      t('The cloud has no saves for this passphrase. The saves here go there under the same passphrase, so your other browsers sync again.'), t('Send'))) return;
     try { await s.resend(); this.msg(() => t('Sent. This browser syncs again.')); this.d.log('[app] keyphrase: its saves were gone from the server, sent again'); }
     catch { /* the state says why */ }
   }
@@ -524,8 +524,8 @@ export class VaultPanel {
     if (cloudAt != null && newer(st.here, st.cloud) === 'here')
       body.append(Object.assign(para(t('This browser\'s saves are newer: the progress since {when} is replaced.', { when: when(cloudAt) })), { className: 'warn' }));
     if (st.why === 'bare') body.append(Object.assign(para(t('They have no profiles: the profiles here are deleted.')), { className: 'warn' }));
-    if (st.here.profiles?.length) body.append(para(tn(REPLACED_DAYS, 'A copy of the saves here stays in this browser for {n} day: Put back under Cloud saves brings it back.',
-      'A copy of the saves here stays in this browser for {n} days: Put back under Cloud saves brings it back.')));
+    if (st.here.profiles?.length) body.append(para(tn(REPLACED_DAYS, 'A copy of the saves here is kept for {n} day (Put back, under Cloud saves).',
+      'A copy of the saves here is kept for {n} days (Put back, under Cloud saves).')));
     if (!await this.d.confirm(t('Use the cloud\'s saves?'), body, t('Use the cloud\'s'), true)) return false;
     if (busy()) { this.msg(() => t(QUIT_FIRST), true); return false; }
     try { await this.keepReplaced(); }
@@ -579,7 +579,7 @@ export class VaultPanel {
     const status = this.$('#vault-status');
     status.textContent = !owner && l ? t('Another tab is syncing these saves.')
       : st.s === 'error' ? (l ? t('Sync failed: {error}. It tries again at the next save.', { error: failed }) : t('{Error}.', { Error: `${failed[0]?.toUpperCase() ?? ''}${failed.slice(1)}` }))
-      : st.s === 'gone' ? t('The cloud has no saves for this passphrase now: deleted in another browser, unused for 2 years, or lost on the server. Nothing is sent; Sync now looks again and can send these saves there.')
+      : st.s === 'gone' ? t('The cloud has no saves for this passphrase (deleted in another browser, unused for 2 years, or lost). Nothing was sent; Sync now checks again and can send these.')
       : conflict && l ? `${this.conflictText()} ${t('Cloud saves are paused until you pick.')}`
       : '';
     if (st.s === 'error' && st.code && (owner || !l)) status.append(codeOf(st.code));
