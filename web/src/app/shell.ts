@@ -30,7 +30,7 @@ import { canFullscreen, enterFullscreen, exitFullscreen, fromHomeScreen, homeScr
 import { deviceDefaults, isPhone, markTouch, noPinchZoom, padSeen, phoneScreen, touchFirst } from './device';
 import { phoneSeed, phoneUpgrade } from './phonegraphics';
 import { markPad, padPress, pageDialog } from './padnav';
-import { controlsSheet, type ControlsSheet } from './controls';
+import { controlsSheet, type ControlsSheet, type Tab } from './controls';
 import { TouchControls } from './touch';
 import { TextField } from './textentry';
 import { PauseHint } from './pausehint';
@@ -956,16 +956,16 @@ function pageToast(msg: string | Msg) {
   pageToastTimer = setTimeout(() => live(el, () => ''), 5000);
 }
 
-/** the controls sheet of the start page, in a dialog (F9, Controls, while the game runs), at the page's tab and
- *  button names */
+/** the controls sheet of the start page, in a dialog (F9, Controls, while the game runs), at the page's tab (or the
+ *  one asked for: the touch controls' steering button held opens the touch settings) and button names */
 let keySheet: ControlsSheet, helpSheet: ControlsSheet | null = null;
-function openHelp() {
+function openHelp(tab?: Tab) {
   const body = $('#help-body');
   if (!helpSheet) {
     body.append(...[...$('#keys').childNodes].map(n => n.cloneNode(true)));
     helpSheet = controlsSheet(body, 'help');
   }
-  helpSheet.show(keySheet.tab);
+  helpSheet.show(tab ?? keySheet.tab);
   helpSheet.family(keySheet.fam);
   $<HTMLDialogElement>('#help').showModal();
 }
@@ -1806,7 +1806,7 @@ export async function boot() {
   stageMenu.onclick = () => { if (session) openMenu(); };
   $('#stage').addEventListener('pointerdown', e => { if (e.pointerType === 'touch') stageMenu.hidden = false; }, { capture: true });
   quickChat = new QuickChat($('#stage'), { line: chatLine, lobby: (name, text) => lobbyPanel.say(name, text), place: placeNotices, log: logLine });
-  touch = new TouchControls($('#stage'), { toast, log: logLine, chat: () => quickChat.toggle() });
+  touch = new TouchControls($('#stage'), { toast, log: logLine, chat: () => quickChat.toggle(), settings: () => openHelp('keys') });
   textField = new TextField($('#stage'), { log: logLine });
   pauseHint = new PauseHint($('#stage'), {
     open: openMenu, log: logLine,

@@ -23,7 +23,8 @@
 //                    script's own keys reach only the game, never the page) and `log STICK <x> <y>` moves the right
 //                    stick there for the page (quick chat's picker: tests/scripts/roam_say_view_a.txt); with
 //                    --touch the pages take taps (the touch controls show), and `log TAP <selector>` taps there
-//                    (tests/scripts/roam_say_touch.txt)
+//                    (tests/scripts/roam_say_touch.txt), `log HOLD <ms> <selector>` holds a finger there that long
+//                    (tests/scripts/roam_touch_status.txt)
 //                    `log CREW join <name>` / `log CREW leave <name>` / `log CREW colour <k> <name>` (the palette's
 //                    k-th colour, from 0) do that in the menu's Crews popup (F9, Crews) and go back (Done, Back to
 //                    the game), `log CREW shot <name>` saves the page with the popup open
@@ -215,6 +216,31 @@ async function start(i, name, script, own) {
     // a finger's tap on the page (--touch), at a script's `log TAP <selector>`
     const tk = APP && TOUCH && /LOG TAP (.+)$/.exec(m.text());
     if (tk) void page.tap(tk[1].trim(), { timeout: 5000 }).then(() => w(`[tap] ${tk[1].trim()}`), e => w(`[tap] ${tk[1]} failed: ${e}`));
+    // a finger held there for so many ms (a long press; Playwright taps only), at a script's `log HOLD <ms> <selector>`
+    const hk = APP && TOUCH && /LOG HOLD (\d+) (.+)$/.exec(m.text());
+    if (hk) void (async () => {
+      const box = await page.locator(hk[2].trim()).boundingBox({ timeout: 5000 });
+      if (!box) throw new Error('not shown');
+      const cdp = await page.context().newCDPSession(page);
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: box.x + box.width / 2, y: box.y + box.height / 2 }] });
+      await page.waitForTimeout(+hk[1]);
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+      await cdp.detach();
+    })().then(() => w(`[hold] ${hk[1]} ms ${hk[2].trim()}`), e => w(`[hold] ${hk[2]} failed: ${e}`));
+    // a finger swiped up so many px in the middle of it, and how far it scrolled, at a script's
+    // `log SCROLL <px> <selector>`
+    const sc = APP && TOUCH && /LOG SCROLL (\d+) (.+)$/.exec(m.text());
+    if (sc) void (async () => {
+      const sel = sc[2].trim(), el = page.locator(sel), box = await el.boundingBox({ timeout: 5000 });
+      if (!box) throw new Error('not shown');
+      const top = () => el.evaluate(d => d.scrollTop);
+      const was = await top();
+      const cdp = await page.context().newCDPSession(page);
+      await cdp.send('Input.synthesizeScrollGesture', { x: box.x + box.width / 2, y: box.y + box.height * 0.7, yDistance: -sc[1], gestureSourceType: 'touch', speed: 800 });
+      await cdp.detach();
+      await page.waitForTimeout(300);
+      return `${was} -> ${await top()}`;
+    })().then(r => w(`[scroll] ${sc[2].trim()}: ${r}`), e => w(`[scroll] ${sc[2]} failed: ${e}`));
     // the menu's Crews popup as the player uses it, at a script's `log CREW <op> ...`: F9, Crews, the act in the popup,
     // Done, Back to the game
     const ck = APP && /LOG CREW (join|leave|colour|shot) (?:(\d+) )?(.+)$/.exec(m.text());

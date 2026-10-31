@@ -75,12 +75,19 @@ While you drive:
 - **Steering**, switched with the button in the top right corner and kept in this browser: **buttons** (◀ ▶, as the
   arrow keys; the default), a **thumb stick** that appears where the left thumb lands, or **tilt**, the phone held like
   a wheel. With tilt, Brake and the handbrake move under the left thumb, and the button beside the switch sets
-  straight ahead.
+  straight ahead. That button held opens the touch settings (the Controls sheet's Touch tab) over the game.
+- **Position**, in the Touch tab and kept in this browser: **Steering left** (the default) or **Steering right**, where
+  the pedals go under the left thumb and the steering, the gear buttons and Start under the right (◀ ▶ stay in their
+  order); either one **moved in**, 48 px further from the screen's sides (upright, as far as there is room), for
+  phones whose edges a thumb reaches badly. **Nitro on the steering side** (a switch there) puts Nitro under the thumb
+  that is not on Gas: above the steering, with Start above Gas instead; with tilt, Nitro and the handbrake trade
+  places.
 - **Gears:** with a manual gearbox (the race's Transmission choice, and always in a drag race), gear down and gear up
   above the steering.
-- **Small buttons** along the top: pause, camera (held: look back), reset; in free roam also the map, messages and
-  **Drift** (drift mode, lit while it is on), and the horn and quick chat while another player's car is within a
-  horn's reach. In free roam **Start** shows above the steering where it does something: at an event's or a shop's
+- **Small buttons** along the top: pause, camera (held: look back), reset; in free roam also the map, messages,
+  **Drift** (drift mode, the game's drift icon, lit while it is on), the career status (the game's Career Status, as
+  D-pad Down on a controller; the keyboard has no key for it), and the horn and quick chat while another player's car
+  is within a horn's reach. In free roam **Start** shows above the steering where it does something: at an event's or a shop's
   marker, at an outrun offer, or at a race spot or lobby of other players.
 - **HUD:** a phone starts with the game's 4:3 HUD layout (Settings, Display, HUD layout), which keeps the minimap and
   the speedometer between the thumbs instead of under the steering and Brake.

@@ -86,11 +86,21 @@
         </div>
         <div class="tab-panel" role="tabpanel" data-tab="keys">
           <p class="hint touch-only" data-i18n>Tap the game's menus, or use the arrows, OK and Back beside them. Touch controls show while you drive.</p>
-          <!-- the steering's list, the level horizon's switch and the sizes: controls.ts -->
+          <!-- the steering's list, the position's, Nitro's and the level horizon's switches and the sizes: controls.ts -->
           <div class="set touch-only" data-steer>
             <label class="set-label" data-i18n>Steering</label>
             <p class="set-help" data-i18n>The button at the game's top right switches it too.</p>
             <div class="set-control"><select></select></div>
+          </div>
+          <div class="set touch-only" data-position>
+            <label class="set-label" data-i18n>Position</label>
+            <p class="set-help" data-i18n>Which thumb steers. Moved in keeps the controls off the screen's edges.</p>
+            <div class="set-control"><select></select></div>
+          </div>
+          <div class="set touch-only" data-nitro>
+            <label class="set-label" data-i18n>Nitro on the steering side</label>
+            <p class="set-help" data-i18n>For the thumb that isn't on Gas.</p>
+            <div class="set-control"><span class="val" aria-hidden="true"></span><input type="checkbox" class="switch" role="switch"></div>
           </div>
           <div class="set touch-only" data-level>
             <label class="set-label" data-i18n>Level horizon</label>
