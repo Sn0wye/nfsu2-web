@@ -186,8 +186,8 @@ function roundedDatagram(d) {
 }
 
 const cases = {
-  // the page: in line when the switch is full (where it is, and a notice once), its place kept across a dropped link,
-  // in when a place frees up, with a notice (a switch with room for one)
+  // the page: in line when the switch is full (where it is; no notice: the line over the game says it), its place kept
+  // across a dropped link, in when a place frees up, with a notice once (a switch with room for one)
   async full([port]) {
     const { attachNet } = await pageNet(port);
     const game = (name, notices, line) => {
@@ -205,20 +205,19 @@ const cases = {
         await until(() => qb.length === 1);
         assert.deepEqual(qb[0], { pos: 1, of: 1 });
         assert.equal(b.state, 'queued');
-        assert.equal(nb.length, 1, 'a notice once');
-        assert.ok(TEXTS.has(nb[0]), nb[0]);
+        assert.deepEqual(nb, [], 'no notice in line: the line over the game says it');
         assert.equal((await state(port)).info.waiting, 1);
-        // its link drops: back to the same place, with no second notice
+        // its link drops: back to the same place, with no notice
         b['ws'].close(4000, 'dropped');
         await until(async () => (await state(port)).info.rejoined === 1);
         await until(() => qb.length === 2 && b.state === 'queued');
         assert.deepEqual(qb[1], { pos: 1, of: 1 });
-        assert.equal(nb.length, 1);
+        assert.deepEqual(nb, []);
         assert.equal((await state(port)).info.waiting, 1);
         a.close();
         assert.match(await b.online, /^10\.77\.([0-9]|1[0-9])\.\d+$/);
-        await until(() => nb.length === 2);
-        assert.ok(TEXTS.has(nb[1]) && nb[1] !== nb[0], `another notice once in: ${nb[1]}`);
+        await until(() => nb.length === 1);
+        assert.ok(TEXTS.has(nb[0]) && /freed up/.test(nb[0]), `a notice once in: ${nb[0]}`);
         assert.equal(qb.at(-1), null, 'out of line');
         assert.deepEqual([na, qa], [[], []], 'the first game heard nothing');
         // a third waits in line, then stops waiting (the page menu's Play offline): out of line for good
