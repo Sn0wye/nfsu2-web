@@ -573,8 +573,10 @@ impl App {
         if let Some(rest) = p.strip_prefix("/data-blocks")
             && rest.starts_with('/')
         {
-            // (the manifest's addresses since blocks are kept: the same files)
-            let rest = rest.strip_prefix(blocks::V2).filter(|r| r.starts_with('/')).unwrap_or(rest);
+            // (the manifest's addresses since blocks are kept; the ones from before, without /v2, are no more)
+            let Some(rest) = rest.strip_prefix(blocks::V2).filter(|r| r.starts_with('/')) else {
+                return self.not_found(q, s).await;
+            };
             let file = files::resolve_game(&self.o.data, rest);
             return self.send_blocks(q, s, file, &u).await;
         }
@@ -662,7 +664,7 @@ impl App {
     /// is full and whether free roam is busy, nothing else, no names, addresses or times; online: in the game's Online
     /// mode (logged in, or racing an online race), null with --online off; roam: driving in free roam, or paused
     /// there, as of the hub's last tick (nfsu2-roam), null with --roam-hub off; full: a game that connects now waits in
-    /// line (a page of before: gets "LAN full"); queue: the pages waiting in line (nfsu2-lan queue.rs); roamBusy: the
+    /// line (a connection without ?queue, which cannot wait: "LAN full"); queue: the pages waiting in line (nfsu2-lan queue.rs); roamBusy: the
     /// hub gives fewer than askCap links a player, so the page does not ask the free-roam question now (false with
     /// --roam-hub off).  ?room=<hash> (roam_core's rc_room_hash of a Room setting, decimal,
     /// not 0) adds room: how many of roam are in that room (with --roam-hub on).  ?crews=<hash>,<hash>,... (the

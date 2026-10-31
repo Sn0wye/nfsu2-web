@@ -178,7 +178,7 @@ fn keys_of(bans: &Bans, w: &Who) -> Keys {
 /// what a new ban names the player by, for the operator: "its page, its keyphrase and its address"
 fn named_by(k: &Keys) -> String {
     if k.pages.is_empty() && k.owners.is_empty() {
-        return "its address only (a page from before page ids)".into();
+        return "its address only (no page id: a tool, not the page)".into();
     }
     let its = |n: usize, one: &str, many: &str| match n {
         0 => None,
@@ -567,6 +567,6 @@ mod tests {
         assert_eq!(named_by(&k(1, 1, 1)), "its page, its keyphrase and its address");
         assert_eq!(named_by(&k(2, 2, 1)), "its 2 pages, its keyphrase and its 2 addresses");
         assert_eq!(named_by(&k(0, 1, 0)), "its page");
-        assert_eq!(named_by(&k(1, 0, 0)), "its address only (a page from before page ids)");
+        assert_eq!(named_by(&k(1, 0, 0)), "its address only (no page id: a tool, not the page)");
     }
 }
