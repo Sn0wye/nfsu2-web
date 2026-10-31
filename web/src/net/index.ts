@@ -38,10 +38,9 @@
 //
 // What C queued at once goes to the switch as one message (a bundle, nfsu2-lan):
 // free roam's snapshot to each friend, the same bytes, once with the friends'
-// addresses (TxBundle); and the switch sends
-// this page its datagrams as bundles too (the hello's "bundle":1), compact ones
-// (kind 33: the same frames, about a quarter fewer bytes, proto.ts unpackCompact)
-// once its hello says "compact":1 as well.
+// addresses (TxBundle); and the switch sends this page its datagrams as compact
+// bundles (kind 33: the same frames, about a quarter fewer bytes, proto.ts
+// unpackCompact; the hello's "bundle":1 and "compact":1).
 //
 // The operator may remove a player (web/server-rs/crates/lan, Kicks and bans):
 // the switch sends {"t":"kick"} or {"t":"ban"} with the operator's message,
@@ -570,11 +569,10 @@ class Link implements NetLink {
     this.ws = ws;
     ws.onopen = () => {
       // deltas: the switch sends what changed on the peer list, not the whole list each time (nfsu2-lan); lan: LAN
-      // play is open, so it takes LAN broadcasts; bundle: this page takes bundles; compact: and compact ones (a
-      // switch of before ignores it and sends bundles as they were); delta: and in those a free-roam datagram as
-      // what changed since its source's last one (proto.ts unpackCompact; `refs`, kept for this connection); fpred: and
-      // a friend's car state by its fields, rounded (proto.ts fpredTake; `fp`); ldelta: and every other datagram (a
-      // race's) as what changed since its source's last one of its kind (`others`)
+      // play is open, so it takes LAN broadcasts; bundle, compact: this page takes compact bundles; delta: and in those
+      // a free-roam datagram as what changed since its source's last one (proto.ts unpackCompact; `refs`, kept for this
+      // connection); fpred: and a friend's car state by its fields, rounded (proto.ts fpredTake; `fp`); ldelta: and
+      // every other datagram (a race's) as what changed since its source's last one of its kind (`others`)
       this.lanSent = this.lanOpen();
       ws.send(JSON.stringify({ t: 'hello', name: this.o.name ?? 'player', deltas: 1, lan: this.lanSent ? 1 : 0, bundle: 1, compact: 1, delta: 1, fpred: 1, ldelta: 1,
         ...(this.o.id ? { id: this.o.id } : {}), ...(this.o.id && this.o.was?.length ? { was: this.o.was } : {}),
@@ -791,19 +789,8 @@ class Link implements NetLink {
   private rx(b: ArrayBuffer) {
     const c0 = performance.now();
     const u = new Uint8Array(b);
-    if (u.length >= 4 && u[0] === P.NET_KIND_BUNDLE) {
-      // each frame on its own (a copy: a LAN TCP frame may wait in a queue), C rung once for all of them
-      const dv = new DataView(b), ring = this.ringLater = new Set();
-      for (let at = 4; at + 4 <= u.length;) {
-        const f = at + 4 + 4 * u[at], end = f + dv.getUint16(at + 2);
-        if (end > u.length) break;
-        this.rxFrame(b.slice(f, end));
-        at = end;
-      }
-      this.ringLater = null;
-      for (const ep of ring) ep.ring();
-    } else if (u.length >= 4 && u[0] === P.NET_KIND_COMPACT) {
-      // the same, each frame put together again first (proto.ts unpackCompact)
+    if (u.length >= 4 && u[0] === P.NET_KIND_COMPACT) {
+      // each frame on its own, put together again first (proto.ts unpackCompact), C rung once for all of them
       const ring = this.ringLater = new Set();
       this.st.compactIn++;
       this.st.deltaIn += P.unpackCompact(u, this.vipNum, f => this.rxFrame(f), this.refs, this.fp, this.others);
