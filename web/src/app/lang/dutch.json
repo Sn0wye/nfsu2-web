@@ -133,12 +133,6 @@
   "Cars are balanced: slower ones get more power, faster ones a little less": "De wagens worden gelijkgetrokken: langzamere krijgen meer vermogen, snellere iets minder",
   "Quitting the race costs ${fee}": "De race verlaten kost ${fee}",
   "Loading": "Laden",
-  "Nobody is playing right now.": "Er speelt nu niemand.",
-  "{n} players": {
-    "one": "{n} speler",
-    "other": "{n} spelers"
-  },
-  "{n} in Online mode": "{n} in onlinemodus",
   "{n} in free roam": "{n} in Verkennen",
   "{name} has over 64 players, so far-away crew-mates no longer always show. A less common name works better.": "{name} heeft meer dan 64 spelers, dus crewleden ver weg zie je niet altijd meer. Een minder gewone naam werkt beter.",
   "You are in room \"{room}\".": "Je zit in kamer “{room}”.",
@@ -149,7 +143,6 @@
     "other": "De server is vol, met {n} spelers in de rij. Bij Spelen kun je in de rij wachten (en alleen spelen tot je aan de beurt bent) of offline spelen."
   },
   "The server is full: multiplayer starts when a place frees up.": "De server is vol: multiplayer start zodra er een plek vrijkomt.",
-  "Playing now: {list}.": "Nu aan het spelen: {list}.",
   "less than a minute": "minder dan een minuut",
   "about {n} min": "ongeveer {n} min",
   "about {n} h": "ongeveer {n} uur",
@@ -433,7 +426,6 @@
   "Saved: {what}, {value}. Applies the next time you press Play.": "Opgeslagen: {what}, {value}. Geldt vanaf de volgende keer dat je op Spelen drukt.",
   "{label} ({n} changed)": "{label} ({n} gewijzigd)",
   "Other settings in this file": "Andere instellingen in dit bestand",
-  "Lines without a control above. They apply at Play; edit the file as text below to change them.": "Regels zonder bediening hierboven. Ze gelden bij Spelen; bewerk het bestand hieronder als tekst om ze te wijzigen.",
   "line {line}: {key} = {value}": "regel {line}: {key} = {value}",
   "{line} (ignored: {why})": "{line} (genegeerd: {why})",
   "{line} (sets {env})": "{line} (stelt {env} in)",
@@ -776,7 +768,7 @@
   "Hold <0>Esc</0>": "<0>Esc</0> ingedrukt houden",
   "The PC game's own code, recompiled for Chrome and Firefox: up to 120 fps in widescreen, free roam and Online races with friends, and controllers, wheels and touch controls.": "De eigen code van het pc-spel, opnieuw gecompileerd voor Chrome en Firefox: maximaal 120 fps in breedbeeld, Verkennen en Online-races met vrienden, en controllers, sturen en touchbesturing.",
   "About this project": "Over dit project",
-  "My brother and I played this game together about 20 years ago. I tried porting it to the browser, it worked surprisingly well, and it got a bit out of hand. It's great to see so many people playing it.": "Mijn broer en ik speelden dit spel zo'n 20 jaar geleden samen. Ik probeerde het naar de browser te porten, dat werkte verrassend goed, en het is een beetje uit de hand gelopen. Het is geweldig om te zien hoeveel mensen het spelen.",
+  "My brother and I played this game together about 20 years ago. Because of that I tried porting it to the browser so we could play together again. It worked surprisingly well, and it got a bit out of hand. It's great to see so many people playing it.": "Mijn broer en ik speelden dit spel zo'n 20 jaar geleden samen. Daarom probeerde ik het naar de browser te porten, zodat we weer samen konden spelen. Dat werkte verrassend goed, en het is een beetje uit de hand gelopen. Het is geweldig om te zien hoeveel mensen het spelen.",
   "To help with hosting and development costs, you can <0>buy me a coffee</0>. No perks, apart from a Discord role.": "Om te helpen met de kosten van hosting en ontwikkeling kun je <0>een koffie voor me kopen</0>. Geen voordelen, behalve een Discord-rol.",
   "Rights holders: <0>legal@nfsu2.xyz</0>. Support emails won't be answered; ask on <1>our Discord</1>.": "Rechthebbenden: <0>legal@nfsu2.xyz</0>. Supportmails worden niet beantwoord; vraag het op <1>onze Discord</1>.",
   "Credits": "Credits",
@@ -1208,7 +1200,6 @@
   "Claim your name on the start page to add friends": "Claim je naam op de startpagina om vrienden toe te voegen",
   "{name} has no claimed name, so can't add friends yet": "{name} heeft geen geclaimde naam en kan nog geen vrienden toevoegen",
   "Friends": "Vrienden",
-  "Claim your name (Your name, above) to add friends.": "Claim je naam (Je naam, hierboven) om vrienden toe te voegen.",
   "Accept": "Accepteren",
   "Decline": "Weigeren",
   "Remove": "Verwijderen",
@@ -1229,5 +1220,14 @@
   "Join a friend's room: free roam shows its players from now on.": "Ga naar de kamer van een vriend: Verkennen toont voortaan de spelers in die kamer.",
   "None of your friends is in free roam now.": "Geen van je vrienden is nu in Verkennen.",
   "In the Online lobby: {names}.": "In de Online-lobby: {names}.",
-  "Offline: {names}.": "Offline: {names}."
+  "Offline: {names}.": "Offline: {names}.",
+  "Playing now": "Nu aan het spelen",
+  "in total": "in totaal",
+  "in free roam": "in Verkennen",
+  "in races/lobbies": "in races/lobby's",
+  "About": "Over",
+  "Other": "Overig",
+  "Profiles": "Profielen",
+  "Claim your name (Online, Your name) to add friends.": "Claim je naam (Online, Je naam) om vrienden toe te voegen.",
+  "Lines without a control on this page. They apply at Play; edit the file as text below to change them.": "Regels zonder bediening op deze pagina. Ze gelden bij Spelen; bewerk het bestand hieronder als tekst om ze te wijzigen."
 }

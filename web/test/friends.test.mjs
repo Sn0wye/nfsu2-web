@@ -233,10 +233,10 @@ const rows = p => p.$$eval('#friends .fl li', rs => rs.map(r => [r.querySelector
 
 test('the start page\'s Friends', async () => {
   const p = await page();
+  await p.evaluate(() => { document.getElementById('friends').hidden = false; });   // (its tab open: tabs.ts)
   await panel(p, { me: 'Al_', asks: ['Dee'], sent: ['Eve'], friends: [
     { name: 'Bo_', where: 'roam', room: 'Night Owls' }, { name: 'Cy_', where: 'roam', room: '' }, { name: 'Fox', where: 'roam' },
     { name: 'Gus', where: 'online' }, { name: 'Hal', where: '', contact: 'gus#1234' }] });
-  assert.equal(await p.$eval('#friends', e => e.hidden), false);
   assert.deepEqual(await rows(p), [
     ['Dee', 'wants to be friends', 'Accept|Decline', ''],
     ['Bo_', 'free roam · Night Owls', 'Join|Remove', ''],
@@ -268,12 +268,12 @@ test('the start page\'s Friends', async () => {
   assert.deepEqual((await did()).acts, [['remove', 'Bo_'], ['remove', 'Eve']]);
   // nobody yet; a keyphrase without a claimed name; no keyphrase
   await panel(p, { me: 'Al_', asks: [], sent: [], friends: [] });
-  assert.equal(await p.$eval('#friends', e => e.textContent), 'FriendsTouch front bumpers in free roam for 3 s to add a player.', 'nobody yet: how to');
+  assert.equal(await p.$eval('#friends', e => e.textContent), 'Touch front bumpers in free roam for 3 s to add a player.', 'nobody yet: how to');
   await panel(p, { me: null, asks: [], sent: [], friends: [] });
-  assert.match(await p.$eval('#friends', e => e.textContent), /Claim your name \(Your name, above\) to add friends\./);
+  assert.equal(await p.$eval('#friends', e => e.textContent), 'Claim your name (Online, Your name) to add friends.');
   assert.deepEqual(await rows(p), []);
   await panel(p, null);
-  assert.equal(await p.$eval('#friends', e => e.hidden), true, 'no keyphrase: no Friends');
+  assert.equal(await p.$eval('#friends', e => e.textContent), 'Claim your name (Online, Your name) to add friends.', 'no keyphrase: how to have friends');
   await p.close();
 });
 

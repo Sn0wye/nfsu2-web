@@ -173,7 +173,7 @@ renderer, AudioWorklet sound, keyboard, mouse and pad input, and free roam over 
     about 40 MB on the network); its sections then read from this PC. Only while OPFS keeps the blocks;
     `NFSU2_TRACK_AHEAD=0` turns it off. The data but the movies crosses
     the network in 61 % of its size (1.28 of 2.09 GB, kept; 1.39 GB compressed as it is sent; tracks about a third).
-    "Preload the game data" (Game data on this PC, at the bottom of the start page) fills the cache with all but the
+    "Preload the game data" (Game data on this PC, in the start page's Other tab) fills the cache with all but the
     movies ahead of play from its own worker (`predownload-worker.ts`, 4 blocks at once, each at the address the game's
     own reads use, so one copy in Cloudflare's cache serves both). It runs only while no game
     runs in the tab: Play pauses it, and the game's end resumes it.

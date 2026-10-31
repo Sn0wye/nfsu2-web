@@ -133,12 +133,6 @@
   "Cars are balanced: slower ones get more power, faster ones a little less": "Bilerne udlignes: langsommere får mere kraft, hurtigere lidt mindre",
   "Quitting the race costs ${fee}": "Det koster ${fee} at forlade løbet",
   "Loading": "Indlæser",
-  "Nobody is playing right now.": "Ingen spiller lige nu.",
-  "{n} players": {
-    "one": "{n} spiller",
-    "other": "{n} spillere"
-  },
-  "{n} in Online mode": "{n} i Online-tilstand",
   "{n} in free roam": "{n} i udforsknings-mode",
   "{name} has over 64 players, so far-away crew-mates no longer always show. A less common name works better.": "{name} har mere end 64 spillere, så crewmedlemmer langt væk vises ikke længere altid. Et mindre almindeligt navn virker bedre.",
   "You are in room \"{room}\".": "Du er i rummet \"{room}\".",
@@ -149,7 +143,6 @@
     "other": "Serveren er fuld, og {n} står i kø. Når du trykker på Spil, kan du stille dig i kø (og spille alene, til det er din tur) eller spille offline."
   },
   "The server is full: multiplayer starts when a place frees up.": "Serveren er fuld: flerspillertilstanden starter, når en plads bliver ledig.",
-  "Playing now: {list}.": "Spiller lige nu: {list}.",
   "less than a minute": "under et minut",
   "about {n} min": "ca. {n} min",
   "about {n} h": "ca. {n} timer",
@@ -433,7 +426,6 @@
   "Saved: {what}, {value}. Applies the next time you press Play.": "Gemt: {what}, {value}. Gælder, næste gang du trykker på Spil.",
   "{label} ({n} changed)": "{label} ({n} ændret)",
   "Other settings in this file": "Andre indstillinger i denne fil",
-  "Lines without a control above. They apply at Play; edit the file as text below to change them.": "Linjer uden en kontrol ovenfor. De gælder, når du trykker på Spil; rediger filen som tekst nedenfor for at ændre dem.",
   "line {line}: {key} = {value}": "linje {line}: {key} = {value}",
   "{line} (ignored: {why})": "{line} (ignoreret: {why})",
   "{line} (sets {env})": "{line} (sætter {env})",
@@ -776,7 +768,7 @@
   "Hold <0>Esc</0>": "Hold <0>Esc</0> nede",
   "The PC game's own code, recompiled for Chrome and Firefox: up to 120 fps in widescreen, free roam and Online races with friends, and controllers, wheels and touch controls.": "PC-spillets egen kode, genkompileret til Chrome og Firefox: op til 120 fps i widescreen, udforsknings-mode og Online-løb med venner, og controllere, rat og touchknapper.",
   "About this project": "Om projektet",
-  "My brother and I played this game together about 20 years ago. I tried porting it to the browser, it worked surprisingly well, and it got a bit out of hand. It's great to see so many people playing it.": "Min bror og jeg spillede dette spil sammen for omkring 20 år siden. Jeg prøvede at porte det til browseren, det virkede overraskende godt, og det tog lidt overhånd. Det er fantastisk at se så mange spille det.",
+  "My brother and I played this game together about 20 years ago. Because of that I tried porting it to the browser so we could play together again. It worked surprisingly well, and it got a bit out of hand. It's great to see so many people playing it.": "Min bror og jeg spillede dette spil sammen for omkring 20 år siden. Derfor prøvede jeg at porte det til browseren, så vi kunne spille sammen igen. Det virkede overraskende godt, og det tog lidt overhånd. Det er fantastisk at se så mange spille det.",
   "To help with hosting and development costs, you can <0>buy me a coffee</0>. No perks, apart from a Discord role.": "For at hjælpe med udgifterne til hosting og udvikling kan du <0>give mig en kop kaffe</0>. Ingen fordele, bortset fra en rolle på Discord.",
   "Rights holders: <0>legal@nfsu2.xyz</0>. Support emails won't be answered; ask on <1>our Discord</1>.": "Rettighedshavere: <0>legal@nfsu2.xyz</0>. Supportmails bliver ikke besvaret; spørg på <1>vores Discord</1>.",
   "Credits": "Krediteringer",
@@ -1208,7 +1200,6 @@
   "Claim your name on the start page to add friends": "Reservér dit navn på startsiden for at tilføje venner",
   "{name} has no claimed name, so can't add friends yet": "{name} har intet reserveret navn og kan endnu ikke tilføje venner",
   "Friends": "Venner",
-  "Claim your name (Your name, above) to add friends.": "Reservér dit navn (Dit navn, ovenfor) for at tilføje venner.",
   "Accept": "Accepter",
   "Decline": "Afvis",
   "Remove": "Fjern",
@@ -1229,5 +1220,14 @@
   "Join a friend's room: free roam shows its players from now on.": "Gå ind i en vens rum: udforsknings-mode viser derefter rummets spillere.",
   "None of your friends is in free roam now.": "Ingen af dine venner er i udforsknings-mode nu.",
   "In the Online lobby: {names}.": "I Online-lobbyen: {names}.",
-  "Offline: {names}.": "Offline: {names}."
+  "Offline: {names}.": "Offline: {names}.",
+  "Playing now": "Spiller lige nu",
+  "in total": "i alt",
+  "in free roam": "i udforsknings-mode",
+  "in races/lobbies": "i løb/lobbyer",
+  "About": "Om",
+  "Other": "Andet",
+  "Profiles": "Profiler",
+  "Claim your name (Online, Your name) to add friends.": "Reservér dit navn (Online, Dit navn) for at tilføje venner.",
+  "Lines without a control on this page. They apply at Play; edit the file as text below to change them.": "Linjer uden en kontrol på denne side. De gælder, når du trykker på Spil; rediger filen som tekst nedenfor for at ændre dem."
 }

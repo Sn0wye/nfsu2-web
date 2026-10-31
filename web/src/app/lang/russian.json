@@ -135,14 +135,6 @@
   "Cars are balanced: slower ones get more power, faster ones a little less": "Машины выравниваются: медленные получают больше мощности, быстрые — чуть меньше",
   "Quitting the race costs ${fee}": "Выход из гонки стоит ${fee}",
   "Loading": "Загрузка",
-  "Nobody is playing right now.": "Сейчас никто не играет.",
-  "{n} players": {
-    "one": "{n} игрок",
-    "few": "{n} игрока",
-    "many": "{n} игроков",
-    "other": "{n} игрока"
-  },
-  "{n} in Online mode": "{n} — в игре через Интернет",
   "{n} in free roam": "{n} — в свободной езде",
   "{name} has over 64 players, so far-away crew-mates no longer always show. A less common name works better.": "{name}: больше 64 игроков, поэтому далёкие участники команды видны не всегда. Лучше выбрать менее распространённое название.",
   "You are in room \"{room}\".": "Вы в комнате «{room}».",
@@ -155,7 +147,6 @@
     "other": "Сервер заполнен, в очереди {n} игрока. При нажатии «Играть» можно встать в очередь (и играть в одиночку, пока не придёт ваш черёд) или играть офлайн."
   },
   "The server is full: multiplayer starts when a place frees up.": "Сервер заполнен: сетевая игра начнётся, когда освободится место.",
-  "Playing now: {list}.": "Сейчас в игре: {list}.",
   "less than a minute": "меньше минуты",
   "about {n} min": "около {n} мин",
   "about {n} h": "около {n} ч",
@@ -461,7 +452,6 @@
   "Saved: {what}, {value}. Applies the next time you press Play.": "Сохранено: {what}, {value}. Вступит в силу при следующем нажатии «Играть».",
   "{label} ({n} changed)": "{label} (изменено: {n})",
   "Other settings in this file": "Другие настройки в этом файле",
-  "Lines without a control above. They apply at Play; edit the file as text below to change them.": "Строки без элементов управления выше. Они применяются при нажатии «Играть»; чтобы изменить их, отредактируйте файл как текст ниже.",
   "line {line}: {key} = {value}": "строка {line}: {key} = {value}",
   "{line} (ignored: {why})": "{line} (пропущено: {why})",
   "{line} (sets {env})": "{line} (задаёт {env})",
@@ -818,7 +808,7 @@
   "Hold <0>Esc</0>": "Удерживать <0>Esc</0>",
   "The PC game's own code, recompiled for Chrome and Firefox: up to 120 fps in widescreen, free roam and Online races with friends, and controllers, wheels and touch controls.": "Собственный код ПК-версии игры, перекомпилированный для Chrome и Firefox: до 120 FPS в широкоэкранном режиме, свободная езда и гонки через Интернет с друзьями, а также геймпады, рули и сенсорное управление.",
   "About this project": "Об этом проекте",
-  "My brother and I played this game together about 20 years ago. I tried porting it to the browser, it worked surprisingly well, and it got a bit out of hand. It's great to see so many people playing it.": "Мы с братом играли в эту игру вместе около 20 лет назад. Попытка перенести её в браузер удалась на удивление хорошо, и всё немного вышло из-под контроля. Здорово видеть, как много людей в неё играет.",
+  "My brother and I played this game together about 20 years ago. Because of that I tried porting it to the browser so we could play together again. It worked surprisingly well, and it got a bit out of hand. It's great to see so many people playing it.": "Мы с братом играли в эту игру вместе около 20 лет назад. Поэтому я попробовал перенести её в браузер, чтобы мы снова могли играть вместе. Это удалось на удивление хорошо, и всё немного вышло из-под контроля. Здорово видеть, как много людей в неё играет.",
   "To help with hosting and development costs, you can <0>buy me a coffee</0>. No perks, apart from a Discord role.": "Чтобы помочь с расходами на хостинг и разработку, можно <0>угостить меня кофе</0>. Никаких бонусов, кроме роли в Discord.",
   "Rights holders: <0>legal@nfsu2.xyz</0>. Support emails won't be answered; ask on <1>our Discord</1>.": "Правообладателям: <0>legal@nfsu2.xyz</0>. На письма в поддержку ответа не будет; спрашивайте в <1>нашем Discord</1>.",
   "Credits": "Благодарности",
@@ -1258,7 +1248,6 @@
   "Claim your name on the start page to add friends": "Закрепите имя на стартовой странице, чтобы добавлять друзей",
   "{name} has no claimed name, so can't add friends yet": "{name}: имя не закреплено, добавить в друзья пока нельзя",
   "Friends": "Друзья",
-  "Claim your name (Your name, above) to add friends.": "Закрепите имя (поле «Ваше имя» выше), чтобы добавлять друзей.",
   "Accept": "Принять",
   "Decline": "Отклонить",
   "Remove": "Удалить",
@@ -1279,5 +1268,14 @@
   "Join a friend's room: free roam shows its players from now on.": "Войдите в комнату друга: с этого момента в свободной езде будут видны её игроки.",
   "None of your friends is in free roam now.": "Никого из ваших друзей сейчас нет в свободной езде.",
   "In the Online lobby: {names}.": "В лобби игры через Интернет: {names}.",
-  "Offline: {names}.": "Офлайн: {names}."
+  "Offline: {names}.": "Офлайн: {names}.",
+  "Playing now": "Сейчас в игре",
+  "in total": "всего",
+  "in free roam": "в свободной езде",
+  "in races/lobbies": "в гонках/лобби",
+  "About": "О проекте",
+  "Other": "Прочее",
+  "Profiles": "Профили",
+  "Claim your name (Online, Your name) to add friends.": "Закрепите имя (Онлайн, «Ваше имя»), чтобы добавлять друзей.",
+  "Lines without a control on this page. They apply at Play; edit the file as text below to change them.": "Строки без элементов управления на этой странице. Они применяются при нажатии «Играть»; чтобы изменить их, отредактируйте файл как текст ниже."
 }

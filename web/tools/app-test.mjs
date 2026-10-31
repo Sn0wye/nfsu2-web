@@ -138,6 +138,8 @@ const RECORD_GPU_AUDIO = () => {
 };
 // the settings show at once, read only until the tab owns the saves
 const settingsReady = page => page.waitForFunction(() => !!document.querySelector('#settings .set') && !document.querySelector('#settings').hasAttribute('data-readonly'), null, { timeout: 15000 });
+// the big panel's tab (tabs.ts): what is in another one is hidden, and a click waits for it to show
+const tab = (page, name) => page.click(`#settings > .tabs > .tab[data-tab="${name}"]`);
 // settings writes are async: each one bumps #settings[data-saved]
 const saved = page => page.evaluate(() => +(document.querySelector('#settings').dataset.saved ?? 0));
 async function settle(page, before, n = 1) {
@@ -185,12 +187,14 @@ try {
   // --------------------------------------------------------- settings --
   if (want('settings') || want('play') || want('saves') || want('restore') || want('pcsave')) {
     await settingsReady(page);
+    await tab(page, 'game');
     await page.locator('#settings').screenshot({ path: path.join(OUT, 'settings.png') });
     let n0 = await saved(page);
     await page.click('.set[data-key="movies"] .switch'); await settle(page, n0++);          // movies: on -> off
     await page.click('.set[data-key="fps"] .opt:has-text("120")'); await settle(page, n0++);
     await page.click('#settings summary:has-text("More display")');
     await page.click('.set[data-key="fps_counter"] .opt:has-text("Detailed")'); await settle(page, n0++);
+    await tab(page, 'online');
     await page.click('.set[data-key="roam"] .switch'); await settle(page, n0++);            // roam on (validated bool)
     await page.fill('#set-roam_name', 'Tester ; a comment'); await page.press('#set-roam_name', 'Tab'); await settle(page, n0++);
     await page.selectOption('#set-horn', 'train'); await settle(page, n0++);
@@ -213,6 +217,7 @@ try {
       env.NFSU2_ROAM_NAME === 'Tester' && env.NFSU2_ROAM === '0' && env.NFSU2_HORN === 'train' && env.SNDSYNC === '0' && !('WINDOW' in env);
     // the raw editor: a refused value is kept in the file but shown as ignored; a setting the panel has no row for
     // (roam_rate) and one the browser ignores (roam_port, the Mac app's) are listed under the groups
+    await tab(page, 'other');
     await page.click('#settings-raw summary');
     const ta = page.locator('#settings-text');
     await ta.fill((await ta.inputValue()).replace('#hud = wide', 'hud = ultrawide').replace('#roam_rate = 20', 'roam_rate = 30')
@@ -233,12 +238,14 @@ try {
     }));
     // Reset puts the template line back
     const moreDisplay = await page.locator('#settings summary:has-text("More display")').textContent();   // fps_counter and hud
+    await tab(page, 'game');
     await page.click('#settings summary:has-text("More display")');
     n0 = await saved(page);
     await page.click('.set[data-key="hud"] .text-btn'); await settle(page, n0);
     const file2 = (await readOpfs(page, SAVE, 'settings.ini')).text;
     // Reset on a line without a row (roam_rate): its template line back
     n0 = await saved(page);
+    await tab(page, 'other');
     await page.click('#settings-other li:has-text("roam_rate") .text-btn'); await settle(page, n0);
     const file3 = (await readOpfs(page, SAVE, 'settings.ini')).text;
     // Reset all settings: asks, then the template with the name (roam_port, the Mac app's line, goes too)
@@ -254,6 +261,7 @@ try {
     // the steps after this one play with movies off and the detailed counter (play's F8, saves' and restore's
     // settings.ini): set again after the reset
     n0 = await saved(page);
+    await tab(page, 'game');
     await page.click('.set[data-key="movies"] .switch'); await settle(page, n0++);
     const more = page.locator('#settings details:has(> summary:has-text("More display"))');
     if (!await more.evaluate(d => d.open)) await page.click('#settings summary:has-text("More display")');
@@ -313,6 +321,7 @@ try {
     await page.waitForFunction(() => !/Counting/.test(document.querySelector('#cache-info').textContent));
     const listed = await page.locator('#profiles .name').allTextContents();
     const cacheInfo = await page.locator('#cache-info').textContent();
+    await tab(page, 'saves');
     await page.locator('#saves').screenshot({ path: path.join(OUT, 'saves.png') });
     const dl = page.waitForEvent('download');
     await page.click('#export');
@@ -501,7 +510,7 @@ try {
     const a = watch(await c2.newPage(), 'O1'), b = watch(await c2.newPage(), 'O2');
     await open(a, `save=${RUN}-o&fresh&env=NOMOVIES%3D1`);
     await open(b, `save=${RUN}-o`, 60000, ['waiting', 'ready', 'error']);
-    await b.waitForSelector('#settings[data-readonly] .set');
+    await b.waitForSelector('#settings[data-readonly] .set', { state: 'attached' });
     const before = (await readOpfs(b, `${RUN}-o`, 'settings.ini')).text;
     const ro = await b.evaluate(() => ({ note: document.querySelector('#settings-note').textContent,
       disabled: [...document.querySelectorAll('#settings-body button, #settings-body input')].every(e => e.disabled),
@@ -1039,7 +1048,7 @@ try {
     await r.route(playersUrl, route => route.fulfill({ contentType: 'application/json', body: '{"players":700,"online":40,"full":false,"roamBusy":true}' }));
     await r.goto(`${BASE}/`);
     await waitPhase(r, ['ready', 'error'], 60000);
-    await r.waitForFunction(() => /700 players/.test(document.querySelector('#online')?.textContent ?? ''), null, { timeout: 10000 });
+    await r.waitForFunction(() => document.querySelector('#players-all')?.textContent === '700', null, { timeout: 10000 });
     await r.click('#play');
     const busyAsked = await r.waitForSelector('#confirm[open]', { timeout: 4000 }).then(() => true, () => false);
     await waitPhase(r, ['playing', 'exited'], 60000);
@@ -1332,6 +1341,7 @@ try {
       { kAsk, loaded, kAfter, kLog, kGets, nAsk, nKept, nAgain, nLink, nGets, zKept, zGets, zGetsAgain, zAsk });
 
     // the cloud copy goes (the dev server's state stays clean)
+    await tab(r, 'saves');
     await r.click('#vault-delete');
     await r.waitForSelector('#confirm[open]', { timeout: 5000 });
     await r.click('#confirm-ok');
@@ -1362,7 +1372,7 @@ try {
     let holder = await hold();
     await f.goto(`${BASE}/`);
     await waitPhase(f, ['ready', 'error'], 60000);
-    await f.waitForFunction(() => /server is full/.test(document.querySelector('#online')?.textContent ?? ''), null, { timeout: 20000 });
+    await f.waitForFunction(() => /server is full/.test(document.querySelector('#players-note')?.textContent ?? ''), null, { timeout: 20000 });
     // the first Play: the free-roam question, saying the server is full; turned on, nothing more is asked
     await f.click('#play');
     await f.waitForSelector('#confirm[open]', { timeout: 10000 });

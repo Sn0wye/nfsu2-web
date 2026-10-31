@@ -9,7 +9,7 @@
 //   gone once the cars part.  It also tells the server the room's name once the player has friends (their Join), asks
 //   where the friends play every minute ("where"), says in the notices when one comes into free roam, and fills the
 //   page menu's Friends popup (Join a friend's room).
-// - FriendsPanel, on the start page (the Online section): one line a friend, where it plays after its name and a
+// - FriendsPanel, on the start page (its Friends tab): one line a friend, where it plays after its name and a
 //   Join in free roam, the requests to answer, the ones sent; icons for what each line does.
 // - FriendsApi: /friends, asked with the keyphrase's token (claim.ts NameClaims does the same for /names).
 import type { GameSession } from './game';
@@ -426,17 +426,13 @@ export class FriendsPanel {
     this.render();
   }
 
+  /** the Friends tab (no lists: no passphrase, or a server without friends; no name: none claimed) */
   render() {
     const l = this.lists, root = this.root;
-    root.hidden = !l;
-    if (!l) { root.replaceChildren(); return; }
-    const h = document.createElement('h3');
-    h.textContent = t('Friends');
-    const nodes: Node[] = [h];
+    const nodes: Node[] = [];
     const help = (s: string) => { const p = document.createElement('p'); p.className = 'hint fl-hint'; p.textContent = s; return p; };
-    if (!l.me) {
-      nodes.push(help(t('Claim your name (Your name, above) to add friends.')));
-      root.replaceChildren(...nodes);
+    if (!l?.me) {
+      root.replaceChildren(help(t('Claim your name (Online, Your name) to add friends.')));
       return;
     }
     const lines: Line[] = [];

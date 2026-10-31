@@ -91,6 +91,13 @@ h3 { font-size: 16px; line-height: 24px; color: var(--lime); margin: 32px 0 8px;
 .panel-head + .msg { margin: -12px 0 16px; }
 #settings[data-readonly] #settings-note, #online[data-readonly] #online-note { color: var(--warn); }
 
+/* who plays on this server now (players.ts PlayersPanel): three numbers in the game's value boxes */
+.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.stat { padding: 12px; border-radius: 8px; background: var(--field); color: var(--muted); font-size: 14px; line-height: 20px; }
+.stat span { display: block; }
+.stat b { display: block; color: var(--lime); font-size: 24px; line-height: 32px; font-style: italic; font-variant-numeric: tabular-nums; }
+#players-note { margin-top: 12px; }
+
 /* the game's slider bar under its header, here the download */
 .bar { margin-top: 12px; height: 8px; border-radius: 4px; background: #585858; overflow: hidden; }
 .bar-fill { height: 100%; width: 0; border-radius: 4px; background: var(--lime); box-shadow: 0 0 8px var(--lime-glow); transition: width 0.2s linear; }
@@ -172,6 +179,25 @@ kbd {
 .tab { height: 36px; padding: 0; border: 0; background: none; color: var(--muted); font-size: 16px; line-height: 24px; }
 .tab:hover { color: var(--text); }
 .tab[aria-selected="true"] { color: var(--lime); box-shadow: inset 0 -3px var(--lime); }
+
+/* a panel's own tabs as its heading (tabs.ts: the big panel's, About's): the Controls sheet's tabs at a heading's
+ * size, 44 px with its 28 px line (the panes start 88 px down, as under an h2).  Where one line is too narrow for them
+ * (a narrow column, longer words): the sheet's size (data-fit="small"), and where that is too, or on a phone, rows of
+ * three, each tab on its own divider (data-fit="rows") */
+.tabs.big { margin: -4px 0 24px; }
+.tabs.big > .tab { flex: none; height: 44px; font-size: 20px; line-height: 28px; }
+.tabs.big[data-fit] > .tab { height: 40px; font-size: 16px; line-height: 24px; }
+.tabs.big[data-fit="rows"] { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; box-shadow: none; }
+.tabs.big[data-fit="rows"] > .tab { height: auto; min-height: 40px; padding: 8px 4px; box-shadow: inset 0 -1px var(--line); }
+/* a word longer than its third of a phone (Translations at 320 px): split where the language allows, else anywhere */
+.tabs.big[data-fit="rows"] > .tab, .stat span { hyphens: auto; overflow-wrap: anywhere; }
+.tabs.big[data-fit="rows"] > .tab[aria-selected="true"] { box-shadow: inset 0 -3px var(--lime); }
+.pane > :first-child { margin-top: 0; }
+#settings-note { margin-bottom: 16px; }
+#game-data > h3 { margin-top: 0; }
+#cache-info { margin-bottom: 16px; }
+#controller-body:not(:empty) { margin-top: 32px; }
+
 /* a row as in Settings and the game's Controls menu: what it does, its keys on the right.  Where the keys do not fit
  * beside its longest word (another language's words with a key, a phone) they go under it, still on the right, their
  * words wrapped if they are wider than the row */
@@ -217,14 +243,12 @@ kbd .glyph { display: inline-block; width: 14px; height: 14px; vertical-align: -
 .wheel-learn .text-btn { padding: 0; }
 .wheel-learn [data-wheel="skip"] { margin-right: 24px; }
 
-/* ------------------------------------- changes from the original, about */
+/* ------------------------------------------------------------------ about */
 .prose { display: grid; gap: 12px; font-size: 14px; line-height: 20px; }
 
 /* -------------------------------------------------------------- settings */
 .group h3 { margin-top: 32px; }
 .group:first-child h3 { margin-top: 0; }
-.group-status { margin-bottom: 4px; }
-#online .group-status { margin-top: -12px; }          /* the section's subtitle, as Settings' note: 4px under its heading */
 .set {
   display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "label ctl" "help ctl";
   column-gap: 16px; padding: 12px 0; align-items: center;
@@ -1018,9 +1042,9 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.64); }
 }
 @media (max-width: 959px) {
   .app { grid-template-columns: minmax(0, 1fr); padding: 16px 16px 48px; gap: 16px; }
-  /* one column of panels: Saves and Online right under Play, then Controls and the rest */
+  /* one column of panels: who plays and the big panel right under Play, About last */
   .side, .content { display: contents; }
-  .top, .hero, #saves, #online { order: -1; }
+  .top, .hero, .players, .tabbed { order: -1; }
 }
 @media (max-width: 559px) {
   .top, .panel { padding: 16px; }
@@ -1054,6 +1078,7 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.64); }
 /* the Controls tabs' three words on the smallest phones (Swedish, Danish), and with a mouse (a desktop zoomed in) the
  * Keyboard tab's longer word (Dutch, Swedish) */
 @media (max-width: 359px) {
+  .stat { padding-inline: 8px; }                   /* room for 7,592 in a third of the smallest phones */
   .tabs { gap: 16px; }
   html:not([data-touch]) .tabs { gap: 8px; }
 }

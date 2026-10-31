@@ -134,13 +134,6 @@
   "Cars are balanced: slower ones get more power, faster ones a little less": "Los coches se igualan: los más lentos reciben más potencia y los más rápidos, un poco menos",
   "Quitting the race costs ${fee}": "Abandonar la carrera cuesta ${fee}",
   "Loading": "Cargando",
-  "Nobody is playing right now.": "Ahora mismo no juega nadie.",
-  "{n} players": {
-    "one": "{n} jugador",
-    "many": "{n} de jugadores",
-    "other": "{n} jugadores"
-  },
-  "{n} in Online mode": "{n} en el modo Online",
   "{n} in free roam": "{n} en circulación libre",
   "{name} has over 64 players, so far-away crew-mates no longer always show. A less common name works better.": "{name} tiene más de 64 jugadores, así que los compañeros lejanos ya no siempre aparecen. Un nombre menos común funciona mejor.",
   "You are in room \"{room}\".": "Estás en la sala \"{room}\".",
@@ -152,7 +145,6 @@
     "other": "El servidor está lleno, con {n} jugadores en la lista de espera. Al pulsar Jugar puedes esperar turno (jugando solo hasta que te toque) o jugar sin conexión."
   },
   "The server is full: multiplayer starts when a place frees up.": "El servidor está lleno: el multijugador empezará cuando quede un lugar libre.",
-  "Playing now: {list}.": "Jugando ahora: {list}.",
   "less than a minute": "menos de un minuto",
   "about {n} min": "unos {n} min",
   "about {n} h": "unas {n} h",
@@ -447,7 +439,6 @@
   "Saved: {what}, {value}. Applies the next time you press Play.": "Guardado: {what}, {value}. Se aplica la próxima vez que pulses Jugar.",
   "{label} ({n} changed)": "{label} ({n} cambiados)",
   "Other settings in this file": "Otros ajustes de este archivo",
-  "Lines without a control above. They apply at Play; edit the file as text below to change them.": "Líneas que no tienen un control arriba. Se aplican al pulsar Jugar; para cambiarlas, edita el archivo como texto abajo.",
   "line {line}: {key} = {value}": "línea {line}: {key} = {value}",
   "{line} (ignored: {why})": "{line} (ignorada: {why})",
   "{line} (sets {env})": "{line} (define {env})",
@@ -797,7 +788,7 @@
   "Hold <0>Esc</0>": "Mantén pulsado <0>Esc</0>",
   "The PC game's own code, recompiled for Chrome and Firefox: up to 120 fps in widescreen, free roam and Online races with friends, and controllers, wheels and touch controls.": "El propio código del juego de PC, recompilado para Chrome y Firefox: hasta 120 fps en panorámico, circulación libre y carreras Online con amigos, y mandos, volantes y controles táctiles.",
   "About this project": "Sobre este proyecto",
-  "My brother and I played this game together about 20 years ago. I tried porting it to the browser, it worked surprisingly well, and it got a bit out of hand. It's great to see so many people playing it.": "Mi hermano y yo jugábamos juntos a este juego hace unos 20 años. Intenté portarlo al navegador, funcionó sorprendentemente bien y se me fue un poco de las manos. Es genial ver a tanta gente jugándolo.",
+  "My brother and I played this game together about 20 years ago. Because of that I tried porting it to the browser so we could play together again. It worked surprisingly well, and it got a bit out of hand. It's great to see so many people playing it.": "Mi hermano y yo jugábamos juntos a este juego hace unos 20 años. Por eso intenté portarlo al navegador, para que pudiéramos volver a jugar juntos. Funcionó sorprendentemente bien y se me fue un poco de las manos. Es genial ver a tanta gente jugándolo.",
   "To help with hosting and development costs, you can <0>buy me a coffee</0>. No perks, apart from a Discord role.": "Para ayudar con los gastos de alojamiento y desarrollo, puedes <0>invitarme a un café</0>. Sin ventajas, salvo un rol en Discord.",
   "Rights holders: <0>legal@nfsu2.xyz</0>. Support emails won't be answered; ask on <1>our Discord</1>.": "Titulares de derechos: <0>legal@nfsu2.xyz</0>. Los correos de soporte no se responderán; pregunta en <1>nuestro Discord</1>.",
   "Credits": "Créditos",
@@ -1233,7 +1224,6 @@
   "Claim your name on the start page to add friends": "Reserva tu nombre en la página de inicio para añadir amigos",
   "{name} has no claimed name, so can't add friends yet": "{name} no tiene un nombre reservado, así que aún no puede añadir amigos",
   "Friends": "Amigos",
-  "Claim your name (Your name, above) to add friends.": "Reserva tu nombre (Tu nombre, arriba) para añadir amigos.",
   "Accept": "Aceptar",
   "Decline": "Rechazar",
   "Remove": "Eliminar",
@@ -1254,5 +1244,14 @@
   "Join a friend's room: free roam shows its players from now on.": "Únete a la sala de un amigo: la circulación libre pasará a mostrar a sus jugadores.",
   "None of your friends is in free roam now.": "Ahora mismo ninguno de tus amigos está en circulación libre.",
   "In the Online lobby: {names}.": "En el punto de encuentro Online: {names}.",
-  "Offline: {names}.": "Sin conexión: {names}."
+  "Offline: {names}.": "Sin conexión: {names}.",
+  "Playing now": "Jugando ahora",
+  "in total": "en total",
+  "in free roam": "en circulación libre",
+  "in races/lobbies": "en carreras/puntos de encuentro",
+  "About": "Acerca de",
+  "Other": "Otros",
+  "Profiles": "Perfiles",
+  "Claim your name (Online, Your name) to add friends.": "Reserva tu nombre (Online, Tu nombre) para añadir amigos.",
+  "Lines without a control on this page. They apply at Play; edit the file as text below to change them.": "Líneas que no tienen un control en esta página. Se aplican al pulsar Jugar; para cambiarlas, edita el archivo como texto abajo."
 }

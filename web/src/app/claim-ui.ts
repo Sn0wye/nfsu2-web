@@ -1,4 +1,4 @@
-// Claimed names on the start page (claim.ts): the line under Your name (Settings, Online) with its Claim button, and
+// Claimed names on the start page (claim.ts): the line under Your name (the Online tab) with its Claim button, and
 // what Play asks about the name (shell.ts settleName):
 // - Your name: as typed, the line says what the name is to this player: free (Claim; without a keyphrase, Claim
 //   turns cloud saves on first), claimed by this keyphrase (as long as it lasts), another player's (the digits it plays

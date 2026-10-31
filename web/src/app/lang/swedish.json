@@ -133,12 +133,6 @@
   "Cars are balanced: slower ones get more power, faster ones a little less": "Bilarna jämnas ut: långsammare får mer kraft, snabbare lite mindre",
   "Quitting the race costs ${fee}": "Att hoppa av racet kostar ${fee}",
   "Loading": "Laddar",
-  "Nobody is playing right now.": "Ingen spelar just nu.",
-  "{n} players": {
-    "one": "{n} spelare",
-    "other": "{n} spelare"
-  },
-  "{n} in Online mode": "{n} i Online-läget",
   "{n} in free roam": "{n} i läget Utforska",
   "{name} has over 64 players, so far-away crew-mates no longer always show. A less common name works better.": "{name} har fler än 64 spelare, så crewmedlemmar långt bort syns inte längre alltid. Ett mindre vanligt namn fungerar bättre.",
   "You are in room \"{room}\".": "Du är i rummet \"{room}\".",
@@ -149,7 +143,6 @@
     "other": "Servern är full och {n} står i kö. När du trycker på Spela kan du ställa dig i kö (och spela ensam tills det är din tur) eller spela offline."
   },
   "The server is full: multiplayer starts when a place frees up.": "Servern är full: flerspelarläget startar när en plats blir ledig.",
-  "Playing now: {list}.": "Spelar nu: {list}.",
   "less than a minute": "mindre än en minut",
   "about {n} min": "cirka {n} min",
   "about {n} h": "cirka {n} h",
@@ -433,7 +426,6 @@
   "Saved: {what}, {value}. Applies the next time you press Play.": "Sparat: {what}, {value}. Gäller nästa gång du trycker på Spela.",
   "{label} ({n} changed)": "{label} ({n} ändrade)",
   "Other settings in this file": "Andra inställningar i den här filen",
-  "Lines without a control above. They apply at Play; edit the file as text below to change them.": "Rader utan reglage ovan. De gäller när du trycker på Spela; redigera filen som text nedan för att ändra dem.",
   "line {line}: {key} = {value}": "rad {line}: {key} = {value}",
   "{line} (ignored: {why})": "{line} (ignoreras: {why})",
   "{line} (sets {env})": "{line} (anger {env})",
@@ -776,7 +768,7 @@
   "Hold <0>Esc</0>": "Håll in <0>Esc</0>",
   "The PC game's own code, recompiled for Chrome and Firefox: up to 120 fps in widescreen, free roam and Online races with friends, and controllers, wheels and touch controls.": "PC-spelets egen kod, omkompilerad för Chrome och Firefox: upp till 120 fps i bredbild, läget Utforska och Online-race med vänner, och handkontroller, rattar och pekkontroller.",
   "About this project": "Om projektet",
-  "My brother and I played this game together about 20 years ago. I tried porting it to the browser, it worked surprisingly well, and it got a bit out of hand. It's great to see so many people playing it.": "Min bror och jag spelade det här spelet tillsammans för ungefär 20 år sedan. Jag försökte porta det till webbläsaren, det fungerade förvånansvärt bra, och det gick lite överstyr. Det är kul att se så många som spelar det.",
+  "My brother and I played this game together about 20 years ago. Because of that I tried porting it to the browser so we could play together again. It worked surprisingly well, and it got a bit out of hand. It's great to see so many people playing it.": "Min bror och jag spelade det här spelet tillsammans för ungefär 20 år sedan. Därför försökte jag porta det till webbläsaren, så att vi kunde spela tillsammans igen. Det fungerade förvånansvärt bra, och det gick lite överstyr. Det är kul att se så många som spelar det.",
   "To help with hosting and development costs, you can <0>buy me a coffee</0>. No perks, apart from a Discord role.": "För att hjälpa till med kostnaderna för drift och utveckling kan du <0>bjuda mig på en kaffe</0>. Inga förmåner, förutom en roll på Discord.",
   "Rights holders: <0>legal@nfsu2.xyz</0>. Support emails won't be answered; ask on <1>our Discord</1>.": "Rättighetsinnehavare: <0>legal@nfsu2.xyz</0>. Supportmejl besvaras inte; fråga på <1>vår Discord</1>.",
   "Credits": "Medverkande",
@@ -1208,7 +1200,6 @@
   "Claim your name on the start page to add friends": "Reservera ditt namn på startsidan för att lägga till vänner",
   "{name} has no claimed name, so can't add friends yet": "{name} har inget reserverat namn och kan inte lägga till vänner än",
   "Friends": "Vänner",
-  "Claim your name (Your name, above) to add friends.": "Reservera ditt namn (Ditt namn, ovan) för att lägga till vänner.",
   "Accept": "Acceptera",
   "Decline": "Avvisa",
   "Remove": "Ta bort",
@@ -1229,5 +1220,14 @@
   "Join a friend's room: free roam shows its players from now on.": "Gå in i en väns rum: läget Utforska visar sedan rummets spelare.",
   "None of your friends is in free roam now.": "Ingen av dina vänner är i läget Utforska nu.",
   "In the Online lobby: {names}.": "I Online-lobbyn: {names}.",
-  "Offline: {names}.": "Offline: {names}."
+  "Offline: {names}.": "Offline: {names}.",
+  "Playing now": "Spelar nu",
+  "in total": "totalt",
+  "in free roam": "i läget Utforska",
+  "in races/lobbies": "i lopp/lobbyer",
+  "About": "Om",
+  "Other": "Övrigt",
+  "Profiles": "Profiler",
+  "Claim your name (Online, Your name) to add friends.": "Reservera ditt namn (Online, Ditt namn) för att lägga till vänner.",
+  "Lines without a control on this page. They apply at Play; edit the file as text below to change them.": "Rader utan reglage på den här sidan. De gäller när du trycker på Spela; redigera filen som text nedan för att ändra dem."
 }

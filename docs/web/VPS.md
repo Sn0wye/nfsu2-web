@@ -392,7 +392,7 @@ players the evening before.
 
 ## Languages
 
-Every player picks the game's language in Settings. The North American game folder has the text of thirteen,
+Every player picks the game's language on the start page (the list at its top, or Game, Language). The North American game folder has the text of thirteen,
 but English voices and movies only, and short early versions of the Chinese, Japanese and Thai text. The rest comes
 from KyoriAsh's "Multi 13 languages" mod ([nfsmods.xyz/mod/5749](https://nfsmods.xyz/mod/5749)), for Brazilian
 Portuguese TraduMix's and MixMods' translation, for Polish PLProjekt's, for Turkish muntazam's, for Hungarian
@@ -439,12 +439,12 @@ A player's browser fetches only their own language's pack: "Preload the game dat
 voices (Russian 94 MB), and the dubbed movies (206 MB in all) stream in place of the English ones (725 MB). Without
 `LANGPACKS` every language but Russian, Portuguese, Polish, Turkish and Hungarian still plays its text, with English
 voices and movies; those five play in English. All but French, German, Italian and Spanish (whose texts leave the lines
-their dubs speak empty) show the movies' subtitles (Settings, Game, Subtitles, on by default), English only with its
+their dubs speak empty) show the movies' subtitles (Game, Subtitles, on by default), English only with its
 pack: the game folder's English lines stop at their first apostrophe ("But if you"). The North American game shows none.
 
 ## Texture packs
 
-Settings, Display, More, Menus and HUD, Upscaled (Original is the default) shows LunicAura106's "Upscaled HUD" (UHUD,
+Game, Display, More, Menus and HUD, Upscaled (Original is the default) shows LunicAura106's "Upscaled HUD" (UHUD,
 [nfsmods.xyz/mod/4319](https://nfsmods.xyz/mod/4319)): the menus, the race HUD, the fonts and the car and brand logos
 redrawn at four times their size. It comes from a texture pack, `TEXPACKS/uhud.pak` in the game folder, which the
 port reads in place of the game's textures on the GPU only (`runtime/web/texrep_web.c`): the game keeps reading its
@@ -754,7 +754,7 @@ no quotes, but over ssh an apostrophe needs them twice (`"'Don't ram'"`), or log
   its game shows "…" over its car`: `grep` it for one who left, and ban the address within the hour.
 - **Banning again** replaces the earlier ban of the same player: `ban Bob perm` after `ban Bob 1d` leaves one ban,
   for good.
-- **Blocks**: players block others by name (Settings, Online, More online settings, Blocked players): the free-roam
+- **Blocks**: players block others by name (Online, More online settings, Blocked players): the free-roam
   hub links neither way, nor with the host of a race lobby the other is in. The log has a line each time such a page
   connects (again after a dropped connection), `[roam] 10.77.4.17 blocks "Bob", "carl"` (`who 10.77.4.17` names the
   blocker): a name many block is one to look at (`grep blocks` in the log).

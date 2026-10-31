@@ -42,7 +42,8 @@ import { blockList, checkSetting, HOST_FIXED, pageOnly, resolveEnv, settingsUpgr
 import { exists, filesOf, listProfiles, PROFILES_DIR, readText, removeSaveDir, writeFile } from './savefs';
 import { newProfileName, turnOnAutosave } from './profile';
 import { crewControl, putKey, SettingsPanel, showCrewCounts } from './settings-ui';
-import { askCrews, queueText, roomHash, roomText, serverAnswers, watchPlayers, type PlayerCounts, type Reach } from './players';
+import { askCrews, PlayersPanel, queueText, roomHash, roomLine, roomText, serverAnswers, watchPlayers, type PlayerCounts, type Reach } from './players';
+import { panelTabs } from './tabs';
 import { CREW_MAX, crewList, crewsOf, crewsValue, freeColour, rgbsValue, rgbWords, type Crew } from './crews';
 import { checkInvite, inviteLink, readInvite, sameName, type Invite } from './invite';
 import { privacy, SCRUB_NOTE } from './privacy';
@@ -148,6 +149,7 @@ let friendPrompt: FriendPrompt;          // free roam's friends: Add friend over
 let friendsPanel: FriendsPanel;          // ...and the friends on the start page
 let settings: SettingsPanel;
 let players: { now(): void; last(): PlayerCounts | null; fresh(ms: number): Promise<PlayerCounts | null> } | null = null;
+let playersPanel: PlayersPanel;
 let saves: SavesPanel;
 let vault: VaultPanel;
 /** the claimed names (claim.ts), and the line under Your name (claim-ui.ts) */
@@ -749,19 +751,19 @@ function setReach(r: Reach) {
   reach = r;
   offline = r !== 'ok';
   log.add(offline ? `[app] the server does not answer: offline (${REACH_LOG[r]})` : '[app] the server answers again');
-  if (offline) settings.setStatus(REACH_TEXT[r]);
+  if (offline) playersPanel.offline(REACH_TEXT[r]);
   evaluate();
   if (offline) return;
   // the page may have started from offline mode's copies while the server was away (a deploy restarts it)
   void checkNewer();
   void vault.start();                 // the cloud saves, when the server did not answer as the page started
-  players?.now();                     // the Online section's line again (offline's, after the check at Play)
+  players?.now();                     // the Playing now panel's numbers again (offline's line, after the check at Play)
 }
 const REACH_LOG: Record<Reach, string> = {
   ok: '', down: 'a 5xx: the server is down or restarting', unreachable: 'no answer: blocked on the way, or too slow',
   'no-network': 'the browser says this device has no network',
 };
-/** the Online section's line while offline, by why */
+/** the Playing now panel's line while offline, by why */
 const REACH_TEXT: Record<Reach, Msg> = {
   ok: () => '',
   down: T('The server isn\'t answering: it may be restarting. Checking again every 15 seconds.'),
@@ -994,6 +996,7 @@ function openHelp(tab?: Tab) {
   const body = $('#help-body');
   if (!helpSheet) {
     body.append(...[...$('#keys').childNodes].map(n => n.cloneNode(true)));
+    for (const k of body.querySelectorAll('[data-keep]')) k.remove();   // (the start page's Controller settings: Play reads them)
     helpSheet = controlsSheet(body, 'help');
   }
   helpSheet.show(tab ?? keySheet.tab);
@@ -1234,7 +1237,7 @@ function drawPopCrews(focus?: (root: HTMLElement) => Element | null | undefined)
   if (had && focus) ((focus(box) ?? box.querySelector('input:enabled')) as HTMLElement | null)?.focus({ focusVisible: true } as FocusOptions);
 }
 /** a Leave, Join or colour in the popup: the game takes the crews and their colours at once (its HELLO again to the
- *  hub), and settings.ini keeps them for the next game, as Settings, Online, Crews would */
+ *  hub), and settings.ini keeps them for the next game, as Online, Crews would */
 async function menuCrews(list: Crew[], focus: (root: HTMLElement) => Element | null | undefined) {
   if (roamCrews === null || !session?.net?.crews) return;
   roamCrews = list;
@@ -1479,7 +1482,7 @@ async function menuAction(act: string) {
       solidCars = !solidCars;
       session.net.solid(solidCars);
       m.querySelector<HTMLButtonElement>('[data-act="solid"]')!.textContent = ghostLabel();
-      // and in settings.ini for the next game, as Settings, Online, Ghost mode would
+      // and in settings.ini for the next game, as Online, Ghost mode would
       const text = putKey(settingsText ?? TEMPLATE, 'roam_collide', solidCars ? 'on' : 'off').text;
       try { await writeFile(SAVE, 'settings.ini', text); settingsText = text; void settings.refresh(); }
       catch (e) { log.add(`[app] settings.ini not written: ${e}`); }
@@ -1776,6 +1779,9 @@ export async function boot() {
   fps.extra = () => session?.stats() ?? {};
   // the language this browser showed last, at once (settings.ini says which it is: applyLanguage, once it is read)
   void setLanguage(lastLanguage(), logLine);
+  // the big panel's tabs (the one open last, or the one the address names: #friends) and About's
+  panelTabs($('#settings'), { store: 'nfsu2.page.tab', hash: true });
+  panelTabs($('#about'));
   settings = new SettingsPanel($('#settings'), {
     // another language or texture pack counts other files as the game data (its pack); a keyphrase sends the file
     saveDir: SAVE, environment: ENVIRONMENT, defaults: DEVICE, onSaved: text => {
@@ -1789,7 +1795,7 @@ export async function boot() {
     readOnly: () => !instance.owner, say: pageToast, confirm: confirmBox,
     nameRow: (row, input, ctl) => nameRow.attach(row, input, ctl),
   }, $('#online'));
-  // the language picker at the top: the same setting as Settings, Game, Language
+  // the language picker at the top: the same setting as the Game tab's Language
   const pick = $<HTMLSelectElement>('#lang-pick');
   pick.replaceChildren(...LANGUAGES.map(l => Object.assign(document.createElement('option'), { value: l, textContent: NATIVE[l], lang: LOCALE[l] })));
   pick.onchange = () => void settings.set('language', pick.value);
@@ -1799,9 +1805,12 @@ export async function boot() {
   // Changelog at the top: CHANGELOG.md's releases in a popup
   changelog($('#changelog-btn'), $<HTMLDialogElement>('#changelog'), $('#changelog-body'));
   fitTop(); onLanguage(fitTop); window.addEventListener('resize', fitTop); void document.fonts.ready.then(fitTop);
-  // who plays on this server now (Online): only while no game runs here; with free roam on in a room, that room too,
-  // and in crews (free roam on or not: the row shows them either way), how many are in each (on the Crews row's lines)
-  players = watchPlayers((line, crews) => { settings.setStatus(line); settings.setCrewCounts(crews); }, () => !session && !starting, setReach,
+  // who plays on this server now (Playing now): only while no game runs here; with free roam on in a room, how many
+  // are in that room (on the Room row's line), and in crews (free roam on or not: the row shows them either way), how
+  // many are in each (on the Crews row's lines)
+  playersPanel = new PlayersPanel($('#players'));
+  players = watchPlayers((c, room, crews) => { playersPanel.show(c); settings.setRoomLine(c ? () => roomLine(c, room) : () => ''); settings.setCrewCounts(crews); },
+    () => !session && !starting, setReach,
     () => { const e = resolved().env; return e.NFSU2_ROAM === '1' ? e.NFSU2_ROAM_ROOM ?? '' : ''; },
     () => crewList(resolved().env.NFSU2_ROAM_CREW ?? '').map(roomHash));
   window.addEventListener('online', () => players?.now());
