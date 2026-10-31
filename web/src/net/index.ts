@@ -632,7 +632,7 @@ class Link implements NetLink {
       if (e.code === 1013 && !this.full) {
         this.full = true;
         this.log('the server is full (LAN full); trying again until a place frees up');
-        this.o.onNotice?.(N('The server is full: playing with others waits for a free place'));
+        this.o.onNotice?.(N('The server is full: playing with others waits for a free place.'));
       }
       // one line when the link goes, then one every 30 s while it stays away
       const t = now();
@@ -662,7 +662,7 @@ class Link implements NetLink {
         this.log(`in from the line after ${s < 60 ? `${s} s` : `${Math.round(s / 60)} min`}`);
         this.ticket = ''; this.queuedAt = 0; this.o.onQueue?.(null);
       }
-      if (this.full) { this.full = false; this.o.onNotice?.(N('A place on the server freed up: you can play with others now')); }
+      if (this.full) { this.full = false; this.o.onNotice?.(N('A place on the server freed up: you can play with others now.')); }
       if (this.lost) { this.lost = false; this.o.onBack?.(); }
       this.resolveOnline(this.vip);
     } else if (m.t === 'queue' && Number.isInteger(m.pos) && Number.isInteger(m.of)) {
@@ -670,10 +670,10 @@ class Link implements NetLink {
       if (typeof m.ticket === 'string') this.ticket = m.ticket;
       if (this.state !== 'queued') {
         this.state = 'queued'; this.setPage(P.NET_PAGE_OFFLINE); this.backoff = 250; this.failed = 0;
+        // (no notice: the line over the game, onQueue, says it)
         if (!this.queuedAt) {
           this.queuedAt = now(); this.full = true;
           this.log(`the server is full: in line for a place, ${m.pos} of ${m.of}`);
-          this.o.onNotice?.(N('The server is full: you\'re in line and join the others when it\'s your turn'));
         } else this.log(`back in line, ${m.pos} of ${m.of}`);
       }
       this.o.onQueue?.({ pos: m.pos, of: m.of, ...(typeof m.eta === 'number' ? { eta: m.eta } : {}) });

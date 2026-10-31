@@ -1012,17 +1012,19 @@ function openHelp(tab?: Tab) {
   $<HTMLDialogElement>('#help').showModal();
 }
 
-/** free roam: a friend joined, left, went into a race (who: the friend's name the text starts with); the server
- *  full; four at most, each for 5 s (also in the log).  Friends' lines are only logged for now: with the crowds
- *  on the server they came too often */
+/** a line for the player from the network (also in the log): the page's own (net/index.ts: the server full, a place
+ *  freed up) and the game's (alone in a room) in the toast over the game, as the page's other messages; a friend
+ *  joined, left, went into a race (who: the friend's name the text starts with) in the notices' box, four at most,
+ *  each for 5 s.  Friends' lines are only logged for now: with the crowds on the server they came too often */
 const FRIEND_NOTICES = false;
 function notice(text: string, who?: string) {
   privacy.name(who, 'player');
   log.add(`[notice] ${text}`);
-  if (who && !FRIEND_NOTICES) return;
+  if (!who) { toast(t(text), 6000); return; }     // English in the log
+  if (!FRIEND_NOTICES) return;
   const box = $('#notices'), line = document.createElement('div');
-  if (who && text.startsWith(who)) { const b = document.createElement('b'); b.textContent = who; line.append(b, text.slice(who.length)); }
-  else line.textContent = t(text);                 // the page's own (net/index.ts), English in the log
+  if (text.startsWith(who)) { const b = document.createElement('b'); b.textContent = who; line.append(b, text.slice(who.length)); }
+  else line.textContent = text;
   placeNotices();
   box.append(line);
   while (box.childElementCount > 4) box.firstElementChild!.remove();
