@@ -334,12 +334,23 @@ export async function attachRenderer(proc: GameProcess, canvas: HTMLCanvasElemen
         // rq_end >= head, so draining to head never applies a later frame's uploads
         const head = Atomics.load(I, cw + C.rqHead) >>> 0;
         const s = Atomics.load(I, cw + C.state), r = s & 3, e = (s >> 2) & 3;
+        // a pending frame is taken while fewer than maxInFlight are on the GPU: claimed first, so the game, which
+        // waits for this claim (gpu_web.c wait_taken), records its next frame while this one uploads and encodes
+        const take = !!r && !e && inFlight < maxInFlight;
+        if (take) {
+          if (Atomics.compareExchange(I, cw + C.state, s, s | (r << 2)) !== s) continue;
+          Atomics.notify(I, cw + C.state);
+        }
         // a pending frame: its resources first, nothing recorded after it
         const limit = r && !e ? U[cw + C.frame + (r - 1) * (P.FRAME_BYTES >> 2) + F.rqEnd] : head;
-        try { enc.drain(limit); } catch (x) { failed('resource upload', x); break; }
-        waiting(!!r && !e && inFlight >= maxInFlight);
-        if (!r || e || inFlight >= maxInFlight) break;
-        if (Atomics.compareExchange(I, cw + C.state, s, s | (r << 2)) !== s) continue;
+        try { enc.drain(limit); } catch (x) {
+          failed('resource upload', x);
+          // the frame stays pending, as if not taken (only the page changes a claimed state)
+          if (take) { Atomics.store(I, cw + C.state, s); Atomics.notify(I, cw + C.state); }
+          break;
+        }
+        waiting(!!r && !e && !take);
+        if (!take) break;
         try { encodeAndSubmit(r - 1); failRun = 0; } catch (x) { failed('encode', x); }
         Atomics.store(I, cw + C.state, 0); Atomics.notify(I, cw + C.state);
       }
