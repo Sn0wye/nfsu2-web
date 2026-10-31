@@ -916,6 +916,7 @@ int rc_interp_eval(rc_interp *ip, int64_t now_us, int64_t frame_dt_us, int64_t d
 #define T_HUB_SNAP      500000      /* and a SNAP (where we are) this often */
 #define T_HUB_GRACE    2500000      /* a peer the hub has not listed for this long goes (its list comes every second, twice since 2026-10-23) */
 #define T_HUB_SILENT  10000000      /* no list for this long (or from the start): discovery and gossip again */
+#define T_FAR_FED      1500000      /* a far peer's HELLOs and pings are rarer while it got a SNAP within this (rc_tick) */
 #define RL_DGRAMS      100          /* per second and source */
 #define RL_BYTES     65536
 
@@ -1556,9 +1557,19 @@ void rc_tick(rc_session *s, int64_t now){
         if (!p->last_rx_us && !p->configured && now - p->added_us > T_GOSSIP_FORGET){ peer_clear(p, 0); continue; }
         if (p->state == RC_PS_EST && now - p->last_rx_us > T_LOST && !p->lost){
             p->lost = 1; note(s, RC_EV_NOTE, i, p->name, ": no packets for 3 s", ""); }
-        int64_t every = p->state == RC_PS_EST ? T_HELLO_EST : T_HELLO_CAND;
+        /* a peer far away gets its HELLO and ping as much rarer as its
+         * SNAPs (every 4th or 10th: out of sight), while those still go (they
+         * keep us alive at its end): a ping's round trip only places a solid
+         * car in sight (roam_game.c render_delay), and a HELLO to an
+         * established peer only repeats what went at its change (status, car
+         * look, room).  It is pinged at once when it comes near
+         * (rc_push_state).  Through the browser's server each one is a
+         * datagram in and one out, to each of 32 peers (roam-crowd, 30 bots
+         * in rings 400 m apart: 36 % fewer datagrams, 22 % fewer bytes). */
+        int slow = p->state == RC_PS_EST && p->far > 1 && now - p->last_snap_tx < T_FAR_FED ? p->far : 1;
+        int64_t every = p->state == RC_PS_EST ? T_HELLO_EST * slow : T_HELLO_CAND;
         if (now - p->last_hello_tx >= every) send_hello(s, p, now);
-        if (p->state == RC_PS_EST && now - p->last_ping_tx >= T_PING){
+        if (p->state == RC_PS_EST && now - p->last_ping_tx >= T_PING * slow){
             rc_msg m; hdr(s, &m, RC_MSG_PING); m.u.ping.t0 = (uint32_t)now; tx(s, p, &m); p->last_ping_tx = now; }
         if (p->state == RC_PS_EST) want_cfg(s, p, p->cfg_rev_seen, now);
     }
@@ -1638,6 +1649,8 @@ int rc_push_state(rc_session *s, const rc_state *st, int64_t now){
         rc_peer *p = &s->peer[i];
         if (p->state != RC_PS_EST || !s->io.send) continue;
         int e = snap_every(p, &s->last[0]), x = ext && p->statex;
+        if (e == 1 && p->far > 1) p->last_ping_tx = INT64_MIN / 4;   /* come near: its round trip now (rc_tick) */
+        p->far = (uint8_t)e;
         if (e > 1 && (uint16_t)(s->seq + i) % (uint16_t)e) continue;
         const uint8_t *d = b; int dn = n;
         if (e > 1 || x){
@@ -1650,6 +1663,7 @@ int rc_push_state(rc_session *s, const rc_state *st, int64_t now){
             d = bv[v]; dn = nv[v];
         }
         s->io.send(s->io.user, p->ip, p->port, d, dn); s->tx++; s->tx_bytes += (uint32_t)dn;
+        p->last_snap_tx = now;
     }
     if (to_hub && s->io.send){
         s->io.send(s->io.user, s->conf.hub_ip, s->conf.hub_port, b, n); s->tx++; s->tx_bytes += (uint32_t)n;

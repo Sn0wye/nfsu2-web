@@ -489,6 +489,9 @@ typedef struct {
     uint32_t ip;  uint16_t port;
     uint32_t id;
     int64_t  added_us, last_rx_us, last_hello_tx, last_ping_tx, last_cfgreq_tx, last_snap_rx;
+    int64_t  last_snap_tx;         /* we sent it a SNAP last (rc_push_state) */
+    uint8_t  far;                  /* it gets every how many of our SNAPs (snap_every: 1 near, 4, 10), as rc_push_state
+                                      last found (0: not yet): its HELLOs and pings that much rarer (rc_tick) */
     int64_t  cfg_answer_us;        /* our record goes to it again (asked for, or at its join) from then on */
     int64_t  hub_listed_us;        /* the hub's list named it last (0: never) */
     char     name[RC_NAME_MAX + 1];
