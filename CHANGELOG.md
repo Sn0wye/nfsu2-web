@@ -8,6 +8,15 @@ the release brings, so the next section covers the commits after it. One line pe
 `- **Area:** what changed`, written for players. Left out: the server's insides, the forum bot, logs, tests, docs and
 cheat checks. A change that may or may not belong here is asked about before the release, not guessed.
 
+## 2026-10-31 (9965192)
+
+- **Free roam:** touch front bumpers with another player for 3 seconds to add them as a friend. Your friends are listed under Online on this page, with where they play and Join. Both of you need a claimed name.
+- **Free roam:** the game's outrun challengers are grey on the minimap and the world map, so they no longer look like players.
+- **Names:** a claimed name stays yours as long as the passphrase does, instead of 180 days after your last game.
+- **Profiles:** your first profile's name starts as the one under "Your name", so one Enter takes it.
+- **Touch controls:** no Quick chat button when quick chat is off.
+- **This page:** a Changelog button at the top.
+
 ## 2026-10-31 (81d18c9)
 
 - **Touch controls:** Steering on the left or right, Nitro on the steering side, and a Career status button in free roam. Hold Steering to open the touch settings.
