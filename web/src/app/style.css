@@ -748,7 +748,8 @@ html:has(> body > .stage:not([hidden])) { overflow: hidden; }
 /* free roam's friends (friends.ts): the line over the game while front bumpers touch, as the pause menu's line; one
  * that offers nothing (a request sent, or why not) is no button.  On the start page (and in the page menu's Friends) a
  * line a friend: the name, where it plays after it in small text (lime while it plays; the name dimmed while it does
- * not), the icons at its end (Remove a grey can, red under the pointer); the friend's own line under it */
+ * not), the icons at its end (Message an envelope, lime with a dot while messages wait to be read: messages.ts; Remove
+ * a grey can, red under the pointer); the friend's own line under it */
 .friend-prompt:not(.offer), .friend-prompt:not(.offer):active { cursor: default; color: var(--muted); }
 .fl, .dlg ul.fl { list-style: none; margin: 0; padding: 0; color: inherit; font-size: inherit; line-height: inherit; }
 .fl li { display: flex; flex-wrap: wrap; align-items: center; column-gap: 8px; min-height: 40px; }
@@ -761,8 +762,17 @@ html:has(> body > .stage:not([hidden])) { overflow: hidden; }
 .fl .fl-yes { color: var(--lime); }
 .fl .fl-del { color: var(--edge); opacity: 0.6; }
 .fl .fl-del:is(:hover, :focus-visible) { color: var(--bad); opacity: 1; }
+.fl .fl-msg { position: relative; }
+.fl .fl-msg.unread { color: var(--lime); }
+.fl .fl-msg.unread::after {
+  content: ""; position: absolute; top: 4px; right: 4px; width: 8px; height: 8px; border-radius: 50%; background: var(--lime);
+  box-shadow: 0 0 0 2px var(--panel);
+}
 .fl-contact { flex-basis: 100%; margin-top: -8px; padding-bottom: 8px; color: var(--muted); font-size: 14px; line-height: 20px; }
 #friends > .set { box-shadow: inset 0 1px var(--line); }   /* under the Crews row, as the rows of a group */
+/* a request by name (friends.ts addField): the Crews row's box (its field's rules) under the list, a setting's 240 px
+ * (the row's width on a phone), what the last one did under it */
+.fl-add { flex: none; width: 240px; }
 .friends-pop-box { margin-bottom: 16px; }
 .friends-pop-box .hint:last-child { margin-bottom: 0; }
 /* the away check (away.ts): in the middle, until the player is back; a kick or a ban (shell.ts netRemoved) the same,
@@ -830,6 +840,20 @@ html:has(> body > .stage:not([hidden])) { overflow: hidden; }
   font-style: normal; font-size: max(13px, calc(11 * var(--u))); color: rgba(255, 255, 255, 0.9);
 }
 .notices div.chat svg { width: 0.9em; height: 0.9em; flex: none; fill: rgba(200, 240, 136, 0.9); }
+/* a friend's message in the log (shell.ts msgLine, messages.ts): quick chat's line with an envelope, wrapping under the
+ * name (the envelope's width in), a note after the player's own in grey; on a touch screen a tap on one answers it;
+ * "T Write back" under the newest, as quick chat's picker shows its keys */
+.notices div.msg { display: block; padding-left: 1.15em; text-indent: -1.15em; overflow-wrap: anywhere; }
+.notices div.msg svg { display: inline-block; vertical-align: -0.1em; margin-right: calc(2 * var(--u)); fill: none; color: rgba(200, 240, 136, 0.9); }
+.notices div.msg i { color: rgba(255, 255, 255, 0.62); }
+.notices div.msg.tap { pointer-events: auto; cursor: pointer; }
+.notices div.msg-hint {
+  display: flex; align-items: center; gap: 0.4em; font-style: normal; font-size: max(11px, calc(9 * var(--u))); color: rgba(255, 255, 255, 0.62);
+}
+.notices .msg-hint kbd {
+  min-width: 1.6em; padding: 0 0.4em; text-align: center; border: 1px solid var(--edge); border-radius: 3px; background: var(--field);
+  font: 700 0.85em/1.5 var(--font); color: var(--text);
+}
 /* free roam: quick chat over the cars (quickchat.ts): the phrase in lime after a speech balloon, over the name the
  * game draws, sized with the HUD (--u, 16 units at the nearest) and scaled with the name by the line's transform
  * (quickchat.ts LINE_MIN: never below 70 %), which follows the game's marks every frame; it pops up, and fades out
@@ -921,6 +945,31 @@ html:has(> body > .stage:not([hidden])) { overflow: hidden; }
   font: italic 700 14px/1.2 var(--font); text-align: left; touch-action: manipulation; -webkit-tap-highlight-color: transparent;
 }
 .qc-say:active { border-color: var(--lime); color: var(--lime); }
+.qc-picker .qc-msg { grid-column: 1 / -1; text-align: center; }
+/* messages between friends (messages.ts): the card is quick chat's picker, in its place and look (the log steps aside
+ * as for the picker), taking clicks: the message answered, a field for the new one, the characters left; or the
+ * friends to pick, where each plays on the right.  On a touch screen at the top, as the picker's sheet, its rows and
+ * Send big enough to tap */
+.msg-card { pointer-events: auto; outline: none; }
+.msg-quote { margin-top: 0.5em; color: var(--muted); font-style: italic; overflow-wrap: anywhere; }
+.msg-quote b { font-style: normal; color: var(--lime); }
+.msg-input {
+  display: block; box-sizing: border-box; width: 100%; margin-top: 0.5em; padding: 0.3em 0.5em; border: 1px solid var(--edge); border-radius: 3px;
+  background: var(--field); color: var(--text); font: inherit; outline: none;
+}
+.msg-input:focus { border-color: var(--lime); }
+.msg-foot { display: flex; justify-content: space-between; align-items: center; gap: 0.6em; }
+.msg-left { font-variant-numeric: tabular-nums; }
+.msg-friend { cursor: pointer; }
+.msg-where { margin-left: auto; font-size: 0.85em; color: var(--muted); }
+.msg-where.ok { color: var(--lime); }
+.msg-card[data-mode="touch"] { display: block; width: min(440px, calc(100% - 32px)); padding: 12px 16px; font-size: 16px; }
+.msg-card[data-mode="touch"] .msg-friend {
+  display: flex; width: 100%; min-height: 40px; align-items: center; border: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: none; color: var(--text); font: inherit; text-align: left; touch-action: manipulation;
+}
+.msg-card .msg-send { min-height: 40px; padding: 4px 16px; font-size: 16px; }
+.msg-card[data-mode="touch"] .msg-foot { margin-top: 8px; }
 /* free roam: the race lobby (lobby.ts): a card on the right under the game's Bank box, a little wider than it and its
  * text about the size of the HUD's (--u: one HUD unit), and over the trip to the race and back a cover of the whole
  * picture with the lobby in the middle, in the same step */
@@ -1028,6 +1077,19 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.64); }
 .menu-radio svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 #menu-save { margin-top: -12px; }
 #menu-save:empty { display: none; }
+/* a conversation with a friend (messages.ts ChatDialog): the messages scrolling under the name and Close, newest at
+ * the bottom, each with who and when; the field and Send under them; what became of a message, and the characters
+ * left, under the field */
+.dlg.chat[open] { display: flex; flex-direction: column; overflow: hidden; }
+#chat-log { display: flex; flex-direction: column; gap: 12px; min-height: 96px; margin-bottom: 16px; overflow: hidden auto; }
+#chat-log .hint { margin: 0; }
+.chat-msg p { margin: 0; overflow-wrap: anywhere; }
+.chat-head { display: flex; align-items: baseline; gap: 8px; font-size: 14px; line-height: 20px; color: var(--muted); }
+.chat-head b { font-style: italic; }
+.chat-msg.in .chat-head b { color: var(--lime); }
+.chat-msg.out .chat-head b { color: var(--text); }
+.chat-foot { display: flex; justify-content: space-between; gap: 8px; margin-top: 8px; font-size: 14px; line-height: 20px; color: var(--muted); }
+#chat-left { margin-left: auto; font-variant-numeric: tabular-nums; }
 /* the menu's Crews popup (a game in free roam): the Crews row's control under the help, Done under it */
 .crews-pop-box { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
 .dlg ul.crews { margin: 0; padding: 0; color: inherit; font-size: inherit; line-height: inherit; }
@@ -1070,6 +1132,7 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.64); }
   /* a value box fills the row, beside what stays at its own width (Listen) */
   .set-control > select, .set-control > input[type="text"], .set-control > input[type="number"], .set-control > .linkbox,
   .set-control .crew-add { flex: 1 1 160px; width: auto; min-width: 0; max-width: none; }
+  .set-control .fl-add { flex: none; width: 100%; }   /* (in the Friends row's column: no basis, which is its height) */
   .opt { flex: 1; justify-content: center; padding: 0 8px; }
   /* Reset all settings on a line of its own, under the text editor's line (and the editor, when open) */
   .raw { display: flex; flex-direction: column; }

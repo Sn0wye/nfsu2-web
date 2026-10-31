@@ -154,7 +154,8 @@
 //!
 //! A page's {"t":"friend",...} and {"t":"room",...} go to the server as they came ([`LanSwitch::on_text`], with the
 //! page's address, its keyphrase's owner and its client), under the text messages' budget (`text_rate`, `max_text`):
-//! free roam's friends (the server's friends.rs).  The server answers one page with [`LanSwitch::send_text`].
+//! free roam's friends (the server's friends.rs).  The server answers one page with [`LanSwitch::send_text`], and
+//! finds a friend's pages for a message by their keyphrase's owner ([`LanSwitch::vips_of_owner`]).
 //!
 //! ## Test aids
 //!
@@ -1299,6 +1300,20 @@ impl LanSwitch {
         let guard = slot(vip).map(|i| self.table[i].load());
         let Some(p) = guard.as_ref().and_then(|g| g.as_ref()).filter(|p| p.open()) else { return false };
         self.send(p, Out::Text(msg))
+    }
+
+    /// The addresses of the open pages that play with the keyphrase `owner` (their hello's claim: `AttachOpts::on_claim`):
+    /// a friend's message goes to each (the server's friends.rs).  A walk over the table, for the few messages a second
+    /// the server passes on.
+    pub fn vips_of_owner(&self, owner: &str) -> Vec<u32> {
+        self.table
+            .iter()
+            .filter_map(|e| {
+                let g = e.load();
+                let p = g.as_ref()?;
+                (p.open() && p.conn.owner.get().is_some_and(|o| &**o == owner)).then_some(p.vip)
+            })
+            .collect()
     }
 
     /// The operator removes the player at `vip` (the crate doc's Kicks and bans): its page gets `msg` (a control

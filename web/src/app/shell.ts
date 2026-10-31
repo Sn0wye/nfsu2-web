@@ -58,6 +58,7 @@ import { LobbyPanel } from './lobby';
 import { ICON as CHAT_ICON, QuickChat } from './quickchat';
 import { groupsOf, phrasesOf } from './phrases';
 import { FriendPrompt, FriendsApi, FriendsPanel } from './friends';
+import { ChatDialog, FriendMessages, MSG_ICON, MessageStore } from './messages';
 import { GameSession } from './game';
 import { AwayCheck, AWAY_LIMITS, type AwayLimits } from './away';
 import { changelog } from './changelog';
@@ -147,6 +148,9 @@ let lobbyPanel: LobbyPanel;
 let quickChat: QuickChat;                // free roam's fixed phrases (quickchat.ts)
 let friendPrompt: FriendPrompt;          // free roam's friends: Add friend over the game when front bumpers touch (friends.ts)
 let friendsPanel: FriendsPanel;          // ...and the friends on the start page
+const msgStore = new MessageStore();      // messages between friends (messages.ts): the conversations in this browser
+let friendMessages: FriendMessages;       // ...in the game: the log's lines, T and its card
+let chatDialog: ChatDialog;               // ...on the start page: one conversation
 let settings: SettingsPanel;
 let players: { now(): void; last(): PlayerCounts | null; fresh(ms: number): Promise<PlayerCounts | null> } | null = null;
 let playersPanel: PlayersPanel;
@@ -710,6 +714,7 @@ async function startGame() {
   driftPanel.start(session);
   photo.start(session);
   friendPrompt.start(session, net && r.env.NFSU2_ROAM === '1');
+  friendMessages.start(session, net && r.env.NFSU2_ROAM === '1');
   quickChat.start(session, net && r.env.NFSU2_ROAM === '1' && r.env.NFSU2_ROAM_SAY !== '0',
     phrasesOf(r.env.NFSU2_ROAM_SAY_PHRASES), groupsOf(r.env.NFSU2_ROAM_SAY_GROUPS));
   fps.memory = session.proc.memory;
@@ -897,6 +902,7 @@ function endStage() {
   photo.stop();
   quickChat.stop();
   friendPrompt.stop();
+  friendMessages.stop();
   awake?.(); awake = null;
   away?.stop(); away = null;
   playTime?.stop(); playTime = null;
@@ -1043,7 +1049,7 @@ function say(json: string) {
 function marks(n: number, m: Float32Array, ids: Uint32Array) { quickChat.marks(n, m, ids); }
 /** free roam's friends: front bumpers touching (the game), and the server's friend messages (friends.ts) */
 function bump(json: string) { friendPrompt.bump(json); }
-function friendMsg(m: Record<string, unknown>) { friendPrompt.server(m); }
+function friendMsg(m: Record<string, unknown>) { friendPrompt.server(m); friendMessages.server(m); }
 /** quick chat's line in the log: a speech balloon, the name, the phrase */
 function chatLine(name: string, text: string, me: boolean) {
   const b = document.createElement('b');
@@ -1060,6 +1066,39 @@ function iconLine(cls: string, icon: string, parts: (string | Node)[]) {
   box.append(line);
   while (box.childElementCount > 4) box.firstElementChild!.remove();
   setTimeout(() => line.remove(), 8000);
+}
+/** a friend's message in the log (messages.ts): an envelope, the name, the text wrapping under the name; the player's
+ *  own as "To <name>" with a note after it; on a touch screen a tap on a friend's answers it.  In the notices' box, for
+ *  ms (the line fades out at its end) */
+function msgLine(name: string, text: string, out: boolean, note: string, ms: number, tap?: () => void): HTMLElement {
+  placeNotices();
+  const box = $('#notices'), line = document.createElement('div'), b = document.createElement('b');
+  line.className = 'chat msg' + (out ? ' me' : '');
+  line.style.animationDuration = `${ms}ms`;
+  line.innerHTML = MSG_ICON;
+  b.textContent = name;
+  line.append(b, ` ${text}`);
+  if (note) line.append(Object.assign(document.createElement('i'), { textContent: ` ${note}` }));
+  if (tap && touchFirst()) { line.classList.add('tap'); line.addEventListener('click', tap); }
+  box.append(line);
+  while (box.childElementCount > 4) box.firstElementChild!.remove();
+  setTimeout(() => line.remove(), ms);
+  return line;
+}
+/** "T Write back" under the newest friend's message (messages.ts), for ms; null: gone */
+let msgHintTimer = 0;
+function msgHint(ms: number | null) {
+  const box = $('#notices');
+  box.querySelector('.msg-hint')?.remove();
+  clearTimeout(msgHintTimer);
+  if (ms === null) return;
+  const h = document.createElement('div'), k = document.createElement('kbd');
+  h.className = 'msg-hint';
+  h.style.animationDuration = `${ms}ms`;
+  k.textContent = 'T';
+  h.append(k, t('Write back'));
+  box.append(h);
+  msgHintTimer = window.setTimeout(() => h.remove(), ms);
 }
 /** free roam: the race lobby's panel, or the cover over the trip to the race and back (lobby.ts) */
 function lobby(json: string) {
@@ -1085,6 +1124,7 @@ function placeNotices() {
   s.top = `${top}px`;
   s.setProperty('--u', `${u}px`);
   quickChat.place(left, top, u);               // its picker opens there
+  friendMessages?.place(left, top, u);         // and messages.ts's card
 }
 
 /** a full server: the game's place in line for one, over the game until it is in (null: not in line); the page menu
@@ -1844,8 +1884,9 @@ export async function boot() {
   friendsPanel = new FriendsPanel($('#friends'), {
     api: new FriendsApi(() => testClaim() ? Promise.resolve(testClaim()) : vault ? vault.token() : Promise.resolve(null)),
     join: room => void offerInvite({ room }), confirm: (title, body, ok) => confirmBox(title, body, ok),
-    idle: () => !session && !starting, log: logLine,
+    idle: () => !session && !starting, log: logLine, store: msgStore, chat: name => chatDialog.open(name),
   });
+  chatDialog = new ChatDialog(msgStore, { send: (name, body) => friendsPanel.send(name, body), log: logLine });
   $<HTMLButtonElement>('#play').onclick = () => void play();
   $<HTMLButtonElement>('#retry').onclick = () => void loadModule();
   $<HTMLButtonElement>('#reload').onclick = () => void reload();
@@ -1914,12 +1955,19 @@ export async function boot() {
   stageMenu.onpointerdown = e => e.preventDefault();     // the canvas keeps the focus (and with it the keyboard)
   stageMenu.onclick = () => { if (session) openMenu(); };
   $('#stage').addEventListener('pointerdown', e => { if (e.pointerType === 'touch') stageMenu.hidden = false; }, { capture: true });
-  quickChat = new QuickChat($('#stage'), { line: chatLine, lobby: (name, text) => lobbyPanel.say(name, text), place: placeNotices, log: logLine });
+  quickChat = new QuickChat($('#stage'), {
+    line: chatLine, lobby: (name, text) => lobbyPanel.say(name, text), place: placeNotices, log: logLine,
+    message: { on: () => friendMessages?.enabled ?? false, open: () => friendMessages.pickByTouch() },
+  });
   touch = new TouchControls($('#stage'), { toast, log: logLine, chat: () => quickChat.toggle(), chatOn: () => quickChat.enabled,
     settings: () => openHelp('keys') });
   friendPrompt = new FriendPrompt($('#stage'), {
     send: m => session?.net?.friend?.(m) ?? false, room: () => roamRoom ?? '', toast: s => toast(s, 5000), log: logLine,
     notice: friendNotice, menu: menuName, placed: () => { if ($<HTMLDialogElement>('#friends-pop').open) drawPopFriends(); },
+  });
+  friendMessages = new FriendMessages($('#stage'), msgStore, {
+    send: m => session?.net?.friend?.(m) ?? false, driving: () => quickChat.driving(), line: msgLine, hint: msgHint,
+    placeNow: placeNotices, focusGame: () => $('#stage').querySelector('canvas')?.focus({ preventScroll: true }), toast: s => toast(s, 5000), log: logLine,
   });
   textField = new TextField($('#stage'), { log: logLine });
   pauseHint = new PauseHint($('#stage'), {
@@ -1965,6 +2013,7 @@ export async function boot() {
     get session() { return session; }, log, save: SAVE, download: () => download.status, offline: () => offline, displayHz: () => displayHz, retryModule: () => loadModule(),
     newer: () => newer, tried: () => tried, touch: () => touch.state(), textField: () => textField.state(), renderCheck: () => renderCheck?.state() ?? null,
     quickChat: () => quickChat.state(), quickChatStick: (x: number, y: number) => quickChat.stick(x, y),
+    messages: () => friendMessages.state(),
     env: () => resolved().env, settingsText: () => settingsText, checks: () => [...checks.values()],
     fpsMode: (m?: FpsMode) => { if (m && FPS_MODES.includes(m)) fps.set(m); return fps.mode; },
     quitTimes: { forcedCloseMaxMs: FORCED_CLOSE_MAX_MS, stopAfterMs: STOP_AFTER_MS },

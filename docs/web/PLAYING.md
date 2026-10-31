@@ -113,6 +113,7 @@ While you drive:
 | N | Horn (free roam and races with other players) |
 | X | Drift mode in free roam: drift handling, the drift camera and a drift score (see below); on a touch screen the Drift button |
 | 1 to 4, then 1 to 4 | Quick chat in free roam with other players: a group, then a phrase (see section 6) |
+| T | Message a friend in free roam: the answer to the newest message, or a friend to pick (see section 6, Friends) |
 | M, Tab | Map, messages |
 | Esc or P | Pause; Esc also goes back in menus |
 | Enter | Choose (menus); in free roam, start an event at its marker or take an outrun |
@@ -565,15 +566,31 @@ Good to know:
   does a race, an outrun or a race lobby. Both of you need a claimed name ("Your name": a claim needs cloud saves);
   without one the line says so. Your friends are listed in the start page's **Friends & crews** tab, one line
   each: where each one plays now after the name (free roam and its room, the game's Online lobby, offline),
-  with a Join arrow to drive in their room and a grey bin to remove them; a request you could not answer in the game
-  waits there (30 days), with ✓ and ✕, and one you sent has a ✕ to take it back.
+  with a Join arrow to drive in their room, an envelope for your messages (lime with a dot while some are unread) and
+  a grey bin to remove them; a request you could not answer in the game waits there (30 days), with ✓ and ✕, and one
+  you sent has a ✕ to take it back. Under the list, **Add a player by name** sends a request to a player who is not
+  near you: type their name (a claimed one) and press Enter or +; they get it in the game, or there, and answer it.
   In free roam the server pairs friends first, as crew-mates, so you see each other however busy it is: a friend's
   name over the car shows at any distance, in a pale lime white (a friend in one of your crews has the crew's colour),
   and so do their arrows on the minimap and the world map. When a friend comes into free roam, the notices on the left
   say so; the page menu then has **Friends**: who is in free roam, with **Join** for one in another room. A friend is a
-  friend in the game's Online mode too (EA Messenger), up to 50. The server takes a request only between two players
-  whose cars are within 30 m of each other, so nobody can ask you from across the map. Your friends see the name of
+  friend in the game's Online mode too (EA Messenger), up to 50. In free roam the server takes a request only between
+  two players whose cars are within 30 m of each other; by name, from the start page, five at once and then one every
+  30 seconds (a player you block in EA Messenger never sends you one again). Your friends see the name of
   the room you play in, nobody else (it is told to the server only once you have a friend, and kept in memory only).
+- **Messages to friends:** a friend's message shows in the log on the left, where quick chat's phrases show, with an
+  envelope, and **T Write back** under it. In free roam press **T**: a card in quick chat's place answers the newest
+  message, or, with none to answer, lists your friends (where each one plays) for **1** to **9** to pick one. Type
+  (120 characters at most), **Enter** sends, **Esc** closes; the game gets no keys while the card is open. Your own
+  message shows in the log as "To Bo ...". On a touch screen tap a message to answer it, or the chat button's
+  **Message a friend**. On the start page, the envelope on a friend in the Friends tab opens your conversation, lime
+  with a dot while there are messages you have not read. A message reaches your friend at once wherever their page is
+  open (in the game's Online mode, in EA Messenger); a friend who is away gets it when they are back (it waits 7
+  days), and your log says "(gets it when back)". A message that came while you were in a race, a shop or a menu
+  shows once you drive in free roam again. Only friends can message each other; a message with a slur in it reaches
+  no one (three in ten minutes turn your messages off for ten minutes), and Remove or Block stops a friend's. The
+  server keeps a message only until it is delivered; your conversations are kept in your browser (the last 40 with
+  each friend).
 - **Rooms:** set the same "Room" to see only some of the players' cars. A room is a filter between players, not
   privacy: every browser on the server still sees your name ("Your name", or the profile name), whether you are in
   the menus or driving, and the room, and someone with their own tools could join it. Play on a server only with
@@ -698,8 +715,9 @@ Good to know:
   race in Rankings. **Send Friend Request** reaches the other player now, or when they next come online: they see you
   in their list with a green arrow and pick **Answer Friend Request**: Accept, Decline or Block. Your friends stay on
   your list and are told when you come online; **Remove Friend** takes the two of you off each other's lists. A
-  message to a friend who is away waits for them (7 days), and shows with an envelope when they are back; a message
-  to anyone else reaches them only while they are online. Players you block stay blocked: nothing of theirs reaches
+  message to a friend who is not in Online mode reaches them in free roam or on the start page (see Messages to
+  friends), or waits for them (7 days) and shows with an envelope when they are back; a message to anyone else reaches
+  them only while they are online. A message with a slur in it reaches no one, as in the Lobby's chat. Players you block stay blocked: nothing of theirs reaches
   you.
 - **Who is on:** Playing now on the start page (under Play) shows how many play on this server now, how many of
   them are in Online mode (in its lobbies or racing) and how many in free roam. Only numbers: no names.

@@ -10,7 +10,8 @@
 //   where the friends play every minute ("where"), says in the notices when one comes into free roam, and fills the
 //   page menu's Friends popup (Join a friend's room).
 // - FriendsPanel, on the start page (its Friends & crews tab): one line a friend, where it plays after its name and a
-//   Join in free roam, the requests to answer, the ones sent; icons for what each line does.
+//   Join in free roam, the requests to answer, the ones sent; icons for what each line does, a friend's Message among
+//   them (lime with a dot while messages wait to be read: messages.ts); under them a field to ask a player by name.
 // - FriendsApi: /friends, asked with the keyphrase's token (claim.ts NameClaims does the same for /names).
 import type { GameSession } from './game';
 import { touchFirst } from './device';
@@ -19,6 +20,7 @@ import { pageDialog } from './padnav';
 import { onlineName } from './claim';
 import { roomHash } from './players';
 import { iconButton } from './settings-ui';
+import { mailOf, type MessageStore } from './messages';
 
 /** two names of one player: the same Online form, in any case (the name over a car, a claimed name) */
 function sameName(a: string, b: string): boolean {
@@ -29,8 +31,11 @@ function sameName(a: string, b: string): boolean {
  *  its room's name in free roam ('' the room of everyone; none: its page did not say), and its line for its friends */
 export interface Friend { name: string; where: 'roam' | 'online' | ''; room?: string; contact?: string }
 /** the lists: the player's claimed name (null: none, so no friends), its friends, the requests that wait for its
- *  answer and its own that wait; `done` what the last change did (friends.rs) */
-export interface FriendLists { me: string | null; friends: Friend[]; asks: string[]; sent: string[]; done?: string }
+ *  answer and its own that wait, the friends' messages that waited for it (gone from the server now); `done` what the
+ *  last change did (friends.rs) */
+export interface FriendLists {
+  me: string | null; friends: Friend[]; asks: string[]; sent: string[]; mail: { from: string; body: string; t: number }[]; done?: string;
+}
 
 /** the friends of an answer of the server's (GET /friends, "where"), read leniently */
 function friendsOf(v: unknown): Friend[] {
@@ -51,12 +56,19 @@ export class FriendsApi {
     if (!r.ok) return null;
     const j = await r.json();
     const names = (v: unknown) => Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
-    return { me: typeof j.me === 'string' ? j.me : null, friends: friendsOf(j.friends), asks: names(j.asks), sent: names(j.sent), done: typeof j.done === 'string' ? j.done : undefined };
+    return {
+      me: typeof j.me === 'string' ? j.me : null, friends: friendsOf(j.friends), asks: names(j.asks), sent: names(j.sent), mail: mailOf(j.mail),
+      done: typeof j.done === 'string' ? j.done : undefined,
+    };
   }
 
   list(): Promise<FriendLists | null> { return this.ask(); }
-  act(op: 'accept' | 'decline' | 'remove' | 'block', name: string): Promise<FriendLists | null> {
+  act(op: 'accept' | 'decline' | 'remove' | 'block' | 'ask', name: string): Promise<FriendLists | null> {
     return this.ask({ method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ op, name }) });
+  }
+  /** a message to friend `name` (messages.ts): the lists after it, `done` what became of it */
+  send(name: string, body: string): Promise<FriendLists | null> {
+    return this.ask({ method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ op: 'msg', name, body }) });
   }
 }
 
@@ -77,7 +89,7 @@ export function whereText(f: Friend, mine?: string): string {
 
 /** the signs of the friends' icons (24-unit boxes, as settings-ui.ts's) */
 const CHECK = 'M5 12.5l4.5 4.5L19 7.5', CROSS = 'M6 6l12 12M18 6L6 18', TRASH = 'M4 7h16M10 11v6M14 11v6M9 7V4h6v3M6 7l1 13h10l1-13';
-const JOIN = 'M10 17l5-5-5-5M15 12H3M14 4h6v16h-6';
+const JOIN = 'M10 17l5-5-5-5M15 12H3M14 4h6v16h-6', ENVELOPE = 'M3 6h18v12H3zM3 7l9 6 9-6', PLUS = 'M12 5v14M5 12h14';
 
 /** a line of a friends list: the name, where it plays (or the request's state) after it in small text, lime while it
  *  plays; dimmed while it does not; the icons at its end; the friend's own line under it, when it has one */
@@ -376,6 +388,9 @@ export class FriendPrompt {
 
 export interface FriendsPanelDeps {
   api: FriendsApi;
+  /** the conversations (messages.ts), and one opened (ChatDialog) */
+  store: MessageStore;
+  chat(name: string): void;
   /** join free roam's room of this name ('' the room of everyone; shell.ts offerInvite) */
   join(room: string): void;
   /** a question with Yes/No (shell.ts confirmBox) */
@@ -400,6 +415,26 @@ export class FriendsPanel {
   constructor(private root: HTMLElement, private deps: FriendsPanelDeps) {
     document.addEventListener('visibilitychange', () => { if (!document.hidden) void this.refresh(); });
     this.timer = window.setInterval(() => void this.refresh(), POLL_MS);
+    deps.store.onChange(() => this.render());
+  }
+
+  /** new lists from the server: the player's conversations, and the messages that came with them */
+  private took(l: FriendLists | null) {
+    if (!l) return;
+    this.lists = l;
+    this.deps.store.setMe(l.me);
+    for (const m of l.mail ?? []) {
+      this.deps.log(`[msg] from ${m.from}, on the start page`);
+      this.deps.store.add(m.from, { dir: 'in', body: m.body, t: m.t }, true);
+    }
+  }
+
+  /** a message from the start page (ChatDialog): the server's "done" (null: no answer) */
+  async send(name: string, body: string): Promise<string | null> {
+    const r = await this.deps.api.send(name, body);
+    if (r) this.took(r);
+    this.render();
+    return r?.done ?? null;
   }
 
   /** the list now (the keyphrase or its name changed, a game ended) */
@@ -409,7 +444,8 @@ export class FriendsPanel {
     if (!force && (!this.deps.idle() || document.hidden)) return;
     this.busy = true;
     try {
-      this.lists = await this.deps.api.list();
+      const l = await this.deps.api.list();
+      if (l) this.took(l); else this.lists = null;
     } catch (e) {
       this.deps.log(`[friends] the list could not be read: ${e}`);
     } finally {
@@ -419,10 +455,52 @@ export class FriendsPanel {
     if (this.again) { this.again = false; void this.refresh(true); }
   }
 
+  /** the field to ask a player by name (kept over renders: the player may be typing), and what the last ask did */
+  private addInput: HTMLInputElement | null = null;
+  private addBox: HTMLElement | null = null;
+  private addNote = { text: '', warn: false };
+
+  private addField(): HTMLElement {
+    if (this.addBox) return this.addBox;
+    const box = document.createElement('div');
+    box.className = 'crew-add fl-add';
+    const inp = this.addInput = document.createElement('input');
+    inp.type = 'text'; inp.placeholder = t('Add a player by name'); inp.setAttribute('aria-label', t('Add a player by name'));
+    inp.autocomplete = 'off'; inp.spellcheck = false; inp.enterKeyHint = 'send'; inp.maxLength = 32;
+    const go = icon('fl-ask', t('Send friend request'), PLUS, () => void this.ask());
+    go.disabled = true;
+    inp.oninput = () => { go.disabled = !inp.value.trim(); };
+    inp.onkeydown = e => { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); void this.ask(); } };
+    box.append(inp, go);
+    return this.addBox = box;
+  }
+
+  /** a request to the player whose name is in the field (friends.rs "ask": any claimed name, wherever they are) */
+  private async ask() {
+    const inp = this.addInput, name = inp?.value.trim() ?? '';
+    if (!inp || !name) return;
+    let r: FriendLists | null = null;
+    try { r = await this.deps.api.act('ask', name); } catch (e) { this.deps.log(`[friends] ask failed: ${e}`); }
+    this.deps.log(`[friends] ask by name: ${r?.done ?? 'no answer'}`);
+    this.took(r);
+    const done = r?.done ?? '', shown = [...(r?.sent ?? []), ...(r?.friends.map(f => f.name) ?? [])].find(n => sameName(n, name)) ?? name;
+    const say = (text: string, warn: boolean) => { this.addNote = { text, warn }; };
+    if (done === 'asked') say(t('Friend request sent to {name}', { name: shown }), false);
+    else if (done === 'friends') say(t('You and {name} are friends', { name: shown }), false);
+    else if (done === 'claim') say(t('{name} has no claimed name, so can\'t add friends yet', { name }), true);
+    else if (done === 'self') say(t('That\'s your own name'), true);
+    else if (done === 'name') say(t('Not a player\'s name'), true);
+    else if (done === 'full') say(t('A friends list is full (50 at most)'), true);
+    else if (done === 'rate') say(t('Wait a moment'), true);
+    else say(t('Not sent: try again in a moment'), true);
+    if (done === 'asked' || done === 'friends') { inp.value = ''; inp.dispatchEvent(new Event('input')); }
+    this.render();
+  }
+
   private async act(op: 'accept' | 'decline' | 'remove' | 'block', name: string) {
     try {
       const r = await this.deps.api.act(op, name);
-      if (r) this.lists = r;
+      this.took(r);
       this.deps.log(`[friends] ${op} ${name}: ${r?.done ?? 'no answer'}`);
     } catch (e) {
       this.deps.log(`[friends] ${op} ${name} failed: ${e}`);
@@ -434,12 +512,12 @@ export class FriendsPanel {
   render() {
     const l = this.lists, root = this.root;
     // a row as the Crews setting's above it: the name, a line of help, the list
-    const row = (help: string, list?: HTMLElement) => {
+    const row = (help: string, ...ctl: HTMLElement[]) => {
       const r = document.createElement('div'); r.className = 'set set-list';
       const label = document.createElement('div'); label.className = 'set-label'; label.textContent = t('Friends');
       const p = document.createElement('p'); p.className = 'set-help'; p.textContent = help;
       r.append(label, p);
-      if (list) { const c = document.createElement('div'); c.className = 'set-control'; c.append(list); r.append(c); }
+      if (ctl.length) { const c = document.createElement('div'); c.className = 'set-control'; c.append(...ctl); r.append(c); }
       return r;
     };
     if (!l?.me) {
@@ -456,6 +534,8 @@ export class FriendsPanel {
     for (const f of [...l.friends].sort((a, b) => ORDER[a.where] - ORDER[b.where])) {
       const acts: HTMLButtonElement[] = [];
       if (f.where === 'roam' && f.room !== undefined) acts.push(icon('fl-join', t('Join'), JOIN, () => this.deps.join(f.room!)));
+      const unread = this.deps.store.unread(f.name);
+      acts.push(icon(unread ? 'fl-msg unread' : 'fl-msg', unread ? t('Message ({n})', { n: unread }) : t('Message'), ENVELOPE, () => this.deps.chat(f.name)));
       acts.push(icon('fl-del', t('Remove'), TRASH, async () => {
         if (await this.deps.confirm(t('Remove {name}?', { name: f.name }), t('You are friends no more, on both lists.'), t('Remove'))) void this.act('remove', f.name);
       }));
@@ -464,7 +544,14 @@ export class FriendsPanel {
     for (const name of l.sent) {
       lines.push({ name, state: t('request sent'), off: true, acts: [icon('fl-del', t('Take back'), CROSS, () => this.act('remove', name))] });
     }
-    root.replaceChildren(row(t('Touch front bumpers in free roam for 3 s to add a player.'), lines.length ? friendList(lines) : undefined));
+    const note = document.createElement('p');
+    note.className = 'set-note fl-note' + (this.addNote.warn ? ' warn' : ''); note.setAttribute('aria-live', 'polite');
+    note.textContent = this.addNote.text;
+    const ctl = [...(lines.length ? [friendList(lines)] : []), this.addField(), note];
+    // the field stays the same element: a player typing in it keeps the keyboard and the caret
+    const inp = this.addInput!, typing = document.activeElement === inp, at = [inp.selectionStart, inp.selectionEnd];
+    root.replaceChildren(row(t('Touch front bumpers in free roam for 3 s to add a player.'), ...ctl));
+    if (typing) { inp.focus({ preventScroll: true }); inp.setSelectionRange(at[0], at[1]); }
   }
 
   dispose() { clearInterval(this.timer); }

@@ -251,6 +251,7 @@
               <div><dt><kbd>N</kbd></dt><dd data-i18n>Horn (with other players)</dd></div>
               <div><dt><kbd>X</kbd></dt><dd data-i18n>Drift mode (in free roam)</dd></div>
               <div><dt><kbd>1</kbd>–<kbd>4</kbd></dt><dd data-i18n>Quick chat (with other players): group, then phrase</dd></div>
+              <div><dt><kbd>T</kbd></dt><dd data-i18n>Message a friend (in free roam)</dd></div>
               <div><dt><kbd>Enter</kbd></dt><dd data-i18n>Start an event, take an outrun</dd></div>
               <div><dt><kbd>M</kbd> <kbd>Tab</kbd></dt><dd data-i18n>Map, messages</dd></div>
               <div><dt><kbd>Esc</kbd> <kbd>P</kbd></dt><dd data-i18n>Pause</dd></div>
@@ -412,6 +413,20 @@
       <a class="btn selected" id="donate-go" href="https://ko-fi.com/nfsu2xyz" target="_blank" rel="noopener noreferrer" data-i18n>Donate on Ko-fi</a>
     </div>
   </form>
+</dialog>
+
+<!-- a conversation with a friend (messages.ts ChatDialog), from the Friends tab's envelope -->
+<dialog class="dlg chat" id="chat-pop" aria-labelledby="chat-pop-title">
+  <form method="dialog" class="dlg-head">
+    <h2 id="chat-pop-title"></h2>
+    <button class="btn" value="close" data-i18n>Close</button>
+  </form>
+  <div id="chat-log" aria-live="polite"></div>
+  <div class="dlg-field">
+    <input type="text" id="chat-text" autocomplete="off" enterkeyhint="send" aria-labelledby="chat-pop-title">
+    <button type="button" class="btn selected" id="chat-send" data-i18n>Send</button>
+  </div>
+  <div class="chat-foot"><span id="chat-note"></span><span id="chat-left"></span></div>
 </dialog>
 
 <dialog class="dlg confirm" id="claim-check" aria-labelledby="claim-check-title">
