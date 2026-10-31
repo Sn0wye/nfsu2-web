@@ -526,9 +526,22 @@ pub struct Got {
 }
 
 impl Got {
-    /// the last whole peer list
+    /// the peer list as the page keeps it: the last whole list, with the changes after it (gone first, then the ones
+    /// that joined or got their name)
     pub fn peers(&self) -> Option<Vec<Value>> {
-        self.ctl.iter().rev().find(|m| m["t"] == "peers").and_then(|m| m["peers"].as_array().cloned())
+        let at = self.ctl.iter().rposition(|m| m["t"] == "peers")?;
+        let mut list: Vec<Value> = self.ctl[at]["peers"].as_array().cloned()?;
+        for d in self.ctl[at + 1..].iter().filter(|m| m["t"] == "delta") {
+            let gone: Vec<&Value> = d["gone"].as_array().map(|g| g.iter().collect()).unwrap_or_default();
+            list.retain(|p| !gone.contains(&&p["vip"]));
+            for p in d["peers"].as_array().into_iter().flatten() {
+                match list.iter_mut().find(|q| q["vip"] == p["vip"]) {
+                    Some(q) => *q = p.clone(),
+                    None => list.push(p.clone()),
+                }
+            }
+        }
+        Some(list)
     }
     fn frame(&mut self, f: Vec<u8>) {
         self.frame_count += 1;
@@ -734,9 +747,9 @@ impl Browser {
         }
     }
 
-    /// a hello as the page sends it (its name, and what it takes)
+    /// a hello as the page sends it on the LAN screens (its name, LAN play open)
     pub fn hello(&self, name: &str) {
-        self.text(&serde_json::json!({ "t": "hello", "name": name }).to_string());
+        self.text(&serde_json::json!({ "t": "hello", "name": name, "lan": 1 }).to_string());
     }
 
     pub fn text(&self, s: &str) {

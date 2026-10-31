@@ -115,7 +115,7 @@ async fn join(port: u16, i: usize) -> (TcpStream, u32) {
             }
         });
     }
-    let hello = format!(r#"{{"t":"hello","name":"P{i}","deltas":1,"lan":0,"bundle":1}}"#);
+    let hello = format!(r#"{{"t":"hello","name":"P{i}","lan":0,"bundle":1}}"#);
     s.write_all(&client_frame(1, hello.as_bytes())).await.unwrap();
     (s, vip)
 }

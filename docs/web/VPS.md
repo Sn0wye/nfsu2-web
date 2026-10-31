@@ -586,9 +586,8 @@ gzcat logs.gz | grep -F '[cheat]'                   # zcat on Linux
 `docker compose logs server` is the server's console: start-up, players joining (by virtual address, `10.77.x.x`)
 and leaving (by virtual address and nickname), refused requests and connections, and errors (method, path and the
 server's own stack, never the client's details). Every 5 minutes while anyone is on, a `[players]` line says what
-the players on the switch do, each counted once: in Online mode, on the LAN or Online screens, in free roam, on an
-older page (one loaded before the page let its place go; it holds the place until its tab closes), and leaving or
-starting (the page lets the place go 10 s after the last network feature). It ends with how many players are more
+the players on the switch do, each counted once: in Online mode, on the LAN or Online screens, in free roam, and
+leaving or starting (the page lets the place go 10 s after the last network feature). It ends with how many players are more
 than a second behind on their connection (the server times each one's round trip every second, queues past the
 server included: cloudflared's, the tunnel's) and how many of them get fewer of the other cars' updates meanwhile,
 with the updates left out since the last line. Many players behind while the server is idle: look at the tunnel

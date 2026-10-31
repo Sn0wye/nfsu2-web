@@ -27,14 +27,13 @@
 //! - 3, 4, 5 (`KIND_LAN_UDP`, `KIND_STREAM`, `KIND_LAN_ICMP`): LAN play (the Winsock HLE, runtime/web/net_lan.c):
 //!   UDP, TCP segments and ICMP with ports at [12..15] and an 8-byte LAN header (op, ttl, connection id) before the
 //!   data.  Their broadcasts go only to the browsers that have LAN play open (the game's LAN or Online screens:
-//!   "lan":1 in the hello, then {"t":"lan","on":0|1}; a page of before says nothing and gets them all): the others
-//!   drop them anyway, and on a full switch each one would reach 7000 browsers.
+//!   "lan":1 in the hello, then {"t":"lan","on":0|1}; one that says nothing has it shut): the others drop them
+//!   anyway, and on a full switch each one would reach 7000 browsers.
 //! - 32 (`KIND_BUNDLE`): a bundle: several frames in one message, [1..3] reserved, then entries of [0] u8 n,
 //!   [1] reserved, [2..3] u16 frame length, n x u32 destination vip, the frame: to each of the n (the frame's own
-//!   destination is ignored), or with n = 0 to its own.  The switch takes them from anyone (the welcome says
-//!   "bundle":1) and sends a client its datagrams as bundles (n = 0) when its hello said "bundle":1: what is queued
-//!   for it by the bundle clock's next tick goes out as one message (one frame alone goes as it is; the clock is in
-//!   how the work is shared out, below).  Free roam sends each friend the same snapshot 20 times a second: 32 friends
+//!   destination is ignored), or with n = 0 to its own.  The switch takes them from anyone, and sends a client its
+//!   datagrams as bundles (n = 0) when its hello said "bundle":1: what is queued for it by the bundle clock's next
+//!   tick goes out as one message (one frame alone goes as it is; the clock is in how the work is shared out, below).  Free roam sends each friend the same snapshot 20 times a second: 32 friends
 //!   were 640 messages a second each way per player, and each message, not its bytes, is what the server and the
 //!   tunnel in front pay for.  LAN play's TCP segments (kind 4) are never bundled by the switch (they have a queue of
 //!   their own: `stream_queue`).
@@ -43,21 +42,20 @@
 //!   datagram's magic, version, length and CRC), about a quarter fewer bytes for the same frames (compact.rs).
 //!   Never routed from a client (it could name any source), as a bundle in a bundle never is.
 //!
-//! Text frames are JSON control messages: {"t":"hello","name":...,"deltas":1,"lan":0|1,"bundle":1,"compact":1}
+//! Text frames are JSON control messages: {"t":"hello","name":...,"lan":0|1,"bundle":1,"compact":1}
 //! (and "id", "was", "claim", "block": below),
 //! {"t":"lan","on":0|1} and {"t":"ping","id":n} from a client; {"t":"welcome","vip":...,"vipStr":...,"mask":...,
-//! "token":...,"bundle":1}, {"t":"peers",...}, {"t":"delta",...} and {"t":"pong","id":n} from the switch.
+//! "token":...}, {"t":"peers",...}, {"t":"delta",...} and {"t":"pong","id":n} from the switch.
 //!
 //! ## The peer list
 //!
 //! A connection's first hello names its player (later ones change nothing: the page sends one a connection) and gets
-//! it the whole list, {"t":"peers","peers":[{vip,name},...]}.  After that a client whose hello said "deltas":1 (the
-//! page) hears only what changed, at most every `peers_ms`: {"t":"delta","peers":[{vip,name} that joined or got their
-//! name],"gone":[vip that left (and may be back: the client takes gone first)]}.  One that did not (a page of before),
-//! or sent no hello, gets the whole list again, at most every `full_peers_ms`.  (The security review: each rename, 20
-//! a second per connection, sent the whole list to everyone: 11,700 times what came in, at 100 players.)
+//! it the whole list, {"t":"peers","peers":[{vip,name},...]}.  After that it hears only what changed, at most every
+//! `peers_ms`: {"t":"delta","peers":[{vip,name} that joined or got their name],"gone":[vip that left (and may be back:
+//! the client takes gone first)]}; one that sent no hello hears nothing.  (The security review: each rename, 20 a
+//! second per connection, sent the whole list to everyone: 11,700 times what came in, at 100 players.)
 //!
-//! A page whose LAN play is shut ("lan":0: free roam alone) gets a list of the server's own hosts only, and no changes,
+//! A page whose LAN play is shut ("lan":0, or no word of it: free roam alone) gets a list of the server's own hosts only, and no changes,
 //! until it opens LAN play ({"t":"lan","on":1}: the whole list then, and the changes after it; shut again, no more
 //! changes).  Only LAN play needs the other players' addresses (members.rs `list_for`), and on a full switch the whole
 //! list is about 245 KB and every change went to 7000 pages, four times a second.
@@ -234,7 +232,7 @@ mod text;
 
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicBool, AtomicI64, AtomicU8, AtomicU32, AtomicU64, Ordering::Relaxed};
+use std::sync::atomic::{AtomicBool, AtomicI64, AtomicU32, AtomicU64, Ordering::Relaxed};
 use std::sync::{Arc, OnceLock, Weak};
 use std::time::Duration;
 
@@ -370,8 +368,6 @@ pub struct LanOptions {
     /// what changed on the peer list goes out at most this often, as one message to each player (a join and its name
     /// in one)
     pub peers_ms: u64,
-    /// the whole list to a client that does not take changes, at most this often
-    pub full_peers_ms: f64,
     /// the bundle clock's shortest tick (0: no clock, a datagram wakes its writer at once)
     pub bundle_ms: u64,
     /// its longest: the tick grows from `bundle_ms` as more players take bundles, towards `bundle_budget` bundles a
@@ -425,7 +421,6 @@ impl Default for LanOptions {
             resume_wait_ms: 5_000,
             online_queue: 1 << 20,
             peers_ms: 250,
-            full_peers_ms: 1000.0,
             bundle_ms: 50,
             bundle_max_ms: 50,
             bundle_budget: 125_000,
@@ -484,8 +479,7 @@ impl LanOptions {
             site_byte_rate,
             text_rate,
             ctl_rate,
-            stall_ms,
-            full_peers_ms
+            stall_ms
         );
         self
     }
@@ -541,9 +535,7 @@ pub struct Breakdown {
     pub online: usize,
     pub lan: usize,
     pub roam: usize,
-    pub older: usize,
     pub other: usize,
-    pub bundles: usize,
     /// of all of them, more than `BEHIND_MS` behind on their path (lag.rs: the last round trip, or a ping unanswered
     /// for that long)
     pub behind: usize,
@@ -691,10 +683,6 @@ struct CtlBuckets {
     ctl: Bucket,
 }
 
-const LAN_NULL: u8 = 0;
-const LAN_OFF: u8 = 1;
-const LAN_ON: u8 = 2;
-
 /// A player on the switch: one connection holding one address.
 pub(crate) struct Peer {
     vip: u32,
@@ -704,13 +692,12 @@ pub(crate) struct Peer {
     token_hash: [u8; 32],
     /// its first hello's name ("player" until then)
     name: OnceLock<Box<str>>,
-    /// its first hello came (the name, and deltas: it takes the changes to the peer list)
+    /// its first hello came (its name; the changes to the peer list follow it)
     hello: AtomicBool,
-    deltas: AtomicBool,
     /// it takes bundles (its hello said so)
     bundle: AtomicBool,
-    /// LAN play open: said nothing (a page of before), off, on
-    lan: AtomicU8,
+    /// LAN play open (its hello or {"t":"lan"} said so)
+    lan: AtomicBool,
     frames_in: AtomicU64,
     frames_out: AtomicU64,
     /// its reader posted a frame to the Online host while it handled the message it read last (route.rs; the reader
@@ -738,12 +725,8 @@ impl Peer {
     fn name(&self) -> &str {
         self.name.get().map(|n| &**n).unwrap_or("player")
     }
-    fn lan(&self) -> Option<bool> {
-        match self.lan.load(Relaxed) {
-            LAN_OFF => Some(false),
-            LAN_ON => Some(true),
-            _ => None,
-        }
+    fn lan(&self) -> bool {
+        self.lan.load(Relaxed)
     }
     fn open(&self) -> bool {
         self.conn.open()
@@ -1116,11 +1099,9 @@ impl LanSwitch {
     }
 
     /// what the players on the switch do, each counted once, in this order: Online mode (the online host's vips()),
-    /// the LAN or Online screens open, free roam (the hub's vips()), a page from before the page said whether LAN
-    /// play is open (it holds its place until its tab closes), the rest (leaving: the page lets go 10 s after the
+    /// the LAN or Online screens open, free roam (the hub's vips()), the rest (leaving: the page lets go 10 s after the
     /// last network feature; or starting: free roam not yet heard by the hub); and apart from that, how many of them
-    /// take bundles (a page loaded since the switch has them), how many are behind on their path and get fewer
-    /// snapshots (lag.rs)
+    /// are behind on their path and get fewer snapshots (lag.rs)
     pub async fn breakdown(&self) -> Breakdown {
         let online = match &self.online {
             Some(h) => h.vips().await.unwrap_or_default(),
@@ -1137,22 +1118,17 @@ impl LanSwitch {
             let lan = p.lan();
             // its flag stays as its last free-roam datagram left it: one gone from free roam's menus to Online mode
             // or the LAN screens is "not driving" still, and counts there no more
-            if p.away.load(Relaxed) && !online.contains(&p.vip) && lan != Some(true) {
+            if p.away.load(Relaxed) && !online.contains(&p.vip) && !lan {
                 n.away += 1;
             }
             if online.contains(&p.vip) {
                 n.online += 1;
-            } else if lan == Some(true) {
+            } else if lan {
                 n.lan += 1;
             } else if roam.contains(&p.vip) {
                 n.roam += 1;
-            } else if lan.is_none() {
-                n.older += 1;
             } else {
                 n.other += 1;
-            }
-            if p.takes_bundles() {
-                n.bundles += 1;
             }
             if p.probe.lock().lag(now) > BEHIND_MS {
                 n.behind += 1;
@@ -1188,7 +1164,7 @@ impl LanSwitch {
             .map(|p| {
                 let doing = if online.contains(&p.vip) {
                     "Online"
-                } else if p.lan() == Some(true) {
+                } else if p.lan() {
                     "LAN screens"
                 } else if roam.contains(&p.vip) {
                     "free roam"
@@ -1444,7 +1420,6 @@ impl LanSwitch {
                 vip: p.vip,
                 name: p.name().to_string(),
                 hello: p.hello.load(Relaxed),
-                deltas: p.deltas.load(Relaxed),
                 bundle: p.takes_bundles(),
                 lan: p.lan(),
                 open: p.open(),
@@ -1516,9 +1491,8 @@ pub struct PeerView {
     pub vip: u32,
     pub name: String,
     pub hello: bool,
-    pub deltas: bool,
     pub bundle: bool,
-    pub lan: Option<bool>,
+    pub lan: bool,
     pub open: bool,
     /// bytes queued to it and not yet taken by the kernel (its `OutQueue::buffered`)
     pub buffered: usize,

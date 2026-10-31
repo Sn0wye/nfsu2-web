@@ -171,7 +171,7 @@ async fn what_a_peer_learns_about_the_others() {
     let _s = serial().await;
     let sw = start(opts()).await;
     let mut a = Client::connect(sw.port, "Alice").await;
-    let mut b = Client::with(sw.port, "  B\u{202E}ob\u{0}\u{200B}\n\tthe\u{7} driver with a very long name indeed  ", "", deltas()).await;
+    let mut b = Client::with(sw.port, "  B\u{202E}ob\u{0}\u{200B}\n\tthe\u{7} driver with a very long name indeed  ", "", Opts::default()).await;
     a.welcome().await;
     b.welcome().await;
     // bidi, zero-width and control characters gone, spaces folded, 32 characters
@@ -269,44 +269,45 @@ fn dotted_quads(s: &str) -> Vec<String> {
     out
 }
 
-// the peer list: the page hears what changed, a page of before the whole list; a name is the first hello's
+// the peer list: the whole list at the hello, then what changed; a name is the first hello's
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn the_peer_list_changes_to_the_page_the_whole_list_to_a_page_of_before() {
+async fn the_peer_list_the_whole_list_then_the_changes() {
     let _s = serial().await;
     let sw = start(opts()).await;
-    let mut a = Client::with(sw.port, "Alice", "", deltas()).await;
+    let mut a = Client::connect(sw.port, "Alice").await;
     let mut b = Client::connect(sw.port, "Bob").await;
     let wa = a.welcome().await;
     b.welcome().await;
     for c in [&a, &b] {
         c.until_true(|g| g.names() == "Alice,Bob").await;
     }
-    // Carol joins: the page gets her as a change, not the whole list again; the page of before the whole list
-    let mut c = Client::with(sw.port, "Carol", "", deltas()).await;
+    // Carol joins: the pages get her as a change, not the whole list again
+    let mut c = Client::connect(sw.port, "Carol").await;
     c.welcome().await;
     for x in [&a, &b] {
         x.until_true(|g| g.names() == "Alice,Bob,Carol").await;
     }
-    assert_eq!(a.got().count("peers"), 1, "the whole list once: at the page's hello");
-    assert!(a.got().ctl.iter().any(|m| m["t"] == "delta" && m["peers"].as_array().unwrap().iter().any(|p| p["name"] == "Carol")));
-    assert_eq!(b.got().count("delta"), 0, "a page of before gets no changes it cannot read");
+    for x in [&a, &b] {
+        assert_eq!(x.got().count("peers"), 1, "the whole list once: at the page's hello");
+        assert!(x.got().ctl.iter().any(|m| m["t"] == "delta" && m["peers"].as_array().unwrap().iter().any(|p| p["name"] == "Carol")));
+    }
     // more hellos from Carol (the audit: each sent everyone the whole list): her name stays, nobody hears a thing
     sleep(300).await;
     let (n0, m0) = (a.got().ctl.len(), b.got().ctl.len());
     for i in 0..30 {
-        c.text(&format!(r#"{{"t":"hello","name":"Mallory{i}","deltas":1}}"#));
+        c.text(&format!(r#"{{"t":"hello","name":"Mallory{i}"}}"#));
     }
     c.text(r#"{"t":"ping","id":5}"#);
     c.until_true(|g| g.ctl.iter().any(|m| m["t"] == "pong" && m["id"] == 5)).await;
     sleep(1300).await;
     assert_eq!(a.got().ctl.len(), n0, "nothing more to the page");
-    assert_eq!(b.got().ctl.len(), m0, "nothing more to the page of before");
+    assert_eq!(b.got().ctl.len(), m0, "nothing more to the other page");
     assert_eq!(a.got().names(), "Alice,Bob,Carol");
-    // joins in a burst: one change to each player, the whole list to the page of before at most once a second
+    // joins in a burst: one change to each player
     let (d0, f0) = (a.got().ctl.len(), b.got().ctl.len());
     let mut burst = Vec::new();
     for i in 0..5 {
-        burst.push(Client::with(sw.port, &format!("P{i}"), "", Opts { deltas: i % 2 == 0, ..Opts::default() }).await);
+        burst.push(Client::connect(sw.port, &format!("P{i}")).await);
     }
     for x in burst.iter_mut() {
         x.welcome().await;
@@ -319,13 +320,13 @@ async fn the_peer_list_changes_to_the_page_the_whole_list_to_a_page_of_before() 
         x.until_true(|g| g.names() == all).await;
     }
     assert!(a.got().ctl.len() - d0 <= 2, "the page: {} messages for 5 joins", a.got().ctl.len() - d0);
-    assert!(b.got().ctl.len() - f0 <= 2, "the page of before: {} whole lists for 5 joins", b.got().ctl.len() - f0);
+    assert!(b.got().ctl.len() - f0 <= 2, "the other page: {} messages for 5 joins", b.got().ctl.len() - f0);
     // a player who leaves and is back (with its token) before the change goes out: gone, then back
     sleep(1100).await;
     let cv = c.vip;
     let wc = c.got().ctl.iter().find(|m| m["t"] == "welcome").cloned().unwrap();
     c.terminate();
-    let mut c2 = Client::new(sw.port, "Carol", "", Some((cv, wc["token"].as_str().unwrap())), deltas()).await;
+    let mut c2 = Client::new(sw.port, "Carol", "", Some((cv, wc["token"].as_str().unwrap())), Opts::default()).await;
     assert_eq!(vip_of(&c2.welcome().await), cv);
     let back =
         a.until(|g| g.ctl.iter().find(|m| m["t"] == "delta" && m["gone"].as_array().unwrap().iter().any(|v| v == cv)).cloned()).await;
@@ -352,13 +353,11 @@ async fn the_peer_list_changes_to_the_page_the_whole_list_to_a_page_of_before() 
 async fn the_cost_of_the_peer_list_a_rename_costs_nothing() {
     let _s = serial().await;
     let sw = start(LanOptions { max_peers: 250, ..opts() }).await;
-    // 100 players, 10 of them with a page of before
+    // 100 players
     const N: usize = 100;
-    const PRE: usize = 10;
     let mut players = Vec::new();
     for i in 0..N {
-        players
-            .push(Client::with(sw.port, &format!("Driver {i:03}"), &format!("?g={i}"), Opts { deltas: i >= PRE, ..Opts::default() }).await);
+        players.push(Client::with(sw.port, &format!("Driver {i:03}"), &format!("?g={i}"), Opts::default()).await);
     }
     for p in players.iter_mut() {
         p.welcome().await;
@@ -370,7 +369,7 @@ async fn the_cost_of_the_peer_list_a_rename_costs_nothing() {
     let bytes = |ps: &[Client]| ps.iter().map(|p| p.got().ctl_bytes).sum::<usize>();
     // a client sends 40 hellos with new names: before, each sent the whole list (4 KB) to all 100
     let b0 = bytes(&players);
-    let mut m = Client::with(sw.port, "M", "?g=m", deltas()).await;
+    let mut m = Client::with(sw.port, "M", "?g=m", Opts::default()).await;
     m.welcome().await;
     m.until_true(|g| g.view.as_ref().is_some_and(|v| v.len() == N + 1)).await;
     for i in 0..40 {
@@ -379,20 +378,19 @@ async fn the_cost_of_the_peer_list_a_rename_costs_nothing() {
     }
     sleep(1300).await;
     let rename = bytes(&players) - b0;
-    // its join (one change to each page, the whole list to the 10 of before) and nothing for the renames
+    // its join (one change to each page) and nothing for the renames
     let list = serde_json::json!({ "t": "peers", "peers": players[0].got().last_peers().unwrap() }).to_string().len();
     println!(
         "peer list at {} players: a join and 40 renames sent the others {rename} bytes (the whole list {list} bytes; before, 41 whole lists to each: {} bytes)",
         N + 1,
         41 * list * N
     );
-    assert!(rename < (N - PRE) * 120 + PRE * (list + 200), "{rename} bytes");
-    // churn: one client opens and closes connections 10 times; each costs the pages one small change, the pages of
-    // before one whole list a second
+    assert!(rename < N * 120, "{rename} bytes");
+    // churn: one client opens and closes connections 10 times; each costs the pages one small change
     let b0 = bytes(&players);
     let t0 = Instant::now();
     for _ in 0..10 {
-        let mut x = Client::with(sw.port, "churn", "?g=m", deltas()).await;
+        let mut x = Client::with(sw.port, "churn", "?g=m", Opts::default()).await;
         x.welcome().await;
         x.close().await;
     }
@@ -400,7 +398,7 @@ async fn the_cost_of_the_peer_list_a_rename_costs_nothing() {
     let churn = bytes(&players) - b0;
     let secs = t0.elapsed().as_secs_f64();
     println!("10 joins and leaves in {secs:.1} s: {churn} bytes to the others");
-    assert!(churn < 20 * (N - PRE) * 120 + (secs + 1.0).ceil() as usize * PRE * (list + 200), "{churn} bytes");
+    assert!(churn < 20 * N * 120, "{churn} bytes");
     m.close().await;
     for p in &players {
         p.terminate();
@@ -583,7 +581,6 @@ async fn a_receiver_that_never_reads_is_cut_by_the_keepalive_tick() {
         group_byte_rate: (64 << 20) as f64,
         group_frame_rate: 100000.0,
         peers_ms: 1,
-        full_peers_ms: 1.0,
         send_buffer_os: 32 << 10,
         ..opts()
     })

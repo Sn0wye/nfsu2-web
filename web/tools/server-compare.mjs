@@ -108,7 +108,7 @@ function pingProbe(port) {
   ws.on('message', (d, bin) => {
     if (bin) return;
     const m = JSON.parse(String(d));
-    if (m.t === 'welcome') { ws.send(JSON.stringify({ t: 'hello', name: 'probe', deltas: 1 })); timer = setInterval(() => { sent.set(++id, performance.now()); ws.send(JSON.stringify({ t: 'ping', id })); }, 100); }
+    if (m.t === 'welcome') { ws.send(JSON.stringify({ t: 'hello', name: 'probe' })); timer = setInterval(() => { sent.set(++id, performance.now()); ws.send(JSON.stringify({ t: 'ping', id })); }, 100); }
     if (m.t === 'pong' && sent.has(m.id)) { rtt.push(performance.now() - sent.get(m.id)); sent.delete(m.id); }
   });
   ws.on('error', () => {});

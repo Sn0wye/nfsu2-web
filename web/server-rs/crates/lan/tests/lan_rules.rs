@@ -500,20 +500,18 @@ async fn lan_plays_broadcasts_reach_only_the_browsers_with_lan_play_open() {
     let sw = start(opts()).await;
     let mut open = Client::with(sw.port, "Open", "", lan(1)).await;
     let mut shut = Client::with(sw.port, "Shut", "", lan(0)).await;
-    let mut old = Client::connect(sw.port, "Old").await;
     let mut later = Client::with(sw.port, "Later", "", lan(0)).await;
     let mut tx = Client::with(sw.port, "Host", "", lan(1)).await;
-    for c in [&mut open, &mut shut, &mut old, &mut later, &mut tx] {
+    for c in [&mut open, &mut shut, &mut later, &mut tx] {
         c.welcome().await;
     }
     // its hello is in
-    for c in [&open, &shut, &old, &later, &tx] {
+    for c in [&open, &shut, &later, &tx] {
         c.until_true(|g| g.count("peers") > 0).await;
     }
     tx.udp(BROADCAST, 9999, 9999, b"any LAN games?", 3, 0);
     tx.udp(BROADCAST, 47210, 47210, b"free roam", 1, 0);
     open.until_true(|g| g.frames.len() == 2).await;
-    old.until_true(|g| g.frames.len() == 2).await;
     shut.until_true(|g| g.frames.len() == 1).await;
     later.until_true(|g| g.frames.len() == 1).await;
     sleep(50).await;
@@ -523,7 +521,6 @@ async fn lan_plays_broadcasts_reach_only_the_browsers_with_lan_play_open() {
         k
     };
     assert_eq!(kinds(&shut), [1], "LAN play shut: free roam's broadcast only");
-    assert_eq!(kinds(&old), [1, 3], "a page of before (no lan in its hello): every broadcast, as before");
     // LAN play opens later ({"t":"lan"}), then shuts again
     later.text(r#"{"t":"lan","on":1}"#);
     sleep(50).await;
@@ -540,7 +537,7 @@ async fn lan_plays_broadcasts_reach_only_the_browsers_with_lan_play_open() {
     // unicast is not affected
     tx.udp(shut.vip, 9999, 9999, b"to you", 3, 0);
     shut.until_true(|g| g.frames.len() == 2).await;
-    for c in [&open, &shut, &old, &later, &tx] {
+    for c in [&open, &shut, &later, &tx] {
         c.close().await;
     }
     sw.close().await;
@@ -576,9 +573,9 @@ async fn a_page_that_lets_go_frees_its_address_at_once() {
 }
 
 // the server's console says what the players on the switch do (src/app/run.rs, every 5 minutes): each counted once
-// breakdown: Online mode, the LAN or Online screens, free roam, an older page, leaving or starting
+// breakdown: Online mode, the LAN or Online screens, free roam, leaving or starting
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn breakdown_online_lan_screens_free_roam_older_page_leaving_or_starting() {
+async fn breakdown_online_lan_screens_free_roam_leaving_or_starting() {
     let _s = serial().await;
     let in_online = Arc::new(Mutex::new(HashSet::new()));
     let in_roam = Arc::new(Mutex::new(HashSet::new()));
@@ -587,7 +584,7 @@ async fn breakdown_online_lan_screens_free_roam_older_page_leaving_or_starting()
     let sw = start_full(opts(), "", Some(online), Some(roam), None).await;
     let mut all = Vec::new();
     for (name, l) in
-        [("Online", Some(1)), ("LanScreens", Some(1)), ("Roamer", Some(0)), ("OldRoamer", None), ("Old", None), ("Leaving", Some(0))]
+        [("Online", Some(1)), ("LanScreens", Some(1)), ("Roamer", Some(0)), ("Roamer2", Some(0)), ("Leaving", Some(0))]
     {
         let mut c = Client::with(sw.port, name, "", Opts { lan: l, ..Opts::default() }).await;
         c.welcome().await;
@@ -602,7 +599,7 @@ async fn breakdown_online_lan_screens_free_roam_older_page_leaving_or_starting()
     let mut b = sw.lan.breakdown().await;
     assert!(b.mix.iter().all(|&n| n == 0));
     b.mix.clear();
-    assert_eq!(b, Breakdown { players: 6, online: 1, lan: 1, roam: 2, older: 1, other: 1, bundles: 0, ..Breakdown::default() });
+    assert_eq!(b, Breakdown { players: 5, online: 1, lan: 1, roam: 2, other: 1, ..Breakdown::default() });
     // (the Online host is on the peer list, as { vip, name, server: true }; the hub is on none)
     let list = all[1].got().ctl.iter().rev().find(|m| m["t"] == "peers").cloned().unwrap();
     let last = list["peers"].as_array().unwrap().last().unwrap().clone();
@@ -616,7 +613,7 @@ async fn breakdown_online_lan_screens_free_roam_older_page_leaving_or_starting()
 // ---- bundles (kind 32): several frames in one message ----
 
 // bundles: each entry reaches its destinations as a frame of its own; a client that takes bundles gets one message a
-// turn, one that does not gets frames as before
+// turn, one that does not (a tool) gets frames
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn bundles_each_entry_reaches_its_destinations_as_a_frame_of_its_own() {
     let _s = serial().await;
@@ -625,11 +622,10 @@ async fn bundles_each_entry_reaches_its_destinations_as_a_frame_of_its_own() {
     let mut b = Client::with(sw.port, "B", "", bundles()).await;
     let mut c = Client::connect(sw.port, "C").await;
     let mut d = Client::with(sw.port, "D", "", bundles()).await;
-    let wa = a.welcome().await;
+    a.welcome().await;
     for x in [&mut b, &mut c, &mut d] {
         x.welcome().await;
     }
-    assert_eq!(wa["bundle"], 1, "the welcome says the switch takes bundles");
     sleep(100).await;
     // a snapshot to three friends once, one frame to B alone, a LAN broadcast
     a.send_bundle(&[
@@ -664,7 +660,7 @@ async fn bundles_each_entry_reaches_its_destinations_as_a_frame_of_its_own() {
     }
     assert_eq!(b.frames(), 1, "B (takes bundles): one message for the three");
     assert_eq!(b.got().frames[0].0[0], 32);
-    assert_eq!(c.frames(), 2, "C (a client of before): two frames, as before");
+    assert_eq!(c.frames(), 2, "C (takes no bundles: a tool): two frames");
     assert!(c.got().frames.iter().all(|f| f.0[0] != 32));
     assert!(a.dgrams().is_empty(), "nothing back to the sender");
     let i = sw.info().await;
@@ -1070,7 +1066,7 @@ async fn a_frame_without_ports_reaches_a_compact_page_whole() {
 async fn the_peer_list_goes_only_to_pages_with_lan_play_open() {
     let _s = serial().await;
     let sw = start(opts()).await;
-    let with = |on: u8| Opts { deltas: true, lan: Some(on), ..Opts::default() };
+    let with = |on: u8| Opts { lan: Some(on), ..Opts::default() };
     let mut shut = Client::with(sw.port, "Shut", "", with(0)).await;
     shut.welcome().await;
     let mut open = Client::with(sw.port, "Open", "", with(1)).await;
@@ -1101,15 +1097,7 @@ async fn the_peer_list_goes_only_to_pages_with_lan_play_open() {
     open.until_true(|g| g.names() == "Last,Late,More,Open,Shut").await;
     sleep(400).await;
     assert_eq!(shut.got().count("delta"), deltas);
-    // a page of before (no word on LAN play) gets everything, as it did
-    let mut old = Client::with(sw.port, "Old", "", deltas_only()).await;
-    old.welcome().await;
-    old.until_true(|g| g.names() == "Last,Late,More,Old,Open,Shut").await;
     sw.close().await;
-}
-
-fn deltas_only() -> Opts {
-    Opts { deltas: true, ..Opts::default() }
 }
 
 // a player in free roam who is not driving (its own HELLO says a race): what its friends send it waits for the slow
@@ -1119,9 +1107,11 @@ fn deltas_only() -> Opts {
 async fn a_player_not_driving_gets_fewer_messages_and_a_driver_the_same_as_ever() {
     let _s = serial().await;
     let sw = start(unlimited()).await;
-    let mut racer = Client::with(sw.port, "Racer", "", bundles()).await;
+    // (free roam alone: a page on the LAN screens is not counted as away)
+    let roamer = Opts { lan: Some(0), ..bundles() };
+    let mut racer = Client::with(sw.port, "Racer", "", roamer).await;
     racer.welcome().await;
-    let mut driver = Client::with(sw.port, "Driver", "", bundles()).await;
+    let mut driver = Client::with(sw.port, "Driver", "", roamer).await;
     driver.welcome().await;
     let mut s = Client::connect(sw.port, "Sender").await;
     s.welcome().await;

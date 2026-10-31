@@ -321,7 +321,7 @@ enum Cmd {
 
 #[derive(Default, Clone, Copy)]
 pub struct Opts {
-    pub deltas: bool,
+    /// LAN play in its hello: 0 or 1 (None: 1, the LAN screens open, so that it hears every player and broadcast)
     pub lan: Option<u8>,
     pub bundle: bool,
     /// and compact bundles (kind 33): its frames come as they are in `frames`, `unpack_compact` takes them apart
@@ -334,10 +334,6 @@ pub struct Opts {
     pub block: Option<&'static [&'static str]>,
 }
 
-pub fn deltas() -> Opts {
-    Opts { deltas: true, ..Opts::default() }
-}
-
 pub fn lan(on: u8) -> Opts {
     Opts { lan: Some(on), ..Opts::default() }
 }
@@ -347,8 +343,8 @@ pub fn bundles() -> Opts {
 }
 
 /// A fake browser: collects control messages and frames; `resume` = (vip, token): reconnects as the page does
-/// (/lan?resume, then a hello with the old address and the token before anything else); its hello says deltas,
-/// lan and bundle as `Opts` say.
+/// (/lan?resume, then a hello with the old address and the token before anything else); its hello says lan and
+/// bundle as `Opts` say.
 pub struct Client {
     pub name: String,
     pub vip: u32,
@@ -372,12 +368,7 @@ impl Client {
 
     pub async fn new(port: u16, name: &str, query: &str, resume: Option<(u32, &str)>, o: Opts) -> Client {
         let mut extra = Map::new();
-        if o.deltas {
-            extra.insert("deltas".into(), 1.into());
-        }
-        if let Some(l) = o.lan {
-            extra.insert("lan".into(), l.into());
-        }
+        extra.insert("lan".into(), o.lan.unwrap_or(1).into());
         if o.bundle {
             extra.insert("bundle".into(), 1.into());
         }

@@ -87,13 +87,13 @@ impl LanSwitch {
     pub(crate) fn route(&self, peer: &Arc<Peer>, data: &Bytes, dsts: impl Iterator<Item = u32> + Clone) -> bool {
         let n = data.len();
         let lan_only = (KIND_LAN_UDP..=KIND_LAN_ICMP).contains(&data[0]);
-        let reaches = |p: &Arc<Peer>| !Arc::ptr_eq(p, peer) && p.open() && (!lan_only || p.lan() != Some(false));
+        let reaches = |p: &Arc<Peer>| !Arc::ptr_eq(p, peer) && p.open() && (!lan_only || p.lan());
         // what the switch sends for each: a broadcast costs its size for every player on its list but the sender (all
         // of them, or for LAN play's kinds those with LAN play open), so the switch never sends more for a client
         // than its budgets allow (the audit's F2: one 4 MB/s sender made it send 15 x that), and never walks the
         // list for a broadcast that was not paid for (the crate doc's How the work is shared out)
         let list = dsts.clone().any(|d| d == BROADCAST).then(|| if lan_only { self.lan_all.load() } else { self.all.load() });
-        let on_list = !lan_only || peer.lan() != Some(false);
+        let on_list = !lan_only || peer.lan();
         let reached = list.as_ref().map_or(0, |l| l.len().saturating_sub(usize::from(on_list)));
         let costs = dsts.clone().map(|d| if d == BROADCAST { reached.max(1) } else { 1 });
         let (paid, all_paid) = self.charge(peer, mono_ms(), n as f64, costs);
@@ -530,8 +530,8 @@ pub(crate) mod tests {
         sw.stop();
     }
 
-    /// LAN play's broadcasts go to the list of those with LAN play open: a page that said nothing (a page of before,
-    /// or no hello yet) is on it, one that shut LAN play is not, and one that left or was replaced is gone from it
+    /// LAN play's broadcasts go to the list of those with LAN play open: a page that said nothing (no hello yet, or
+    /// none of LAN play in it) and one that shut LAN play are not on it, and one that left or was replaced is gone
     #[tokio::test]
     async fn the_list_of_lan_play_follows_hellos_lan_messages_and_closes() {
         let sw = LanSwitch::new(LanOptions::default(), "", None, None, None, None);
@@ -542,13 +542,17 @@ pub(crate) mod tests {
             v.sort();
             v
         };
-        assert_eq!(on(&sw), [a.vip, b.vip], "no hello yet: every broadcast");
+        assert_eq!(on(&sw), [0u32; 0], "no hello yet: none of them");
         let hello = |lan: u8| match crate::text::parse_json(format!(r#"{{"t":"hello","name":"x","lan":{lan}}}"#).as_bytes()) {
             Some(serde_json::Value::Object(m)) => m,
             _ => unreachable!(),
         };
-        sw.hello(&a, &hello(0));
-        assert_eq!(on(&sw), [b.vip]);
+        sw.hello(&a, &hello(1));
+        assert_eq!(on(&sw), [a.vip]);
+        sw.hello(&b, &hello(0));
+        assert_eq!(on(&sw), [a.vip]);
+        sw.set_lan(&b, true);
+        assert_eq!(on(&sw), [a.vip, b.vip]);
         sw.set_lan(&a, true);
         sw.set_lan(&b, false);
         assert_eq!(on(&sw), [a.vip]);

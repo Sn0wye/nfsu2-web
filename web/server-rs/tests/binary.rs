@@ -658,7 +658,7 @@ async fn messages_in_the_same_write_as_the_handshake_are_not_lost() {
     let (port, state) = (free_port(), tmp.path().join("state"));
     let mut srv = Server::spawn(command(&data, &wasm, port, &state, &[]), port);
     srv.ready().await;
-    let hello = client_frame(1, br#"{"t":"hello","name":"Early","deltas":1}"#);
+    let hello = client_frame(1, br#"{"t":"hello","name":"Early","lan":1}"#);
     let got = pipelined(port, "", &hello, r#""name":"Early""#).await;
     let welcome: Value = serde_json::from_str(got.iter().find(|m| m.contains("welcome")).expect("a welcome")).unwrap();
     assert!(got.iter().any(|m| m.contains(r#""t":"peers""#) && m.contains(r#""name":"Early""#)), "the hello named it: {got:?}");
