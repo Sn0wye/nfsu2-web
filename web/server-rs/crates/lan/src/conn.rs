@@ -15,7 +15,7 @@ use tokio::io::{AsyncRead, AsyncWrite, AsyncWriteExt};
 use tokio::sync::Notify;
 use tokio_util::sync::CancellationToken;
 
-use crate::{AttachCtx, BUNDLE_OUT, CLOSE_TIMEOUT, KIND_BUNDLE, LanSwitch, Peer, Stats, compact};
+use crate::{AttachCtx, BUNDLE_OUT, CLOSE_TIMEOUT, KIND_BUNDLE, LanSwitch, Peer, Stats, compact, mix};
 
 /// how a page takes its datagrams (`Conn::compact`): as bundles of before, compact bundles, compact bundles with deltas,
 /// and with friends' car states by their fields (fpred.rs)
@@ -390,6 +390,9 @@ async fn write_loop<W: AsyncWrite + Unpin>(sw: Arc<LanSwitch>, conn: Arc<Conn>, 
                 body: &mut body,
             });
             let e = encode(&sw.stats, &items, &mut buf, &mut close_sent, c);
+            if !buf.is_empty() {
+                sw.stats.msg(mix::OUT_WRITES);
+            }
             conn.out.buffered.fetch_add(e.extra, Relaxed);
             // what the kernel takes leaves `buffered` as it goes (what was skipped after a close frame at the end)
             let mut at = 0;
@@ -488,11 +491,26 @@ fn encode(stats: &Stats, items: &[Out], buf: &mut Vec<u8>, close_sent: &mut bool
                     e.extra = buf.len() - start;
                 }
             }
-            Out::Text(b) => frame::encode(frame::TEXT, b, buf),
-            Out::Raw(b) => frame::encode(frame::BINARY, b, buf),
-            Out::Frame { data, src, dst } => one_frame(buf, data, *src, *dst),
-            Out::Ping(p) => frame::encode(frame::PING, p, buf),
-            Out::Pong(b) => frame::encode(frame::PONG, b, buf),
+            Out::Text(b) => {
+                stats.msg(mix::OUT_TEXT);
+                frame::encode(frame::TEXT, b, buf)
+            }
+            Out::Raw(b) => {
+                stats.msg(mix::OUT_HOST);
+                frame::encode(frame::BINARY, b, buf)
+            }
+            Out::Frame { data, src, dst } => {
+                stats.msg(mix::OUT_FRAME);
+                one_frame(buf, data, *src, *dst)
+            }
+            Out::Ping(p) => {
+                stats.msg(mix::OUT_PING);
+                frame::encode(frame::PING, p, buf)
+            }
+            Out::Pong(b) => {
+                stats.msg(mix::OUT_PONG);
+                frame::encode(frame::PONG, b, buf)
+            }
             Out::Close(p) => {
                 frame::encode(frame::CLOSE, p, buf);
                 *close_sent = true;
@@ -547,8 +565,10 @@ fn bundle(stats: &Stats, items: &[Out], buf: &mut Vec<u8>) {
         }
         if chunk.len() == 1 {
             let (d, src, dst) = chunk[0];
+            stats.msg(mix::OUT_FRAME);
             one_frame(buf, d, src, dst);
         } else {
+            stats.msg(mix::OUT_BUNDLE);
             frame::header(frame::BINARY, 4 + sum, buf);
             buf.extend_from_slice(&[KIND_BUNDLE, 0, 0, 0]);
             for (d, src, dst) in &chunk {
@@ -601,6 +621,7 @@ pub(crate) fn now_us() -> u32 {
 }
 
 fn compact_out(stats: &Stats, buf: &mut Vec<u8>, bundle: &[u8]) {
+    stats.msg(mix::OUT_BUNDLE);
     frame::header(frame::BINARY, bundle.len(), buf);
     buf.extend_from_slice(bundle);
     stats.bundles_out.inc();

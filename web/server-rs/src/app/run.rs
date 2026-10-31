@@ -318,6 +318,14 @@ pub async fn run(o: Options, cores: usize) {
                 if let Some(l) = nfsu2_lan::mix::line(&b.mix, &was.mix, BREAKDOWN_EVERY.as_secs_f64()) {
                     log::line(&format!("[players] to the pages by kind since the last count: {l}"));
                 }
+                // what the pages sent, by kind, and the WebSocket messages each way (each one is work for the kernel and
+                // cloudflared, whatever its size)
+                if let Some(l) = nfsu2_lan::mix::line(&b.mix_in, &was.mix_in, BREAKDOWN_EVERY.as_secs_f64()) {
+                    log::line(&format!("[players] from the pages by kind since the last count: {l}"));
+                }
+                if let Some(l) = nfsu2_lan::mix::msg_line(&b.msgs, &was.msgs, BREAKDOWN_EVERY.as_secs_f64()) {
+                    log::line(&format!("[players] WebSocket messages since the last count: {l}"));
+                }
                 let slice = slice.map_or(String::new(), |q| {
                     format!("; {} {:.2} of its {} cores ({:.0} %)", q.group, q.used, q.cores, q.share() * 100.0)
                 });

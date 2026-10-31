@@ -601,6 +601,9 @@ async fn breakdown_online_lan_screens_free_roam_leaving_or_starting() {
     let mut b = sw.lan.breakdown().await;
     assert!(b.mix.iter().all(|&n| n == 0));
     b.mix.clear();
+    // (nor what they sent and the messages: their hellos, the welcomes)
+    assert!(b.msgs.iter().any(|&n| n > 0) && b.mix_in.iter().any(|&n| n > 0));
+    (b.mix_in, b.msgs) = (Vec::new(), Vec::new());
     assert_eq!(b, Breakdown { players: 5, online: 1, lan: 1, roam: 2, other: 1, ..Breakdown::default() });
     // (the Online host is on the peer list, as { vip, name, server: true }; the hub is on none)
     let list = all[1].got().ctl.iter().rev().find(|m| m["t"] == "peers").cloned().unwrap();
@@ -838,8 +841,18 @@ impl Laggy {
             }
         });
         let q = due.clone();
+        // a page in free roam: its HELLO to the hub every second (the switch times only free roam's players by every
+        // probe)
+        let hello = frame(0x2, &frame_of(0x0A4D_00FD, &roam_datagram(1, 40), 1, 47210, 47210));
         let writer = tokio::spawn(async move {
+            let mut hello_at = Instant::now();
             loop {
+                if hello_at <= Instant::now() {
+                    hello_at = Instant::now() + Duration::from_secs(1);
+                    if w.write_all(&hello).await.is_err() {
+                        return;
+                    }
+                }
                 let ready: Vec<Vec<u8>> = {
                     let mut q = q.lock().unwrap();
                     let mut v = Vec::new();
@@ -942,6 +955,33 @@ async fn a_player_behind_gets_a_share_of_the_snapshots_and_all_again_once_it_kee
     assert_eq!(sw.info().await["thinned"].as_u64().unwrap(), thinned);
     s.close().await;
     drop(laggy);
+    sw.close().await;
+}
+
+// the probe times free roam's players every time and the others every 10th: only free roam's car states follow the
+// round trips, and each ping and its pong were two messages through cloudflared for every page (lib.rs `probe`)
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn the_probe_times_free_roams_players_every_time_the_others_every_tenth() {
+    let _s = serial().await;
+    let sw = start(LanOptions { probe_ms: 0, keepalive_ms: 3_600_000, ..unlimited() }).await;
+    let mut roamer = Client::connect(sw.port, "Roamer").await;
+    roamer.welcome().await;
+    let mut menus = Client::connect(sw.port, "Menus").await;
+    menus.welcome().await;
+    // the roamer's HELLO to the hub, as its page sends one every second in free roam
+    roamer.udp(0x0A4D_00FD, 47210, 47210, &roam_datagram(1, 40), 1, 0);
+    roamer.ping(vec![1]);
+    roamer.until_true(|g| g.pongs.len() >= 1).await;
+    let (r0, m0) = (roamer.got().pings, menus.got().pings);
+    for _ in 0..20 {
+        sw.lan.probe();
+    }
+    roamer.until_true(|g| g.pings >= r0 + 20).await;
+    sleep(200).await;
+    let (r, m) = (roamer.got().pings - r0, menus.got().pings - m0);
+    assert_eq!((r, m), (20, 2), "20 probes: the roamer timed by each, the page in the menus by every 10th");
+    roamer.close().await;
+    menus.close().await;
     sw.close().await;
 }
 

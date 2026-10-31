@@ -577,6 +577,10 @@ pub struct Breakdown {
     pub other_entries: u64,
     /// what the pages were sent so far by kind (mix.rs): the bytes of each, then the entries or messages of each
     pub mix: Vec<u64>,
+    /// what the pages sent so far by kind (mix.rs `of_page`), the same way
+    pub mix_in: Vec<u64>,
+    /// WebSocket messages so far each way by type, and the writes (mix.rs `MSGS`)
+    pub msgs: Vec<u64>,
     /// not on the switch: the pages waiting in line for a place (those away keeping theirs too), and of those that went
     /// in since the line last began, the longest wait (s)
     pub waiting: usize,
@@ -585,6 +589,11 @@ pub struct Breakdown {
 
 /// a player this far behind on its path counts in `Breakdown::behind` (ms)
 pub const BEHIND_MS: f64 = 1000.0;
+/// a player whose own free-roam HELLO or SNAP came within this is timed by every probe (its page sends the hub a HELLO
+/// every second while in free roam)
+const PROBE_ROAM_MS: f64 = 5000.0;
+/// the others every this many probes
+const PROBE_OTHERS: u64 = 10;
 
 /// Why the switch closed a connection (info()'s `cuts`): a control-frame flood, a queue over `send_buffer` (when
 /// sending; on the keepalive tick), no pong to its ping, idle, a client that flooded a receiver with stream segments,
@@ -643,9 +652,26 @@ pub(crate) struct Stats {
     other_entries: Counter,
     /// the same and the hosts' messages by kind (mix.rs): bytes, then entries or messages
     mix: Counters<{ 2 * mix::KINDS }>,
+    /// what the pages sent by kind (mix.rs `of_page`): bytes, then entries or messages
+    mix_in: Counters<{ 2 * mix::KINDS }>,
+    /// WebSocket messages each way by type, and the writes (mix.rs `MSGS`)
+    msgs: Counters<{ mix::MSGS }>,
 }
 
 impl Stats {
+    /// `n` bytes of kind `k` (mix.rs) a page sent, in one entry or message
+    #[inline]
+    pub(crate) fn entry_in(&self, k: usize, n: usize) {
+        self.mix_in.add(k, n as u64);
+        self.mix_in.add(mix::KINDS + k, 1);
+    }
+
+    /// a WebSocket message (or a write) of type `t` (mix.rs IN_*, OUT_*)
+    #[inline]
+    pub(crate) fn msg(&self, t: usize) {
+        self.msgs.add(t, 1);
+    }
+
     /// an entry of a compact bundle that went to a page: `data` the datagram, `e` its entry
     pub(crate) fn entry_out(&self, data: &[u8], src: u32, dst: u32, e: &[u8]) {
         let k = mix::of_entry(data, src, dst);
@@ -744,6 +770,9 @@ pub(crate) struct Peer {
     share: AtomicU32,
     /// in free roam and not driving, as its own last HELLO or SNAP said (away.rs)
     away: AtomicBool,
+    /// when its own last free-roam HELLO or SNAP came (mono ms; 0: none yet): only free roam's players are timed by
+    /// every probe (`probe`)
+    roam_at: AtomicU64,
     /// it follows the whole peer list (its LAN play is not shut: members.rs `list_for`); set under the `members` lock
     listed: AtomicBool,
     /// its client's id for the operator's bans (`AttachOpts::ident`), and when it took its place (ms since 1970)
@@ -860,6 +889,8 @@ pub struct LanSwitch {
     groups: Mutex<Groups>,
     sites: Mutex<Groups>,
     anon: AtomicU64,
+    /// the probes so far (`probe`)
+    probes: AtomicU64,
     conn_ids: AtomicU64,
     stats: Arc<Stats>,
     /// the bundle clock (none at bundle_ms 0), and the slow one for players who are not driving (away.rs; none at
@@ -935,6 +966,7 @@ impl LanSwitch {
             groups: Mutex::new(HashMap::new()),
             sites: Mutex::new(HashMap::new()),
             anon: AtomicU64::new(0),
+            probes: AtomicU64::new(0),
             conn_ids: AtomicU64::new(0),
             stats: Arc::new(Stats::default()),
             clock,
@@ -1195,6 +1227,8 @@ impl LanSwitch {
         (n.snap_bytes, n.snap_entries, n.fpred_entries) = (s.snap_bytes.get(), s.snap_entries.get(), s.fpred_entries.get());
         (n.other_bytes, n.other_entries) = (s.other_bytes.get(), s.other_entries.get());
         n.mix = s.mix.get().to_vec();
+        n.mix_in = s.mix_in.get().to_vec();
+        n.msgs = s.msgs.get().to_vec();
         (n.waiting, n.waited) = self.line_view();
         n
     }
@@ -1446,11 +1480,20 @@ impl LanSwitch {
         }
     }
 
-    /// a ping to every player, its round trip timed (every `probe_ms`; public for the tests)
+    /// a ping to every player in free roam, its round trip timed (every `probe_ms`; public for the tests), and to each
+    /// of the others every PROBE_OTHERS-th time: their round trips decide nothing (only free roam's car states follow
+    /// them, lag.rs), and each ping and its pong were two of the messages cloudflared carries for every page, the 4,500
+    /// on the LAN or Online screens or in the menus too (nfsu2.xyz 2026-10-31).  The keepalive's pings still go to all.
     #[doc(hidden)]
     pub fn probe(&self) {
         let now = nfsu2_util::mono_ms();
+        let round = self.probes.fetch_add(1, Relaxed);
         for p in self.all.load().iter().filter(|p| p.open()) {
+            let at = p.roam_at.load(Relaxed);
+            let roams = at > 0 && now - (at as f64) < PROBE_ROAM_MS;
+            if !roams && (round + u64::from(p.vip)) % PROBE_OTHERS != 0 {
+                continue;
+            }
             let data = p.probe.lock().ping(now);
             p.conn.push(Out::Ping(data));
         }

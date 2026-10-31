@@ -100,6 +100,7 @@ impl LanSwitch {
         // free roam: whether the sender drives, from its own HELLO or SNAP (away.rs)
         if let Some(st) = away::status(data) {
             peer.away.store(away::away(st), Relaxed);
+            peer.roam_at.store((mono_ms() as u64).max(1), Relaxed);
         }
         if paid > 0 {
             self.stats.frames.add(paid as u64);
