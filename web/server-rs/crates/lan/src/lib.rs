@@ -45,7 +45,7 @@
 //! Text frames are JSON control messages: {"t":"hello","name":...,"lan":0|1,"bundle":1,"compact":1}
 //! (and "id", "was", "claim", "block": below),
 //! {"t":"lan","on":0|1} and {"t":"ping","id":n} from a client; {"t":"welcome","vip":...,"vipStr":...,"mask":...,
-//! "token":...}, {"t":"peers",...}, {"t":"delta",...} and {"t":"pong","id":n} from the switch.
+//! "token":...,"bundle":1}, {"t":"peers",...}, {"t":"delta",...} and {"t":"pong","id":n} from the switch.
 //!
 //! ## The peer list
 //!

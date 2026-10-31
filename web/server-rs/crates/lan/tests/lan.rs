@@ -188,7 +188,7 @@ async fn what_a_peer_learns_about_the_others() {
     b.until_true(|g| g.count("delta") > 0).await;
     let shape = |t: &str| -> Vec<&str> {
         match t {
-            "welcome" => vec!["mask", "t", "token", "vip", "vipStr"],
+            "welcome" => vec!["bundle", "mask", "t", "token", "vip", "vipStr"],
             "peers" => vec!["peers", "t"],
             "delta" => vec!["gone", "peers", "t"],
             "pong" => vec!["id", "t"],

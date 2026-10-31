@@ -211,7 +211,9 @@ impl LanSwitch {
         // the welcome (and a resume's whole list, which has the newcomer on it) are queued before the other players'
         // readers can find the newcomer: nothing they route to it comes first (Node sent both before it went back to
         // its event loop)
-        let welcome = format!(r#"{{"t":"welcome","vip":{vip},"vipStr":"{}","mask":"{MASK}","token":"{token}"}}"#, vip_str(vip));
+        // "bundle":1 for pages of before 2026-10-31 (ebe65786): they bundle what they send only when the welcome says
+        // so, and sent every friend its own copy of each car state without it (nfsu2.xyz 2026-10-31: 8x the bytes in)
+        let welcome = format!(r#"{{"t":"welcome","vip":{vip},"vipStr":"{}","mask":"{MASK}","token":"{token}","bundle":1}}"#, vip_str(vip));
         conn.push(Out::Text(Bytes::from(welcome)));
         if peer.hello.load(Relaxed) {
             let list = self.list_for(m, &peer);
