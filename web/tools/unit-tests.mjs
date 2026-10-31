@@ -1,5 +1,6 @@
-// The page's unit tests (web/test/*.test.mjs) under node --test, every test with a time limit (a hang fails that
-// test instead of holding the run):
+// The page's unit tests (web/test/*.test.mjs) under node --test, every test and suite with a time limit (a hang fails
+// that test instead of holding the run: 2 minutes with --fast, whose tests take seconds; 5 for every file, as
+// deploy.test.mjs's suite takes about 80 s):
 //   node web/tools/unit-tests.mjs           every file (about 80 s)
 //   node web/tools/unit-tests.mjs --fast    without the slow ones (about 11 s): before a push, and in CI
 // Other arguments go to node --test (--test-reporter=spec ...).  Also npm test / npm run test:fast in web/.
@@ -22,5 +23,5 @@ const argv = process.argv.slice(2);
 const fast = argv.includes('--fast');
 const files = fs.readdirSync(TEST).filter(f => f.endsWith('.test.mjs') && !(fast && SLOW.has(f.slice(0, -'.test.mjs'.length))))
   .sort().map(f => path.join(TEST, f));
-const r = spawnSync(process.execPath, ['--test', '--test-timeout=600000', ...argv.filter(a => a !== '--fast'), ...files], { stdio: 'inherit' });
+const r = spawnSync(process.execPath, ['--test', `--test-timeout=${fast ? 120_000 : 300_000}`, ...argv.filter(a => a !== '--fast'), ...files], { stdio: 'inherit' });
 process.exit(r.status ?? 1);

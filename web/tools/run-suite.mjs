@@ -8,7 +8,8 @@
 //   node web/tools/run-suite.mjs [options] [scenario ...]
 //     --base URL        the local server, started with --dev (default http://localhost:8611)
 //     --run NAME        output directory out/web/runs/NAME (default suite-<date>-<time>)
-//     --jobs N          scenarios at once, each in its own browser context (default 1)
+//     --jobs N          scenarios at once, each in its own browser context (default: a third of the cores, 1 to 4;
+//                       the longest first, by the last run's times)
 //     --env K=V         extra environment for every scenario (repeatable)
 //     --timeout-scale X multiply every scenario's time limit (default 1)
 //     --script FILE     an ad-hoc scenario: tests/scripts/FILE (with --marker, --name, --net NAME;
@@ -43,6 +44,7 @@
 import { chromium } from 'playwright';
 import { pickBrowser } from './browser.mjs';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -113,7 +115,9 @@ const SUITE_ENV = {
 
 // ---- arguments ----
 const argv = process.argv.slice(2);
-const opt = { base: 'http://localhost:8611', run: '', jobs: 1, env: [], scale: 1, script: '', marker: '', name: '', net: '', saveOut: '', allow: [], list: false };
+// a game in headless Chrome keeps about three cores busy
+const JOBS = Math.max(1, Math.min(4, Math.floor(os.cpus().length / 3)));
+const opt = { base: 'http://localhost:8611', run: '', jobs: JOBS, env: [], scale: 1, script: '', marker: '', name: '', net: '', saveOut: '', allow: [], list: false };
 const names = [];
 for (let i = 0; i < argv.length; i++) {
   const a = argv[i], v = () => argv[++i];
@@ -243,6 +247,15 @@ async function runOne(browser, s) {
 
 const results = [], skipped = [];
 const queue = scen.filter(s => { if (s.blocked) { skipped.push(s); return false; } return true; });
+// the longest first, so that the jobs end together instead of a long one starting last: each scenario's wall time in
+// the latest run that had it (out/web/runs/*/summary.json), else its time limit
+const lastWall = {};
+const runsDir = path.join(ROOT, 'out/web/runs');
+for (const d of (fs.existsSync(runsDir) ? fs.readdirSync(runsDir) : []).map(d => path.join(runsDir, d, 'summary.json'))
+  .filter(f => fs.existsSync(f)).sort((a, b) => fs.statSync(a).mtimeMs - fs.statSync(b).mtimeMs)) {
+  try { for (const r of JSON.parse(fs.readFileSync(d, 'utf8')).results ?? []) if (r.wall) lastWall[r.name] = r.wall; } catch {}
+}
+queue.sort((a, b) => (lastWall[b.name] ?? b.alarm) - (lastWall[a.name] ?? a.alarm));
 // (nothing to run, every scenario named not runnable yet: no browser, only the summaries)
 const browser = queue.length ? await chromium.launch({ ...pickBrowser(), headless: true,
   args: ['--enable-unsafe-webgpu', ...(process.env.CHROME_ARGS ? process.env.CHROME_ARGS.split(' ') : [])] }) : null;
