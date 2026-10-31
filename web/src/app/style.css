@@ -423,6 +423,10 @@ summary:hover { color: var(--text); }
 .keymask { position: absolute; inset: 0; overflow: hidden; white-space: pre; color: var(--lime); pointer-events: none; }
 .keybox.masked input { color: transparent; caret-color: var(--lime); }
 .keybox:not(.masked) .keymask { display: none; }
+/* filled in by the browser's passwords (pwkeep.ts): the page cannot read it before the player acts, so the field draws
+ * its own dots, in the box's colours rather than the browser's autofill tint */
+.keyfield input:is(:autofill, :-webkit-autofill) { -webkit-text-fill-color: var(--lime); color: var(--lime); box-shadow: inset 0 0 0 40px var(--field); filter: none; }
+.keybox:has(input:is(:autofill, :-webkit-autofill)) .keymask { display: none; }
 .icon-btn {
   display: grid; place-items: center; flex: none; width: 32px; height: 32px; padding: 0;
   border: 0; border-radius: 6px; background: none; color: var(--muted);
@@ -445,6 +449,7 @@ summary:hover { color: var(--text); }
 .vault-sides span { grid-row: 2; grid-column: 1 / -1; min-width: 0; }
 .vault-sides em { grid-row: 1; grid-column: 2; color: var(--lime); font-style: normal; font-weight: 700; }
 .dlg ul.vault-sides { margin: 0 0 16px; padding: 0; color: inherit; }
+.dlg .vault-sides li { row-gap: 4px; }        /* 68 px: on the dialog's 4 px grid */
 .dlg p.warn { color: var(--warn); }
 #vault-replaced { margin-top: 8px; }
 #vault-replaced .text-btn { padding: 0; height: 24px; }

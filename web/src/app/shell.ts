@@ -46,9 +46,9 @@ import { askCrews, queueText, roomHash, roomText, serverAnswers, watchPlayers, t
 import { CREW_MAX, crewList, crewsOf, crewsValue, freeColour, rgbsValue, rgbWords, type Crew } from './crews';
 import { checkInvite, inviteLink, readInvite, sameName, type Invite } from './invite';
 import { privacy, SCRUB_NOTE } from './privacy';
-import { SavesPanel } from './saves-ui';
+import { exportSaves, SavesPanel } from './saves-ui';
 import { saveScreenshot } from './shots';
-import { forgetLink, VaultPanel } from './vault-ui';
+import { forgetLink, OFFER_TIMES, VaultPanel } from './vault-ui';
 import { Radio, MODES, radioWasOn, type Mode } from '../radio';
 import { canPickMusic, pickMusic } from '../radio-folder';
 import { RadioLink } from './radio-link';
@@ -58,7 +58,8 @@ import { ICON as CHAT_ICON, QuickChat } from './quickchat';
 import { groupsOf, phrasesOf } from './phrases';
 import { GameSession } from './game';
 import { AwayCheck, AWAY_LIMITS, type AwayLimits } from './away';
-import { PlayTime, SMS_AFTER_MS } from './playtime';
+import { playedMs, PlayTime, SMS_AFTER_MS } from './playtime';
+import { canKeep } from './pwkeep';
 import { keepPageId, PAGE_ID_FILE, pageId, seen } from './page-id';
 import { NameClaims, onlineName } from './claim';
 import { claimQuietly, NameRow, quietCheck, settleName, type PlayNameDeps } from './claim-ui';
@@ -347,28 +348,46 @@ async function askRoam(): Promise<boolean> {
 }
 
 /**
- * The fifth Play in this browser (four games played here, vault-ui.ts played) of a player with a profile here and no
- * cloud saves asks to turn them on: the saves live only in this browser, and browsers clear a site's data now and then.
- * Asked once (Not now and Esc are no); not at the Play that asked about free roam (the next one asks), on a test page,
- * offline, or where the server keeps no cloud saves.  Turned on, the keyphrase is shown to keep (copy, download)
+ * Play asks a player with a profile here and no cloud saves to turn them on: the saves live only in this browser, and
+ * browsers clear a site's data now and then.  First at the first Play with a profile here (a new player's second: the
+ * first asks about free roam, and the next one asks), then a week after each Not now (or Esc), three times in all
+ * (vault-ui.ts offerable; before 2026-10-31 once, at the fifth Play).  It shows what is at stake (the profiles, their
+ * money, the hours played here) and downloads the backup for a player who would rather keep a file.  Not on a test
+ * page, offline, or where the server keeps no cloud saves.  Turned on, the keyphrase is shown to keep (copy, download)
  * before the game starts; it failed, the reason.
  */
 async function askCloud() {
   if (testPage() || offline || !vault.offerable() || !await newestProfile()) return;
-  vault.offered();
+  const times = vault.offered();
   const p = (text: string) => Object.assign(document.createElement('p'), { textContent: text });
   const body = document.createElement('div');
   body.append(p(t('Your career is saved only in this browser, and browsers sometimes clear site data (low disk space, cleared history).')),
+    await vault.stake(playedMs()),
     p(t('Cloud saves keep a copy on this server under a passphrase only you have, so you can get your saves back here or in another browser.')));
   // the name, when it is free to claim: the new keyphrase claims it at once, and its popup says so
   const name = onlineName(await typedName());
   const info = name ? await claims.check(name) : null;
   if (name && info?.state === 'free' && !info.mine) body.append(p(t('It also claims your name {name}, so no one else can play under it.', { name })));
   body.append(p(t('You can change this under Cloud saves on the start page.')));
+  // or a file of them, kept where the player likes (Saves, Download backup)
+  const backup = Object.assign(document.createElement('button'), { type: 'button', className: 'text-btn', textContent: t('Download backup') });
+  const said = Object.assign(document.createElement('p'), { className: 'hint', hidden: true });
+  backup.onclick = async () => {
+    try {
+      const e = await exportSaves(SAVE);
+      downloadBlob(e.zip as BlobPart, e.name, 'application/zip');
+      said.textContent = tn(e.files, 'Downloaded {name}: {n} file, {size}.', 'Downloaded {name}: {n} files, {size}.', { name: e.name, size: fmtBytes(e.zip.length) });
+      log.add('[app] cloud saves: a backup downloaded from Play\'s question');
+    } catch (err) { said.textContent = t('The backup failed: {error}', { error: String(err) }); }
+    said.hidden = false;
+  };
+  const row = document.createElement('div'); row.className = 'row keyphrase-do';
+  row.append(backup);
+  body.append(row, said);
   const answer = confirmBox(t('Turn on cloud saves?'), body, t('Turn on'), false, '', t('Not now'));
   $<HTMLButtonElement>('#confirm-ok').focus();
   const on = await answer;
-  log.add(`[app] cloud saves: ${on ? 'turned on' : 'not now'} (asked at Play)`);
+  log.add(`[app] cloud saves: ${on ? 'turned on' : 'not now'} (asked at Play, ${times} of ${OFFER_TIMES})`);
   if (!on) return;
   const phrase = await enableCloud();
   if (!phrase) return;
@@ -411,6 +430,8 @@ async function showPassphrase(phrase: string, claimed: string | null) {
     kept.append(p(t('Passphrase made. Keep it safe: it is the only way back to these saves.')), box, row,
       p(t('To load your saves, enter it under Cloud saves on the start page.')));
   }
+  // its "Save password?" (vault-ui.ts asked it as the keyphrase was made)
+  if (canKeep()) kept.append(p(t('Your browser may also offer to save it with your passwords: choose Save.')));
   const shown = confirmBox(t('Your passphrase'), kept, t('Continue'), false, '', '');
   $<HTMLButtonElement>('#confirm-ok').focus();
   await shown;
@@ -657,7 +678,6 @@ async function startGame() {
     return;
   }
   setPhase('playing', T('Playing'), () => '');
-  vault.played();                     // counted for the cloud saves question (askCloud)
   if (!offline && !testPage()) seen('play');   // counted for the server's day (page-id.ts)
   keeper.start(loaded!.info.rev, gameHeld);
   $('#lastgame').hidden = true;           // about the game before this one

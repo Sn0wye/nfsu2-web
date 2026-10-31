@@ -1107,5 +1107,9 @@
   "Donate": "寄付",
   "Support the project": "プロジェクトを支援",
   "To help with hosting and development costs, you can buy me a coffee on Ko-fi. No perks, apart from a Discord role.": "ホスティングと開発の費用を支援してくださる方は、Ko-fi でコーヒーをおごってください。Discord のロール以外に特典はありません。",
-  "Donate on Ko-fi": "Ko-fi で寄付"
+  "Donate on Ko-fi": "Ko-fi で寄付",
+  "Your browser may also offer to save it with your passwords: choose Save.": "ブラウザがパスワードとして保存するか尋ねることもあります。「保存」を選んでください。",
+  "{n} hours played": "{n}時間プレイ",
+  "{n} minutes played": "{n}分プレイ",
+  "Your browser's passwords have the passphrase of your cloud saves.": "ブラウザのパスワードに、クラウドセーブのパスフレーズが保存されています。"
 }

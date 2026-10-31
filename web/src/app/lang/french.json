@@ -1199,5 +1199,17 @@
   "Donate": "Faire un don",
   "Support the project": "Soutenir le projet",
   "To help with hosting and development costs, you can buy me a coffee on Ko-fi. No perks, apart from a Discord role.": "Pour aider à couvrir les frais d'hébergement et de développement, vous pouvez m'offrir un café sur Ko-fi. Aucun avantage, à part un rôle Discord.",
-  "Donate on Ko-fi": "Faire un don sur Ko-fi"
+  "Donate on Ko-fi": "Faire un don sur Ko-fi",
+  "Your browser may also offer to save it with your passwords: choose Save.": "Votre navigateur peut aussi proposer de l'enregistrer avec vos mots de passe : choisissez Enregistrer.",
+  "{n} hours played": {
+    "one": "{n} heure jouée",
+    "many": "{n} heures jouées",
+    "other": "{n} heures jouées"
+  },
+  "{n} minutes played": {
+    "one": "{n} minute jouée",
+    "many": "{n} minutes jouées",
+    "other": "{n} minutes jouées"
+  },
+  "Your browser's passwords have the passphrase of your cloud saves.": "Les mots de passe de votre navigateur contiennent la phrase secrète de vos sauvegardes cloud."
 }

@@ -1110,5 +1110,9 @@
   "Download": "Letöltés",
   "Support the project": "A projekt támogatása",
   "To help with hosting and development costs, you can buy me a coffee on Ko-fi. No perks, apart from a Discord role.": "Ha hozzájárulnál a tárhely és a fejlesztés költségeihez, meghívhatsz egy kávéra a Ko-fin. Nem jár érte előny, csak egy Discord-rang.",
-  "Donate on Ko-fi": "Támogatás a Ko-fin"
+  "Donate on Ko-fi": "Támogatás a Ko-fin",
+  "Your browser may also offer to save it with your passwords: choose Save.": "A böngésződ azt is felajánlhatja, hogy elmenti a jelszavaid közé: válaszd a Mentés gombot.",
+  "{n} hours played": "{n} óra játék",
+  "{n} minutes played": "{n} perc játék",
+  "Your browser's passwords have the passphrase of your cloud saves.": "A böngésződ jelszavai között ott van a felhőmentésed jelmondata."
 }

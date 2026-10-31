@@ -1222,5 +1222,19 @@
   "Donate": "Поддержать",
   "Support the project": "Поддержать проект",
   "To help with hosting and development costs, you can buy me a coffee on Ko-fi. No perks, apart from a Discord role.": "Чтобы помочь с расходами на хостинг и разработку, можно угостить меня кофе на Ko-fi. Никаких бонусов, кроме роли в Discord.",
-  "Donate on Ko-fi": "Поддержать на Ko-fi"
+  "Donate on Ko-fi": "Поддержать на Ko-fi",
+  "Your browser may also offer to save it with your passwords: choose Save.": "Браузер может также предложить сохранить её вместе с вашими паролями: выберите «Сохранить».",
+  "{n} hours played": {
+    "one": "{n} час игры",
+    "few": "{n} часа игры",
+    "many": "{n} часов игры",
+    "other": "{n} часа игры"
+  },
+  "{n} minutes played": {
+    "one": "{n} минута игры",
+    "few": "{n} минуты игры",
+    "many": "{n} минут игры",
+    "other": "{n} минуты игры"
+  },
+  "Your browser's passwords have the passphrase of your cloud saves.": "В паролях вашего браузера есть парольная фраза ваших облачных сохранений."
 }

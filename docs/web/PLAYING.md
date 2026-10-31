@@ -283,11 +283,20 @@ keys as the Mac app. Each change is saved at once and applies the next time you 
 - **Cloud saves:** Enable cloud saving (in Saves, beside Cloud saves) keeps your saves on the server too, under a
   passphrase only you have (it was called a keyphrase before): `nfsu2-xyz-` and 8 words. In another browser (another
   PC, a phone), enter it in the box and press Load: any case, with or without `nfsu2-xyz`. There is no account and no
-  email.
+  email. Until you have them, Play asks to turn them on once you have a profile (again a week after each Not now,
+  three times at most): it shows your profiles, their money and the hours played in this browser, and Download backup
+  there keeps a file of them instead.
   - The page locks the saves with the passphrase before they leave the browser: the server keeps bytes it cannot
     read, under a code made from the passphrase. Keep the passphrase safe, in a password manager say: it is the only
     way back to these saves, and nobody can look it up for you. The box shows its first 3 characters; the eye shows
     all of it and copies it, the arrow downloads it as a file.
+  - **In your browser's passwords:** Chrome, Edge and the other Chromium browsers offer to save the passphrase with
+    your passwords (user name "Cloud saves") when it is made or loaded: choose Save. Unlike the saves, the browser's
+    passwords stay when this site's data is cleared, and your other devices may get them too. A browser with no
+    profile and no cloud saves then asks the browser for it as the page opens (Chrome shows its own "Cloud saves"
+    chooser, once; nothing if it has none) and offers those saves. Every browser's password manager also fills the
+    passphrase into the box, ready for Load. Firefox and Safari offer to save a passphrase you typed or pasted there
+    for Load; one the page made for you, keep with Copy or the download.
   - From then on that browser syncs by itself: its saves go to the server after the game saves and when it closes,
     and a newer save from your other browser comes in when the page opens and when you press Play. If both browsers
     changed them since they last synced, the page asks which to keep: it shows both, their profiles, money and when

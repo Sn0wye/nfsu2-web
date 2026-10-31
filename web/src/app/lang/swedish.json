@@ -1176,5 +1176,15 @@
   "Donate": "Donera",
   "Support the project": "Stöd projektet",
   "To help with hosting and development costs, you can buy me a coffee on Ko-fi. No perks, apart from a Discord role.": "För att hjälpa till med kostnaderna för drift och utveckling kan du bjuda mig på en kaffe via Ko-fi. Inga förmåner, förutom en roll på Discord.",
-  "Donate on Ko-fi": "Donera via Ko-fi"
+  "Donate on Ko-fi": "Donera via Ko-fi",
+  "Your browser may also offer to save it with your passwords: choose Save.": "Din webbläsare kan också erbjuda att spara den bland dina lösenord: välj Spara.",
+  "{n} hours played": {
+    "one": "{n} timme spelad",
+    "other": "{n} timmar spelade"
+  },
+  "{n} minutes played": {
+    "one": "{n} minut spelad",
+    "other": "{n} minuter spelade"
+  },
+  "Your browser's passwords have the passphrase of your cloud saves.": "Webbläsarens lösenord innehåller lösenfrasen till dina sparfiler i molnet."
 }
