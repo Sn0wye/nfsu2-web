@@ -580,6 +580,7 @@ async fn a_receiver_that_never_reads_is_cut_by_the_keepalive_tick() {
         group_byte_rate: (64 << 20) as f64,
         group_frame_rate: 100000.0,
         peers_ms: 1,
+        ctl_rate: 1000.0,
         ..opts()
     })
     .await;
@@ -591,10 +592,9 @@ async fn a_receiver_that_never_reads_is_cut_by_the_keepalive_tick() {
     let buffered = |sw: &Switch| sw.peers().iter().find(|p| p.vip == pa.vip).map_or(0, |p| p.buffered);
     let mut n = 0;
     let t_flood = Instant::now();
-    while n < 20000 {
+    while n < 100 {
         if buffered(&sw) > 16 << 10 {
-            // over the limit: for good once the kernel's buffers are full (an ACK still frees them a moment later
-            // while they are not)
+            // over the limit: for good once the pipe is full (its writer may still be filling it a moment later)
             sleep(100).await;
             if buffered(&sw) > 16 << 10 {
                 break;
@@ -606,10 +606,11 @@ async fn a_receiver_that_never_reads_is_cut_by_the_keepalive_tick() {
         f[8..12].copy_from_slice(&pa.vip.to_be_bytes());
         b.binary(f);
         n += 1;
-        // let the switch take it
-        b.binary(Vec::new());
-        b.flush().await;
-        sleep(1).await;
+        // the answer to a ping sent after it: the switch reads B's messages in order, so the frame is in A's queue.
+        // (A frame sent before the queue is read would find it over the limit and cut A as slow, not by the tick:
+        // what a 1 ms wait did on Linux.)
+        b.ping(vec![0]);
+        b.until_true(|g| g.pongs.len() >= n).await;
     }
     let q = buffered(&sw);
     println!("A's queue {q} bytes after {n} frames in {:.0} ms", ms_since(t_flood));

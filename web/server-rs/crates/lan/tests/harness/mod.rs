@@ -656,7 +656,8 @@ pub const PONG: u8 = 0xA;
 /// a client that never reads, with its hello sent, on an in-memory pipe that holds `cap` bytes instead of a socket:
 /// the switch's writer to it stops once they are written, on every system (a loopback socket's buffers are the
 /// kernel's to size; macOS's took a whole burst, and the switch's queue a test measures stayed empty).  Keep the
-/// returned end: dropping it closes the connection.  `group`: as ?g=<id> names it.
+/// returned end: dropping it closes the connection; what is written to it reaches the switch as the client's
+/// frames.  `group`: as ?g=<id> names it.
 pub fn stalled_peer(sw: &Switch, name: &str, group: Option<&str>, cap: usize) -> tokio::io::DuplexStream {
     let (ours, theirs) = tokio::io::duplex(cap);
     let (r, w) = tokio::io::split(theirs);

@@ -227,9 +227,9 @@ async fn a_receiver_that_stopped_reading_goes_not_the_player_streaming_to_it() {
     use tokio::io::AsyncWriteExt;
     let _s = serial().await;
     let sw = start(stream_opts()).await;
-    let guest = raw_peer(sw.port, "Guest", "?g=guest").await;
+    let guest = stalled_peer(&sw, "Guest", Some("guest"), 8 << 10);
     // stops reading, still sends: text pings every 200 ms
-    let (_gr, mut gw) = guest.into_split();
+    let (_gr, mut gw) = tokio::io::split(guest);
     let keep = tokio::spawn(async move {
         loop {
             sleep(200).await;
@@ -278,6 +278,9 @@ async fn a_broadcast_costs_its_size_for_every_player_it_reaches() {
         site_byte_rate: RATE as f64,
         site_frame_rate: 100000.0,
         max_peers: 16,
+        // the senders' budgets decide what gets through, not a receiver's queue: a whole burst at once is more than
+        // the 64 KB a Linux socket's writer may leave queued
+        roam_queue: 1 << 20,
         ..opts()
     })
     .await;
