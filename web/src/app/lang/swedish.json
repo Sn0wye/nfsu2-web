@@ -1194,5 +1194,7 @@
     "one": "{n} minut spelad",
     "other": "{n} minuter spelade"
   },
-  "Your browser's passwords have the passphrase of your cloud saves.": "Webbläsarens lösenord innehåller lösenfrasen till dina sparfiler i molnet."
+  "Your browser's passwords have the passphrase of your cloud saves.": "Webbläsarens lösenord innehåller lösenfrasen till dina sparfiler i molnet.",
+  "Changelog": "Ändringar",
+  "Couldn't load the changelog.": "Det gick inte att läsa in ändringarna."
 }

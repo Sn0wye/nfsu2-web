@@ -97,6 +97,12 @@ what it would do. Run again after a failure, it keeps the module and image of be
 `module/release.json`, the module's and the image's commits, for the forum bot (`discord-bot/`): after a release of
 only the page or the server, the image's commit is what is live. `NFSU2_DIR` names another folder than `/srv/nfsu2`.
 
+**The changelog:** the start page's Changelog button lists `CHANGELOG.md`, which is part of the image. Before a
+release, add its section at the top: the commits after the newest section's commit, up to the release's, as one line
+per change written for players (the file's head says how). Commit it, wait for its image, and release with that commit
+(`release.sh root@<vps> <folder> <changelog commit>`: it changed only the page). `release.sh` notes when the image's
+`CHANGELOG.md` ends before the module's commit.
+
 **When something is wrong:**
 
 | What you see | Why |

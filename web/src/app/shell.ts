@@ -58,6 +58,7 @@ import { ICON as CHAT_ICON, QuickChat } from './quickchat';
 import { groupsOf, phrasesOf } from './phrases';
 import { GameSession } from './game';
 import { AwayCheck, AWAY_LIMITS, type AwayLimits } from './away';
+import { changelog } from './changelog';
 import { playedMs, PlayTime, SMS_AFTER_MS } from './playtime';
 import { canKeep } from './pwkeep';
 import { keepPageId, PAGE_ID_FILE, pageId, seen } from './page-id';
@@ -1710,6 +1711,8 @@ export async function boot() {
   // Donate at the top: a popup with the Ko-fi link, closed as Ko-fi opens in its own tab
   $('#donate-btn').onclick = () => $<HTMLDialogElement>('#donate').showModal();
   $('#donate-go').onclick = () => $<HTMLDialogElement>('#donate').close();
+  // Changelog at the top: CHANGELOG.md's releases in a popup
+  changelog($('#changelog-btn'), $<HTMLDialogElement>('#changelog'), $('#changelog-body'));
   // who plays on this server now (Online): only while no game runs here; with free roam on in a room, that room too,
   // and in crews (free roam on or not: the row shows them either way), how many are in each (on the Crews row's lines)
   players = watchPlayers((line, crews) => { settings.setStatus(line); settings.setCrewCounts(crews); }, () => !session && !starting, setReach,

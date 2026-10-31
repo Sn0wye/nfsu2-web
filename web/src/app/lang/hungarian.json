@@ -1122,5 +1122,7 @@
   "Your browser may also offer to save it with your passwords: choose Save.": "A böngésződ azt is felajánlhatja, hogy elmenti a jelszavaid közé: válaszd a Mentés gombot.",
   "{n} hours played": "{n} óra játék",
   "{n} minutes played": "{n} perc játék",
-  "Your browser's passwords have the passphrase of your cloud saves.": "A böngésződ jelszavai között ott van a felhőmentésed jelmondata."
+  "Your browser's passwords have the passphrase of your cloud saves.": "A böngésződ jelszavai között ott van a felhőmentésed jelmondata.",
+  "Changelog": "Változások",
+  "Couldn't load the changelog.": "Nem sikerült betölteni a változásokat."
 }

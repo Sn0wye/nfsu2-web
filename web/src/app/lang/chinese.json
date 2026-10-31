@@ -1119,5 +1119,7 @@
   "Your browser may also offer to save it with your passwords: choose Save.": "瀏覽器也可能會詢問是否把它和你的密碼一起儲存：請選擇「儲存」。",
   "{n} hours played": "已玩 {n} 小時",
   "{n} minutes played": "已玩 {n} 分鐘",
-  "Your browser's passwords have the passphrase of your cloud saves.": "你的瀏覽器密碼中存有你雲端存檔的通關密語。"
+  "Your browser's passwords have the passphrase of your cloud saves.": "你的瀏覽器密碼中存有你雲端存檔的通關密語。",
+  "Changelog": "更新日誌",
+  "Couldn't load the changelog.": "無法載入更新日誌。"
 }

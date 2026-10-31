@@ -1128,5 +1128,7 @@
   "Your browser may also offer to save it with your passwords: choose Save.": "Tarayıcın onu şifrelerinle birlikte kaydetmeyi de önerebilir: Kaydet'i seç.",
   "{n} hours played": "{n} saat oynandı",
   "{n} minutes played": "{n} dakika oynandı",
-  "Your browser's passwords have the passphrase of your cloud saves.": "Tarayıcının şifrelerinde bulut kayıtlarının parola ifadesi var."
+  "Your browser's passwords have the passphrase of your cloud saves.": "Tarayıcının şifrelerinde bulut kayıtlarının parola ifadesi var.",
+  "Changelog": "Yenilikler",
+  "Couldn't load the changelog.": "Yenilikler yüklenemedi."
 }

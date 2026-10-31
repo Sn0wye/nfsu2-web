@@ -23,6 +23,7 @@ WORKDIR /src/web
 COPY web/package.json web/package-lock.json ./
 RUN npm ci --no-audit --no-fund
 COPY app/registry-defaults.txt /src/app/
+COPY CHANGELOG.md /src/
 COPY web/build.mjs web/index.html ./
 COPY web/src src
 RUN node build.mjs && mkdir /state

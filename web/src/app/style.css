@@ -947,6 +947,14 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.64); }
 .dlg-field { display: flex; align-items: center; gap: 12px; }
 .dlg-field input[type="text"] { flex: 1; min-width: 0; }
 .dlg.help { width: min(560px, calc(100vw - 32px)); }
+/* the changelog (changelog.ts): the help sheet's width, the releases scrolling under the title and Close */
+.dlg.changelog { width: min(560px, calc(100vw - 32px)); }
+.dlg.changelog[open] { display: flex; flex-direction: column; overflow: hidden; }
+#changelog-body { min-height: 0; overflow: hidden auto; }
+#changelog-body h3:first-child { margin-top: 0; }
+#changelog-body ul { margin: 0; }
+#changelog-body li + li { margin-top: 8px; }
+#changelog-body strong { color: var(--text); font-style: italic; font-weight: 700; }
 /* one screenshot (shots.ts): as large as the window allows, under it its place, Download and Delete */
 .dlg.shot-view { width: min(1232px, calc(100vw - 32px)); }
 .shot-view .dlg-head .hint { margin: 0; }
@@ -982,8 +990,9 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.64); }
 .dlg p.set-note { margin: 0; }
 
 /* ---------------------------------------------------------------- narrow */
-/* no room for the buttons beside the title (the longest name is Português (Brasil)): the buttons under the note */
-@media (max-width: 819px) {
+/* no room for the buttons beside the title (the longest name is Português (Brasil), the title on two lines at most):
+   the buttons under the note */
+@media (max-width: 899px) {
   .top-row { flex-wrap: wrap; }
   .brand { flex-basis: 100%; }
 }
@@ -996,10 +1005,14 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.64); }
 @media (max-width: 559px) {
   .top, .panel { padding: 16px; }
   .brand h1 { font-size: 24px; }
-  /* the language list across the header, Discord and Donate under it at half its width each */
-  .top-end { flex: 1 1 100%; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .top-end .lang-pick { grid-column: 1 / -1; }
+  /* the language list across the header; Changelog, Discord and Donate under it at a third of its width each, without
+     their icons.  A button is never narrower than its longest word: where the three don't fit (320 px, a long word in
+     another language) the last one takes a row of its own */
+  .top-end { flex: 1 1 100%; align-items: stretch; }
+  .top-end .lang-pick { flex: 1 1 100%; }
   .lang-pick select { width: 100%; }
+  .top-end .btn { flex: 1 1 0; min-width: min-content; padding: 4px 8px; }
+  .top-end .btn svg { display: none; }
   /* a button's words wrap where they are wider than the screen (another language's); one line stays 40 px tall */
   .btn { height: auto; min-height: 40px; padding: 4px 16px; white-space: normal; text-align: center; }
   /* the channel's name still in one piece, unless the whole link is wider than the line (Polish) */

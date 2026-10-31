@@ -1119,5 +1119,7 @@
   "Your browser may also offer to save it with your passwords: choose Save.": "เบราว์เซอร์อาจเสนอให้บันทึกไว้กับรหัสผ่านของคุณด้วย: เลือก บันทึก",
   "{n} hours played": "เล่นไปแล้ว {n} ชั่วโมง",
   "{n} minutes played": "เล่นไปแล้ว {n} นาที",
-  "Your browser's passwords have the passphrase of your cloud saves.": "รหัสผ่านในเบราว์เซอร์ของคุณมีวลีรหัสของเซฟบนคลาวด์อยู่"
+  "Your browser's passwords have the passphrase of your cloud saves.": "รหัสผ่านในเบราว์เซอร์ของคุณมีวลีรหัสของเซฟบนคลาวด์อยู่",
+  "Changelog": "อัปเดต",
+  "Couldn't load the changelog.": "โหลดรายการอัปเดตไม่ได้"
 }

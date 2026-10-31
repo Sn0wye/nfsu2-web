@@ -1194,5 +1194,7 @@
     "one": "{n} Minute gespielt",
     "other": "{n} Minuten gespielt"
   },
-  "Your browser's passwords have the passphrase of your cloud saves.": "Die Passwörter deines Browsers enthalten die Passphrase deiner Cloud-Spielstände."
+  "Your browser's passwords have the passphrase of your cloud saves.": "Die Passwörter deines Browsers enthalten die Passphrase deiner Cloud-Spielstände.",
+  "Changelog": "Änderungen",
+  "Couldn't load the changelog.": "Die Änderungen konnten nicht geladen werden."
 }

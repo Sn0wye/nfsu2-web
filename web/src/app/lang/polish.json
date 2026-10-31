@@ -1244,5 +1244,7 @@
     "many": "{n} minut gry",
     "other": "{n} minuty gry"
   },
-  "Your browser's passwords have the passphrase of your cloud saves.": "Hasła twojej przeglądarki zawierają frazę dostępu do twoich zapisów w chmurze."
+  "Your browser's passwords have the passphrase of your cloud saves.": "Hasła twojej przeglądarki zawierają frazę dostępu do twoich zapisów w chmurze.",
+  "Changelog": "Zmiany",
+  "Couldn't load the changelog.": "Nie udało się wczytać listy zmian."
 }

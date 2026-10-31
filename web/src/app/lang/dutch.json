@@ -1194,5 +1194,7 @@
     "one": "{n} minuut gespeeld",
     "other": "{n} minuten gespeeld"
   },
-  "Your browser's passwords have the passphrase of your cloud saves.": "De wachtwoorden van je browser bevatten de wachtwoordzin van je opgeslagen spellen in de cloud."
+  "Your browser's passwords have the passphrase of your cloud saves.": "De wachtwoorden van je browser bevatten de wachtwoordzin van je opgeslagen spellen in de cloud.",
+  "Changelog": "Wijzigingen",
+  "Couldn't load the changelog.": "De wijzigingen konden niet worden geladen."
 }

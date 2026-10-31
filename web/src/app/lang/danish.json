@@ -1194,5 +1194,7 @@
     "one": "{n} minut spillet",
     "other": "{n} minutter spillet"
   },
-  "Your browser's passwords have the passphrase of your cloud saves.": "Din browsers adgangskoder indeholder adgangssætningen til dine gemte spil i skyen."
+  "Your browser's passwords have the passphrase of your cloud saves.": "Din browsers adgangskoder indeholder adgangssætningen til dine gemte spil i skyen.",
+  "Changelog": "Ændringer",
+  "Couldn't load the changelog.": "Ændringerne kunne ikke indlæses."
 }

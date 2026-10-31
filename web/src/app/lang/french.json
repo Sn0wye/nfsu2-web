@@ -1219,5 +1219,7 @@
     "many": "{n} minutes jouées",
     "other": "{n} minutes jouées"
   },
-  "Your browser's passwords have the passphrase of your cloud saves.": "Les mots de passe de votre navigateur contiennent la phrase secrète de vos sauvegardes cloud."
+  "Your browser's passwords have the passphrase of your cloud saves.": "Les mots de passe de votre navigateur contiennent la phrase secrète de vos sauvegardes cloud.",
+  "Changelog": "Nouveautés",
+  "Couldn't load the changelog.": "Impossible de charger les nouveautés."
 }
