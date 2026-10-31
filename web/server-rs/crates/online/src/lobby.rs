@@ -249,7 +249,10 @@ const KIND_DRIFT: u8 = 3;
 /// direction and laps), once the track had QUICK_WINS clean wins (two finishers or more, no line), is a `[cheat]` line
 /// (`quick_win`): a car made faster than any tuning makes one, a speed hack, wins far quicker than the best honest
 /// racers do (the free-roam lobbies' races of 2026-10-30 on nfsu2.xyz: one player's sprint in 0.58 of it; of 4,727
-/// other wins the quickest 0.78).  The tracks kept (`Lobby::wins`), and the quickest winners each.
+/// other wins the quickest 0.78).  Not when another finisher of the race came close (the winner over THIRD_SHARE of
+/// its time): that time can be driven, and the track's best winners were slower cars (nfsu2.xyz, 2026-10-31: four
+/// racers within 4 s of each other, all under 70 % of the third quickest of 10 clean wins).  The tracks kept
+/// (`Lobby::wins`), and the quickest winners each.
 const THIRD_SHARE: f64 = 0.7;
 const QUICK_WINS: u32 = 10;
 const TRACKS_KEPT: usize = 4096;
@@ -258,6 +261,11 @@ const TOP_KEPT: usize = 4;
 const RACE_MPS: f64 = 350.0 / 3.6;
 /// a finisher who drove less than this share of what another racer drove (`race_cheats`)
 const DROVE_SHARE: f64 = 0.5;
+/// a racer still on the way when the race ended: its way counts against a finisher's when its time is at most this
+/// much longer (s; the race ends 30 s after the first finished).  A game that went on far longer was cut off from the
+/// others' race: nfsu2.xyz, 2026-10-31, one went on alone for 12 minutes, drove 19.6 km and made the race's 2:54
+/// winner one who drove "under half"
+const ENDED_S: f64 = 40.0;
 /// a top speed no car of the game makes, however tuned (m/s: 420 km/h), an edited save's (`race_cheats`): of the
 /// 38,967 personas with a top speed record on nfsu2.xyz on 2026-10-30, half had under 218 km/h, the fastest tuned
 /// cars 377, 12 over 380 and 5 over 420 (one the racer of a circuit won at 383 km/h on average); a free-roam lobby
@@ -769,12 +777,13 @@ fn fit(fields: Fields, max: usize, drop: &[&str]) -> Fields {
 /// 462 km in a 4-minute sprint; 18 lines of a morning came of such figures, each about a racer other than the
 /// reporter, none of them a cheat).  One line a racer a race, for a finisher whose own game says it did what no racer
 /// does: a time under its race type's shortest (MIN_RACE_S: the report is not taken either), RACE_MPS or more on
-/// average, or a way (its average times its time) under DROVE_SHARE of another racer's own, finished or not (a cheat
-/// that ends its race at once: a test's racewin won a sprint in 4.77 s having driven 65 m, the other racer 1021 m by
-/// the race's end 30 s later; an honest finisher drives the whole way, and nobody twice as much before the race
-/// ends).  The way is looked at again at every report: the other racer's may come after the finisher's.  A drift race
-/// is won by points and is left out.  The line names the race's track and laps and the racer's top speed: the other
-/// finishers' times are on the race's `[online]` lines (often none yet: one who won in 30 s had the others give up).
+/// average, or a way (its average times its time) under DROVE_SHARE of another racer's own, finished or still on the
+/// way when the race ended (ENDED_S) (a cheat that ends its race at once: a test's racewin won a sprint in 4.77 s
+/// having driven 65 m, the other racer 1021 m by the race's end 30 s later; an honest finisher drives the whole way,
+/// and nobody twice as much before the race ends).  The way is looked at again at every report: the other racer's
+/// may come after the finisher's.  A drift race is won by points and is left out.  The line names the race's track
+/// and laps and the racer's top speed: the other finishers' times are on the race's `[online]` lines (often none yet:
+/// one who won in 30 s had the others give up).
 fn race_cheats(game: &str, r: &RaceReport, me: usize, mine: Option<&ReportPlayer>, players: &mut [Player]) -> Vec<String> {
     let kind = r.kind;
     if kind == KIND_DRIFT {
@@ -810,7 +819,7 @@ fn race_cheats(game: &str, r: &RaceReport, me: usize, mine: Option<&ReportPlayer
         let most = players
             .iter()
             .enumerate()
-            .filter_map(|(j, x)| Some((x.own.filter(|_| j != i)?, &x.name)))
+            .filter_map(|(j, x)| Some((x.own.filter(|y| j != i && (y.finished || y.time <= o.time + ENDED_S))?, &x.name)))
             .map(|(x, name)| (x.avg * x.time, name))
             .max_by(|a, b| a.0.total_cmp(&b.0));
         let each = if let Some((d, other)) = most
@@ -874,9 +883,9 @@ fn far_ahead(game: &str, kind: u8, order: &[RacePlayer], players: &[Player]) -> 
     ))
 }
 
-/// The `[cheat]` line of a race whose result stands, when its winner took under THIRD_SHARE of the third quickest
-/// other winner's time of its track; else None, and a clean win (two finishers or more, its winner told of by no line,
-/// `told`) counts in the track's
+/// The `[cheat]` line of a race whose result stands, when its winner took under THIRD_SHARE of the third quickest other
+/// winner's time of its track, and no other finisher came close (THIRD_SHARE); else None, and a clean win (two
+/// finishers or more, its winner told of by no line, `told`) counts in the track's
 fn quick_win(
     wins: &mut HashMap<(u8, u16, u8, u8), Wins>,
     game: &str,
@@ -891,7 +900,8 @@ fn quick_win(
     let w = order.iter().find(|p| p.place == 1 && p.time > 0.0)?;
     let key = (r.kind, r.track, r.dir, r.laps);
     let who = lower(&w.name);
-    if let Some(t) = wins.get(&key).and_then(|x| Some((x.third(&who)?, x.wins))).filter(|&(t, _)| w.time < THIRD_SHARE * t) {
+    let close = order.iter().any(|p| p.place > 1 && p.time > 0.0 && w.time >= THIRD_SHARE * p.time);
+    if !close && let Some(t) = wins.get(&key).and_then(|x| Some((x.third(&who)?, x.wins))).filter(|&(t, _)| w.time < THIRD_SHARE * t) {
         let vip = players.iter().find(|p| lower(&p.name) == who).map_or(0, |p| p.vip);
         let ty = REPORT_TYPES.get(r.kind as usize).copied().unwrap_or("race");
         let laps = if r.laps > 0 { format!(", {} lap{}", r.laps, if r.laps == 1 { "" } else { "s" }) } else { String::new() };

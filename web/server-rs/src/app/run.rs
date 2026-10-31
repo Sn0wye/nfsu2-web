@@ -120,6 +120,15 @@ async fn reload_cert(app: &Arc<App>, tls: &Arc<TlsState>) {
 
 pub async fn run(o: Options, cores: usize) {
     let real_state = state_folder(&o);
+    // the console kept in the state folder too, a file a day (nfsu2_util::logfile): it outlasts a deploy
+    let logs = paths::join(&o.state, "logs");
+    let logs_up = match nfsu2_util::logfile::to_files(Path::new(&logs)) {
+        Ok(()) => true,
+        Err(e) => {
+            log::error(&format!("{logs}: {e} (no log files: the console only)"));
+            false
+        }
+    };
     if !o.artifacts.is_empty()
         && let Err(e) = std::fs::create_dir_all(&o.artifacts)
     {
@@ -609,6 +618,14 @@ pub async fn run(o: Options, cores: usize) {
         )
     } else {
         format!("  bans      : {bans}; no kick or ban (the control socket could not be made: above)")
+    });
+    lines.push(if logs_up {
+        format!(
+            "  logs      : the console in {logs} too, a file a day (UTC), gzipped once it ended, the last {} days",
+            nfsu2_util::logfile::DAYS_KEPT
+        )
+    } else {
+        "  logs      : the console only (the log files could not be made: above)".into()
     });
     if !o.online_trace.is_empty() {
         lines.push(format!("  trace     : lobby messages (secrets redacted) into {}", o.online_trace));

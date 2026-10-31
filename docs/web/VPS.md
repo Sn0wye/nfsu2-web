@@ -571,6 +571,18 @@ and HTTP/3's UDP, and port 80 stays with whatever has it (another API, say), whi
 
 ## What the log keeps
 
+The server keeps its log in the state volume too, one file a day (UTC) in `logs/`, each line after its time
+(`2026-10-31T10:20:40.155Z`). A deploy or a restart does not lose it, and it reaches further back than Docker's own
+(`docker compose logs`, 100 MB: about 16 hours with 4,000 players). A day that ended is gzipped (20-30 MB with 4,000
+players) and kept for 30 days. To get it out, on the VPS or from your computer:
+
+```sh
+ssh root@<vps> /srv/nfsu2/nfsu2 logs 2 > logs.gz    # the last 2 days (1: today so far), gzipped
+gzcat logs.gz | grep -F '[cheat]'                   # zcat on Linux
+```
+
+`nfsu2` is the operator's script of [kick and ban](#kick-and-ban): copy it to the VPS again after it changed.
+
 `docker compose logs server` is the server's console: start-up, players joining (by virtual address, `10.77.x.x`)
 and leaving (by virtual address and nickname), refused requests and connections, and errors (method, path and the
 server's own stack, never the client's details). Every 5 minutes while anyone is on, a `[players]` line says what
@@ -587,12 +599,15 @@ After each multiplayer race from free roam, every player's game reports it once 
 laps and cars), the player's nickname, place (or "did not finish", "quit") and the car as the game rated it (its
 type, the game's class and rating, the race's average rating, power, weight, top speed, and the factor its engine
 power had in the race) and its time. For evening out the cars:
-`docker compose logs -t server --since 24h | grep '\[race\]'`.
+`gzcat logs.gz | grep -F '[race]'`.
 
 Cheats are `[cheat]` lines, each with the player's virtual address and nickname, as [kick and ban](#kick-and-ban)
 take them. The lines are for you to read: nobody is kicked or banned by them. A line about a race (Online mode's, or
 a race lobby's in free roam) ends with a handle, `(ban c17)`, that `ban` takes for a week after the line, long after
-the player left: `./nfsu2 ban c17 2w Cheating in races`. Free roam's lines get none.
+the player left: `./nfsu2 ban c17 2w Cheating in races`. The same player's next lines keep the handle, under any name,
+in any browser that has its keyphrase or page id, and say the names its earlier lines had and the bans of it since
+(`(ban c17; before as "Bob"; was ban #4)`: banned, and back once that ban ended or was lifted; `ban #4 in force`: back
+past a ban that still holds). Free roam's lines get none.
 
 - **In races**: every racer's game reports the race's results too (each racer's time, how far it came, the way it
   drove), only from a player who asked to join the race's lobby, naming only its players, one report a race. Once
@@ -602,17 +617,22 @@ the player left: `./nfsu2 ban c17 2w Cheating in races`. Free roam's lines get n
   free-roam sprint's average: 107 km/h); won in under half the race's quickest clean win the server saw since it
   started (two reports, another finisher), which a teleport to the finish with nobody else over the line does; won,
   once the race had 10 clean wins, in under 70 % of the third quickest other winner's time (a car made faster than
-  any tuning makes it: the honest wins of a day came at 78 % of it or more); or came under half the way by two
-  reports or more, as a cheat that ends the race at once does ("having driven 0.6 % of the way"). One player's report
-  cannot make a winner or a time, and the line says how many of the race's reports saw it. A car no tuning makes (an
+  any tuning makes it: the honest wins of a day came at 78 % of it or more), unless another racer finished close
+  behind (over 70 % of its time: that time can be driven); or came under half the way by two reports or more, as a
+  cheat that ends the race at once does ("having driven 0.6 % of the way"). One player's report cannot make a winner
+  or a time, and the line says how many of the race's reports saw it, and what the winner's own game said when it did
+  not agree ("its own game: did not finish": a game out of step with the others, more likely than a cheat) or sent
+  no report. A car no tuning makes (an
   edited save's: 600 kW, 420 km/h or a rating of 1000 or more; the game's best cars make 450 kW, 380 km/h and 800) is
   a line of its own, `raced in the race of lobby … in an edited car`, whether it won or not.
   In Online mode each racer is judged by its own game's figures (`won the online race …`, "by its own game"): a time
   under the shortest its race type takes (the result is not taken either), 350 km/h or more on average, or a way
-  under half another racer's own (both by their own games: "each by its own game"), or a top speed of 420 km/h or
-  more, finished or not ("an edited car": of 39,000 players' top speed records 5 went over it); a race won in under
-  40 % of the next finisher's time, by the result; and, once the track (race type, track, direction, laps) had 10
-  clean wins since the start, one won in under 70 % of the third quickest other winner's time there. A report that
+  under half another racer's own (both by their own games: "each by its own game"; a racer who finished, or was on
+  the way when the race ended, 30 s after the first: a game that went on alone long after says nothing), or a top
+  speed of 420 km/h or more, finished or not ("an edited car": of 39,000 players' top speed records 5 went over it);
+  a race won in under 40 % of the next finisher's time, by the result; and, once the track (race type, track,
+  direction, laps) had 10 clean wins since the start, one won in under 70 % of the third quickest other winner's time
+  there, unless another racer finished close behind (over 70 % of its time). A report that
   leaves out a player of the race (one who joined as it started and never raced) is taken and looked at, as any
   other. An Online line names the track and laps and the racer's own top speed;
   the other racers' times are on that race's `[online]` lines (`grep -F '"<race name>"'`). A drift race is won by
@@ -633,20 +653,20 @@ the player left: `./nfsu2 ban c17 2w Cheating in races`. Free roam's lines get n
   players named twice`), a race whose other racers quit, by the one report that came. The World Map's jump stays in free roam, so a teleport that lands within 25 m of an event's
   start or 45 m of a shop's door is taken for one, whoever made it.
 
-The races won by cheating: `docker compose logs -t server --since 24h | grep '\[cheat\]' | grep 'race'`; and the
-cheats that bother others in free roam: `... | grep -e 'next to' -e 'race lobby'`.
+The races won by cheating: `gzcat logs.gz | grep -F '[cheat]' | grep 'race'`; and the cheats that bother others in
+free roam: `... | grep -e 'next to' -e 'race lobby'`.
 
 - **No player's real IP address** is written, and the page sends the server nothing about the player but the
   nickname, a random id the browser keeps for [bans](#kick-and-ban), a token of its keyphrase when it has one
   (claimed names and bans: the server keeps only hashes of it), and after a multiplayer race its car and place.
 - **`--access-log`** adds a line per request with the client's IP address and the URL. It is off by default, for
   debugging only: add it to the server's `command` in `compose.yml` (`["--behind-proxy", "--access-log"]`), and
-  the log then holds your friends' addresses for as long as Docker keeps it.
+  the log then holds your friends' addresses for as long as Docker keeps it, and the log files for 30 days.
 - **What one client can cause** is limited per minute: 2 lines about its refused requests, 2 about its refused
   `/lan` connections, 20 joins and leaves, 30 lines of Online mode and 3000 access-log lines; then one line saying
   how many were left out. Errors are written in full.
-- **Docker keeps the console** in files it rotates (the `local` log driver: 5 files of 20 MB per container), so
-  the log never fills the disk.
+- **Docker keeps the console** in files it rotates (the `local` log driver: 5 files of 20 MB per container), and
+  the server its log files for 30 days (about 1 GB with 4,000 players), so the log never fills the disk.
 
 The console names paths and addresses: it is yours.
 
@@ -726,8 +746,9 @@ no quotes, but over ssh an apostrophe needs them twice (`"'Don't ram'"`), or log
   blocker): a name many block is one to look at (`grep blocks` in the log).
 - **What is kept**: `bans.json` in the state volume, with keyed hashes of the addresses, ids and keyphrases only
   (the key, `bans.key`, beside it): none can be read back from them. The handles of `[cheat]` lines are kept there
-  the same way, for a week. The log has a `[ban]` line for each kick, ban
-  and lift, and when a banned player is turned away (2 a minute per client at most).
+  the same way, for a week, with the names of their earlier lines and the numbers of the bans made of them. The log
+  has a `[ban]` line for each kick, ban (`in place of #6` when it replaced one) and lift, and when a banned player is
+  turned away (2 a minute per client at most).
 - **How it works**: the commands go to `control.sock` in the state volume, which only the server's own user and
   root can open; nothing on the network reaches it. Without Docker: `sudo /opt/nfsu2-web/nfsu2-server ctl --state
   /var/lib/nfsu2-web who` (and the same for the others).

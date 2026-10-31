@@ -271,6 +271,23 @@ async fn the_binary_starts_counts_its_players_and_stops() {
         Some(0o700),
         "the kept blocks' folder is private"
     );
+    // the log files: the console in today's file too, each line after its time; private
+    assert!(
+        rust.startup.contains(&"  logs      : the console in <state>/logs too, a file a day (UTC), gzipped once it ended, the last 30 days".to_string()),
+        "{:?}",
+        rust.startup
+    );
+    let today = &nfsu2_util::js::iso_string(nfsu2_util::now_ms())[..10];
+    let file = state.join("logs").join(format!("{today}.log"));
+    let kept = std::fs::read_to_string(&file).unwrap_or_default();
+    let line_of = |want: &str| kept.lines().find(|l| l.get(25..) == Some(want)).map(|l| l[..24].to_string());
+    let at = line_of("NFSU2 web server").expect("the start in the log file");
+    assert!(at.starts_with(today) && at.ends_with('Z') && at.as_bytes()[10] == b'T', "{at}");
+    assert!(line_of("[lan] 10.77.0.2 \"Ann\" left (0 on the switch)").is_some(), "{kept}");
+    assert!(kept.lines().count() >= rust.console.len() + rust.startup.len(), "every console line: {kept}");
+    for (p, mode) in [(state.join("logs"), 0o700), (file, 0o600)] {
+        assert_eq!(std::fs::metadata(&p).map(|m| m.permissions().mode() & 0o777).ok(), Some(mode), "{}", p.display());
+    }
 }
 
 /// a header of an answer's head (its name in any case)
@@ -807,7 +824,7 @@ async fn kicks_and_bans_through_the_control_socket() {
     // a [cheat] line's mark from before this start (the server's Marker makes them from the hosts' lines)
     std::fs::create_dir_all(&state).unwrap();
     let marks = nfsu2_bans::Bans::open(&state).unwrap();
-    assert_eq!(marks.mark("Racer", marks.keys(None, Some("page-racer"), None), nfsu2_util::now_ms()).unwrap(), "c1");
+    assert_eq!(marks.mark("Racer", marks.keys(None, Some("page-racer"), None), nfsu2_util::now_ms()).unwrap().handle, "c1");
     drop(marks);
     let mut srv = Server::spawn(command(&data, &wasm, port, &state, &["--online", "off", "--roam-hub", "off"]), port);
     srv.ready().await;

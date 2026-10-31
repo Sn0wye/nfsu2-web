@@ -514,6 +514,10 @@ fn a_race_no_racer_drives_is_a_cheat_line() {
         ["[cheat] 10.77.4.6 \"Plane\": raced in the online race \"planes\" (sprint, track 4102, 1 lap), an edited car (no \
           car of the game makes 420 km/h): by its own game; its top speed 432 km/h"]
     );
+    // a racer whose game went on alone long after the race ended (nfsu2.xyz, 2026-10-31: 19.6 km in 12 minutes) says
+    // nothing of the winner's way (9.7 km in 2:54)
+    race_of(&mut w, "split", "Funny", "Gone", &[(0, 1, 174.09, 55.97, false), (1, 0, 720.0, 27.28, true)]);
+    assert_eq!(cheats(&w).len(), 3, "{:?}", cheats(&w));
 }
 
 // what a game shows of another racer is no [cheat] line (nfsu2.xyz, 2026-10-29: Ozz's game had Nef win a 4-minute
@@ -573,27 +577,31 @@ fn a_report_without_a_player_who_never_raced_is_taken() {
 #[test]
 fn a_win_far_under_the_tracks_third_quickest_is_a_cheat_line() {
     let mut w = world();
-    let race_of = |w: &mut World, k: usize, a: &str, t: f32| {
+    let race_of = |w: &mut World, k: usize, a: &str, t: f32, next: f32| {
         let (ga, gb) = (client(w, &format!("10.77.9.{}", 2 * k + 1)), client(w, &format!("10.77.9.{}", 2 * k + 2)));
         let b = format!("Other{k}");
         let (x, y) = (login(w, ga, a), login(w, gb, &b));
         let auth = race(w, &format!("q{k}"), &[x, y], vec![]).unwrap();
         w.advance(120_000.0);
         for c in [x, y] {
-            report(w, c, &auth, &[a, &b], &[(0, 1, t), (1, 2, t + 5.0)], 1);
+            report(w, c, &auth, &[a, &b], &[(0, 1, t), (1, 2, next)], 1);
         }
     };
+    let cheats = |w: &World| w.text().into_iter().filter(|l| l.starts_with("[cheat]")).collect::<Vec<String>>();
     for k in 0..10 {
-        race_of(&mut w, k, &format!("Fair{k}"), 100.0 + k as f32);
+        race_of(&mut w, k, &format!("Fair{k}"), 100.0 + k as f32, 105.0 + k as f32);
     }
-    race_of(&mut w, 10, "Fast", 72.0);
-    assert!(!w.text().iter().any(|l| l.starts_with("[cheat]")), "72 s: over 70 % of 102 s\n{}", w.text().join("\n"));
-    race_of(&mut w, 11, "Rocket", 60.0);
-    let l: Vec<String> = w.text().into_iter().filter(|l| l.starts_with("[cheat]")).collect();
+    race_of(&mut w, 10, "Fast", 72.0, 100.0);
+    assert_eq!(cheats(&w), Vec::<String>::new(), "72 s: over 70 % of 102 s");
+    // two cars far quicker than the track's best winners, close together (nfsu2.xyz, 2026-10-31: four within 4 s):
+    // that time can be driven, and it is a clean win
+    race_of(&mut w, 11, "Pair", 60.0, 62.0);
+    assert_eq!(cheats(&w), Vec::<String>::new(), "the next finisher close behind");
+    race_of(&mut w, 12, "Rocket", 59.0, 100.0);
     assert_eq!(
-        l,
-        ["[cheat] 10.77.9.23 \"Rocket\": won the online race \"q11\" (sprint, track 4014, 2 laps) in 1:00.00, under 70 % of the \
-          third quickest other winner's time of the track's 11 clean wins (1:41.00): as the result stands"]
+        cheats(&w),
+        ["[cheat] 10.77.9.25 \"Rocket\": won the online race \"q12\" (sprint, track 4014, 2 laps) in 0:59.00, under 70 % of the \
+          third quickest other winner's time of the track's 12 clean wins (1:40.00): as the result stands"]
     );
 }
 
