@@ -101,7 +101,9 @@ export interface NetOptions {
   /** the operator removed this player from playing with others (a kick or a ban), with its message: the page stays
    *  off the switch for the rest of this game */
   onRemoved?: (r: NetRemoved) => void;
-  /** milliseconds between pings to the switch (default 2000) */
+  /** milliseconds between pings to the switch (default 10000): their round trip is only shown (the F9 log's
+   *  "lan rtt ms"); the switch times free roam's paths with pings of its own.  Each ping and its answer were a
+   *  message each way through cloudflared for every page, 2 s apart */
   pingMs?: number;
   /** milliseconds no mailbox wants the switch before the page lets it go (default 10000) */
   idleMs?: number;
@@ -602,7 +604,7 @@ class Link implements NetLink {
         ...(this.o.id ? { id: this.o.id } : {}), ...(this.o.id && this.o.was?.length ? { was: this.o.was } : {}),
         ...(this.o.claim ? { claim: this.o.claim } : {}), ...(this.o.block?.length ? { block: this.o.block } : {}),
         ...(this.vipNum && this.token ? { vip: P.ipStr(this.vipNum), token: this.token } : {}), ...(this.ticket ? { ticket: this.ticket } : {}) }));
-      this.pingTimer = setInterval(() => this.ping(), this.o.pingMs ?? 2000);
+      this.pingTimer = setInterval(() => this.ping(), this.o.pingMs ?? 10_000);
     };
     ws.onmessage = (e) => {
       if (typeof e.data === 'string') { let m: any; try { m = JSON.parse(e.data); } catch { return; } this.control(m); }
