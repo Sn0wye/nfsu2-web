@@ -382,7 +382,9 @@ struct VOut { @builtin(position) pos: vec4f; @location(0) col0: vec4f; @location
     They build their wasm programs with wasi-sdk from `deps/`, and refuse a server binary older than its sources.
     `npm run test:fast` leaves out the six slow files (about 11 s).
   - `.github/workflows/tests.yml` runs every crate's `cargo test` and the fast unit tests on each push to main and each
-    pull request; it does not hold back the image yet.
+    pull request; it does not hold back the image yet. `tools/hooks/pre-push` (on with `git config core.hooksPath
+    tools/hooks`) runs the same tests a push to main touches, on the pushed commit in `../nsfu2-web-wt/prepush`, and
+    stops the push when one fails.
 - `node web/tools/predownload-test.mjs` checks "Preload the game data" in Chrome against its own server and a
   made-up game folder: byte-exact cache, no movies, zstd where the bytes compress, stop and resume, retries, a refused
   file, Play pausing it, a second tab. `web/test/data-blocks.test.mjs` checks the server's `/data-blocks/` (and its kept blocks),
