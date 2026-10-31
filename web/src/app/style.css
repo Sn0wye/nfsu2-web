@@ -745,12 +745,16 @@ html:has(> body > .stage:not([hidden])) { overflow: hidden; }
 }
 .pause-hint-list { color: var(--muted); }
 .pause-hint-list::before { content: " · "; }
-/* free roam's friends (friends.ts): the line over the game while front bumpers touch, as the pause menu's line; one
- * that offers nothing (a request sent, or why not) is no button.  On the start page (and in the page menu's Friends) a
+/* free roam's friends (friends.ts): the line in the toasts at the top while front bumpers touch, a toast with the key
+ * cap; one that offers nothing (a request sent, or why not) is no button.  On the start page (and in the page menu's Friends) a
  * line a friend: the name, where it plays after it in small text (lime while it plays; the name dimmed while it does
  * not), the icons at its end (Message an envelope, lime with a dot while messages wait to be read: messages.ts; Remove
  * a grey can, red under the pointer); the friend's own line under it */
-.friend-prompt:not(.offer), .friend-prompt:not(.offer):active { cursor: default; color: var(--muted); }
+.friend-prompt { border: 0; -webkit-tap-highlight-color: transparent; }
+.friend-prompt.offer { pointer-events: auto; cursor: pointer; }
+.friend-prompt.offer:active { color: var(--lime); }
+.friend-prompt:not(.offer) { color: var(--muted); }
+.friend-prompt kbd { min-width: 0; margin-right: 8px; padding: 0 6px; border-radius: 3px; font: 700 0.85em/1.5 var(--font); vertical-align: 1px; }
 .fl, .dlg ul.fl { list-style: none; margin: 0; padding: 0; color: inherit; font-size: inherit; line-height: inherit; }
 .fl li { display: flex; flex-wrap: wrap; align-items: center; column-gap: 8px; min-height: 40px; }
 .fl li + li { box-shadow: inset 0 1px var(--line); }
@@ -861,7 +865,7 @@ html:has(> body > .stage:not([hidden])) { overflow: hidden; }
 /* photo mode (photo.ts): the panel, a column at the right edge (Take photo first, the keys under the buttons; it
  * scrolls on a screen too short for it), a flash at each picture, the camera's hand on the picture; the page's other
  * things on the game hidden while it is on (its toasts stay: the picture's) */
-.stage.photo :is(.touch, .qc-lines, .qc-picker, .drift-panel, .drift-pop, .pause-hint, .notices, .lobby, .lobby-cover, .hud-fps, .stage-menu) {
+.stage.photo :is(.touch, .qc-lines, .qc-picker, .drift-panel, .drift-pop, .pause-hint, .friend-prompt, .notices, .lobby, .lobby-cover, .hud-fps, .stage-menu) {
   display: none !important;
 }
 .stage.photo canvas { cursor: grab; }

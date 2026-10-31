@@ -4,7 +4,7 @@
 // page's side:
 // - FriendPrompt, over the game: the game says when the player's car and another's touch nose to nose
 //   (runtime/roam_game.c bump_*, NET_KIND_FRIEND), the page asks the server what that player is to it ("can"), and a
-//   line under the middle of the picture offers it: "Add Bravo as a friend" (F, a click or a tap on the line, or the
+//   line among the notes at the top (the toasts) offers it: "Add Bravo as a friend" (F, a click or a tap on the line, or the
 //   page's menu: a controller's every button is the game's), "Bravo wants to be friends: accept", or says why not;
 //   gone once the cars part.  It also tells the server the room's name once the player has friends (their Join), asks
 //   where the friends play every minute ("where"), says in the notices when one comes into free roam, and fills the
@@ -128,10 +128,6 @@ function friendList(lines: Line[]): HTMLUListElement {
   return ul;
 }
 
-/** where the line goes, in HUD units (640x480 in the picture): its top under the middle (above the game's own
- *  prompts at the bottom, under its outrun line) */
-const TOP_U = 128;
-
 /** how often the list is tried until the game's link to the server is up (ms) */
 const LIST_TRY_MS = 2000;
 /** how often the game asks where its friends play, while it has some (ms) */
@@ -175,12 +171,14 @@ export class FriendPrompt {
   private was = new Map<string, Friend['where']>();
   private whereAt = 0;
 
-  constructor(stage: HTMLElement, private deps: FriendPromptDeps) {
+  /** toasts: the box of the notes at the top of the game (shell.ts toast): the line is one of them while the cars touch,
+   *  clear of the cars and the game's own prompts */
+  constructor(toasts: HTMLElement, private deps: FriendPromptDeps) {
     const b = this.root = document.createElement('button');
-    b.type = 'button'; b.className = 'pause-hint friend-prompt'; b.tabIndex = -1; b.hidden = true; b.dataset.nfsu2Ui = '';
+    b.type = 'button'; b.className = 'toast friend-prompt'; b.tabIndex = -1; b.hidden = true; b.dataset.nfsu2Ui = '';
     b.onpointerdown = e => e.preventDefault();     // the canvas keeps the focus (and with it the keyboard)
     b.onclick = () => this.act();
-    stage.append(b);
+    toasts.append(b);
     // caught before the game's input: F is the game's for nothing (its key maps: dinput_kbd.c), and only while the
     // line offers something
     window.addEventListener('keydown', e => this.key(e), { capture: true });
@@ -194,7 +192,6 @@ export class FriendPrompt {
       const now = performance.now();
       if (!this.listed && now - this.triedAt > LIST_TRY_MS) { this.triedAt = now; this.listed = this.deps.send({ op: 'list' }); }
       if (this.listed && this.friends.length && now - this.whereAt > WHERE_MS) this.askWhere();
-      this.place();
       this.raf = requestAnimationFrame(tick);
     };
     if (on) this.raf = requestAnimationFrame(tick);
@@ -375,15 +372,6 @@ export class FriendPrompt {
     b.hidden = false;
   }
 
-  private place() {
-    const s = this.session;
-    if (!s || this.root.hidden) return;
-    const v = s.viewRect();
-    if (!v.w || !v.h) return;
-    const u = Math.min(v.w / 640, v.h / 480), st = this.root.style;
-    st.left = `${v.x + v.w / 2}px`;
-    st.top = `${v.y + v.h / 2 + TOP_U * u}px`;
-  }
 }
 
 export interface FriendsPanelDeps {
