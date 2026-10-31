@@ -88,7 +88,7 @@ const python = process.platform === 'win32' ? 'python' : 'python3';
 test('the tool, on THX_logo.vp6', { skip: !DATA ? 'NFSU2_TEST_DATA (the game folder) not set' : !/libaom-av1/.test(ffmpeg.stdout ?? '') ? 'no ffmpeg with libaom' : false }, () => {
   const out = fs.mkdtempSync(path.join(os.tmpdir(), 'av1-'));
   try {
-    const run = execFileSync(python, [path.join(ROOT, 'tools/movies_av1.py'), DATA, out, '--only', 'MOVIES/THX_logo', '--cpu-used', '8', '--jobs', '2'], { encoding: 'utf8' });
+    const run = execFileSync(python, [path.join(ROOT, 'tools/movies_av1.py'), DATA, out, '--only', 'MOVIES/THX_logo', '--cpu-used', '8', '--jobs', '2'], { encoding: 'utf8', timeout: 600_000 });
     assert.match(run, /"file": "MOVIES\/THX_logo\.vp6"/);
     const chunks = (b) => { const l = []; for (let o = 0; o + 8 <= b.length;) { const s = b.readUInt32LE(o + 4); l.push({ id: b.toString('latin1', o, o + 4), o, s }); o += s; } return l; };
     const vp6 = fs.readFileSync(path.join(DATA, 'MOVIES/THX_logo.vp6')), av1 = fs.readFileSync(path.join(out, 'MOVIES/AV1/THX_logo.vp6'));

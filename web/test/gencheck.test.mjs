@@ -26,7 +26,7 @@ function gen(name, { all = STAMP, server = all, decls = orig } = {}) {
   if (server !== null) fs.writeFileSync(path.join(g, 'server/stamp.txt'), server);
   return g;
 }
-const check = (g, env = {}) => spawnSync('bash', [path.join(REPO, 'web/tools/gencheck.sh')], { cwd: REPO, encoding: 'utf8', env: { ...process.env, GEN: g, ...env } });
+const check = (g, env = {}) => spawnSync('bash', [path.join(REPO, 'web/tools/gencheck.sh')], { cwd: REPO, encoding: 'utf8', timeout: 120_000, env: { ...process.env, GEN: g, ...env } });
 
 test('gencheck: a gen stamped from this checkout passes', () => {
   const r = check(gen('ok'));
@@ -77,7 +77,7 @@ test('a plain ./gen.sh drops web-lift.txt and leaves gen/all unstamped until it 
   fs.writeFileSync(path.join(t, 'gen/all/web-lift.txt'), 'FLAGABI X87OPT\n');
   fs.writeFileSync(path.join(t, 'gen/all/stamp.txt'), STAMP);
   fs.writeFileSync(path.join(t, 'SPEED2.EXE'), 'not a PE file');
-  const r = spawnSync('bash', [path.join(t, 'gen.sh'), path.join(t, 'SPEED2.EXE')], { cwd: t, encoding: 'utf8' });
+  const r = spawnSync('bash', [path.join(t, 'gen.sh'), path.join(t, 'SPEED2.EXE')], { cwd: t, encoding: 'utf8', timeout: 300_000 });
   assert.notEqual(r.status, 0, 'gen.sh failed (no lifter in the copy)');
   assert.match(r.stdout, /OVERRIDE \(\d+\)/, 'it got past its preamble');
   assert.ok(!fs.existsSync(path.join(t, 'gen/all/web-lift.txt')), 'web-lift.txt is gone');
@@ -92,7 +92,7 @@ test('web/gen.sh refuses to lift through a worktree\'s link to the shared gen', 
   fs.writeFileSync(path.join(t, 'shared/all/web-lift.txt'), 'FLAGABI X87OPT\n');
   fs.symlinkSync(path.join(t, 'shared/all'), path.join(t, 'gen/all'));
   fs.writeFileSync(path.join(t, 'SPEED2.EXE'), 'x');
-  const r = spawnSync('bash', [path.join(t, 'web/gen.sh'), path.join(t, 'SPEED2.EXE')], { cwd: t, encoding: 'utf8' });
+  const r = spawnSync('bash', [path.join(t, 'web/gen.sh'), path.join(t, 'SPEED2.EXE')], { cwd: t, encoding: 'utf8', timeout: 300_000 });
   assert.equal(r.status, 1, r.stdout + r.stderr);
   assert.match(r.stdout, /gen\/all is a link to .*which other worktrees build against/);
   assert.ok(fs.existsSync(path.join(t, 'shared/all/web-lift.txt')), 'the shared gen is untouched');

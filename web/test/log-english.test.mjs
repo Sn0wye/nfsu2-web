@@ -117,9 +117,9 @@ const CONSUMERS = {
   'tools/career_segments.sh': ['fault', 'timeout', 'unresolved'],
   'tools/career_report.py': ['fault', 'timeout', 'unresolved'],
   'tests/discord_check.py': ['fault', 'timeout'],
-  'web/tools/run-suite.mjs': ['fault', 'timeout', 'unresolved'],
+  // run-suite.mjs, input-suite.mjs and roam-pair.mjs judge a log with judge.mjs's rules
+  'web/tools/judge.mjs': ['fault', 'timeout', 'unresolved'],
   'web/tools/lan-pair.mjs': ['fault', 'timeout', 'unresolved'],
-  'web/tools/input-suite.mjs': ['fault', 'timeout', 'unresolved'],
   'web/tools/shader-check.mjs': ['fault', 'timeout'],
 };
 
@@ -133,6 +133,8 @@ test('the runtime prints every fault, time-limit and unresolved-call marker', ()
 
 test('every runner and report matches the markers the runtime prints', () => {
   const lines = producedLines();
+  for (const f of ['web/tools/run-suite.mjs', 'web/tools/input-suite.mjs', 'web/tools/roam-pair.mjs'])
+    assert.match(read(f), /\blogWhy\(/, `${f} judges its logs with judge.mjs's logWhy`);
   for (const [file, kinds] of Object.entries(CONSUMERS)) {
     const src = read(file);
     for (const o of OLD) assert.ok(!src.includes(o), `${file} still looks for the old marker '${o}'`);

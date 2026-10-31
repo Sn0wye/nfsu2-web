@@ -378,7 +378,7 @@ struct VOut { @builtin(position) pos: vec4f; @location(0) col0: vec4f; @location
     branches keeps its `may_alias` type; `web/build.sh` runs the guard before it compiles anything.
   - `cd web && node --test test/*.test.mjs`: the unit tests (the LAN backend `lan_unit.c`, free roam, the C ns* key
     driver against the page's key path, `settings.ts` against `bundle.m`, the alias guard and test, the server,
-    deployment, the security and privacy audit's regressions: `audit.test.mjs`, `page-audit.test.mjs`). They build their wasm programs with wasi-sdk from `deps/`.
+    deployment, the security and privacy audit's regressions: `audit.test.mjs`, `page-audit.test.mjs`). They build their wasm programs with wasi-sdk from `deps/`, and refuse a server binary older than its sources.
 - `node web/tools/predownload-test.mjs` checks "Preload the game data" in Chrome against its own server and a
   made-up game folder: byte-exact cache, no movies, zstd where the bytes compress, stop and resume, retries, a refused
   file, Play pausing it, a second tab. `web/test/data-blocks.test.mjs` checks the server's `/data-blocks/` (and its kept blocks),
@@ -404,6 +404,9 @@ struct VOut { @builtin(position) pos: vec4f; @location(0) col0: vec4f; @location
   tools' console output and the test harnesses.
   - Among their other checks the suite runners fail a run on these markers: `FAULT IN GUEST`, `GUEST MEMORY FAULT`
     or `HOST SEGV` (a fault), `TIME LIMIT REACHED` (boot.c's alarm or the runner's limit), `UNRESOLVED INDIRECT` (an
-    indirect call into no lifted function), a line starting with `[trap]`.
+    indirect call into no lifted function), a line starting with `[trap]`.  `run-suite.mjs`, `input-suite.mjs` and
+    `roam-pair.mjs` take their rules from `web/tools/judge.mjs`, which also fails a script wait that ran out (the
+    script goes on after a `TIMEOUT`), a script line the runtime could not read and (not in `roam-pair`) a freeze the
+    stall watchdog reported.  `roam-pair.mjs` ends with `PASS roam-pair` or `FAIL roam-pair: <why>` and its exit code.
   - `web/test/log-english.test.mjs` checks that every runner and report still matches the markers the runtime
     prints, and that the runtime's string literals stay English.

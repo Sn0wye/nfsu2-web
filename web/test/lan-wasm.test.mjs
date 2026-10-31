@@ -27,7 +27,7 @@ test('lan_unit on wasm (winsock.c + net_lan.c)', { skip: !CC && 'no wasi-sdk in 
   const w = path.join(OUT, 'lan_unit.wasm');
   execFileSync(CC, [...FLAGS, '-o', w, 'web/test/lan_unit.c', 'runtime/winsock.c', 'runtime/web/net_lan.c', 'runtime/web/sha256.c',
     'runtime/mem.c', 'runtime/web/thread_exit.c', ...LINK], { cwd: REPO, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
-  const run = spawnSync(process.execPath, [path.join(REPO, 'web/test/wasi-run.mjs'), w], { encoding: 'utf8' });
+  const run = spawnSync(process.execPath, [path.join(REPO, 'web/test/wasi-run.mjs'), w], { encoding: 'utf8', timeout: 120_000 });
   const out = run.stdout ?? '', err = run.stderr ?? '';
   if (run.status !== 0) console.log(err);
   console.log(out.trim().split('\n').filter(l => /FAIL|lan_unit:/.test(l)).join('\n'));

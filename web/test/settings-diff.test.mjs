@@ -13,7 +13,7 @@ const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const haveClang = spawnSync('clang', ['--version'], { encoding: 'utf8' }).status === 0;
 
 test('settings.ts agrees with bundle.m', { skip: !haveClang && 'no clang' }, () => {
-  const r = spawnSync(process.execPath, [path.join(REPO, 'web/tools/settings-diff.mjs')], { cwd: REPO, encoding: 'utf8' });
+  const r = spawnSync(process.execPath, [path.join(REPO, 'web/tools/settings-diff.mjs')], { cwd: REPO, encoding: 'utf8', timeout: 300_000 });
   const out = (r.stdout ?? '') + (r.stderr ?? '');
   console.log(out.trim().split('\n').filter(l => /^(DIFF|FILE DIFF|FAIL|single settings)|problem|agrees/.test(l)).slice(0, 40).join('\n'));
   assert.equal(r.status, 0, 'settings-diff exits 0');

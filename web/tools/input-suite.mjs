@@ -15,6 +15,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { logWhy, whyLines } from './judge.mjs';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 // the Mac port's run logs, to compare against (NFSU2_MAC_RUNS, else ~/projects/nsfu2/work/runs)
 const MAC = process.env.NFSU2_MAC_RUNS || path.join(os.homedir(), 'projects/nsfu2/work/runs');
@@ -59,7 +60,6 @@ const SCEN = [
   ['pad_bind_load', 'pad_bind_load', [], 'pad', 'pad-rvf-bind_load', 300],
   ['pad_bind_pedals', 'pad_bind_pedals', ['NFSU2_PAD_LOG=1'], null, null, 400],
 ];
-const FAULT = /FAULT IN GUEST|GUEST MEMORY FAULT|HOST SEGV|TIME LIMIT REACHED|^\[trap\]|UNRESOLVED INDIRECT|\[expect\] FAIL|TRAP in thread|PAGEERROR|^TIMEOUT/;
 // the raw values only: printf spells a NaN's sign differently on wasi-libc ("-nan")
 const norm = l => l.replace(/^\[\d+!?\] /, '').replace(/^.*?\] f=\d+ /, '').replace(/\[0x(0[5-9a-f]|1[0-9a-f]|2[0-7])[0-9a-f]{6}\]/g, '[heap]')
   .replace(/ \([^()]*\)$/, '');
@@ -92,9 +92,11 @@ for (const [name, script, extra, chain, ref, tmo] of SCEN) {
   if (!recheck) fs.writeFileSync(path.join(out, `${name}.log`), log);
   const exit = /^EXIT (-?\d+)/m.exec(log)?.[1] ?? '-';
   const quit = /quit at guest frame (\d+)/.exec(log)?.[1] ?? '-';
-  const faults = log.split('\n').filter(l => FAULT.test(l.replace(/^\[\d+!?\] /, '')));
-  const waits = log.split('\n').filter(l => /TIMEOUT \(top=|satisfied/.test(l));
-  const wtmo = waits.filter(l => /TIMEOUT/.test(l)).length;
+  // web/tools/judge.mjs's failures, and drive.mjs's own time limit (its TIMEOUT line)
+  const why = logWhy(log);
+  if (/^TIMEOUT$/m.test(log)) why.push('timeout');
+  const faults = whyLines(log);
+  const wtmo = log.split('\n').filter(l => /^(\[\d+!?\] )?\[autotest\] f=\d+ .*\bTIMEOUT\b/.test(l)).length;
   const mine = peeks(log);
   let cmp = 'no reference';
   if (ref && fs.existsSync(path.join(MAC, ref, 'log.txt'))) {
@@ -106,11 +108,12 @@ for (const [name, script, extra, chain, ref, tmo] of SCEN) {
     cmp = `${same}/${Math.max(mine.length, theirs.length)} peeks equal to ${ref}`;
     if (diffs.length) fs.writeFileSync(path.join(out, `${name}.diff`), diffs.join('\n') + '\n');
   }
-  const ok = exit === '0' && quit !== '-' && !faults.length && !wtmo;
-  rows.push({ name, ok, exit, quit, s: ((Date.now() - t0) / 1000).toFixed(0), faults: faults.length, wtmo, cmp });
-  console.log(`${ok ? 'PASS' : 'FAIL'} ${name.padEnd(22)} exit=${exit} quit@${quit} ${rows.at(-1).s}s faults=${faults.length} waitTimeouts=${wtmo}  ${cmp}`);
+  const ok = exit === '0' && quit !== '-' && !why.length;
+  rows.push({ name, ok, exit, quit, s: ((Date.now() - t0) / 1000).toFixed(0), why, wtmo, cmp });
+  console.log(`${ok ? 'PASS' : 'FAIL'} ${name.padEnd(22)} exit=${exit} quit@${quit} ${rows.at(-1).s}s${why.length ? ' ' + why.join(' ') : ''} waitTimeouts=${wtmo}  ${cmp}`);
   if (faults.length) console.log('    ' + faults.slice(0, 3).join('\n    '));
   if (fs.existsSync(path.join(out, `${name}.diff`))) console.log(fs.readFileSync(path.join(out, `${name}.diff`), 'utf8').trimEnd());
 }
 fs.writeFileSync(path.join(out, 'summary.json'), JSON.stringify(rows, null, 1));
 console.log(`${rows.filter(r => r.ok).length}/${rows.length} passed`);
+process.exitCode = rows.every(r => r.ok) ? 0 : 1;

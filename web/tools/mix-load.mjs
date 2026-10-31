@@ -28,6 +28,7 @@ import path from 'node:path';
 import http from 'node:http';
 import { spawn, execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { own, stop } from './children.mjs';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const argv = process.argv.slice(2);
@@ -52,8 +53,8 @@ const BASE = `http://127.0.0.1:${PORT}`;
 // ---- the server ----
 const state = fs.mkdtempSync(path.join(os.tmpdir(), 'nfsu2-mix-'));
 const env = { ...process.env, NFSU2_REPO: REPO, ...(opt('threads', '') ? { NFSU2_THREADS: opt('threads') } : {}) };
-const server = spawn(SERVER, ['--data', DATA, '--http-port', String(PORT), '--max-peers', String(MAX), '--dev', '--state', state],
-  { env, stdio: ['ignore', 'pipe', 'pipe'] });
+const server = own(spawn(SERVER, ['--data', DATA, '--http-port', String(PORT), '--max-peers', String(MAX), '--dev', '--state', state],
+  { env, stdio: ['ignore', 'pipe', 'pipe'] }));
 const serverLog = [];
 const logFile = fs.createWriteStream(path.join(OUT, 'server.log'));
 for (const s of [server.stdout, server.stderr]) s.on('data', d => { logFile.write(d); for (const l of String(d).split('\n')) if (l) serverLog.push(l); });
@@ -86,7 +87,7 @@ function bots(tag, n, first, extra, seconds) {
     ...(OLD ? [] : ['--queue']), '--check-every', opt('check-every', '1'), ...extra,
     // the blip at one moment of the run for every group (each counts from its own start)
     ...(BLIP ? ['--blip', `${(BLIP[0] - (Date.now() - t0) / 1000).toFixed(1)}:${BLIP[1]}`] : [])];
-  const p = spawn(ROAMLOAD, args, { stdio: ['ignore', 'pipe', 'pipe'] });
+  const p = own(spawn(ROAMLOAD, args, { stdio: ['ignore', 'pipe', 'pipe'] }));
   const g = { tag, n, p, samples: [], summary: null, err: '' };
   let buf = '';
   p.stdout.on('data', d => {
@@ -106,8 +107,8 @@ const ramp = 25;   // s: the groups come in one after another
 // Online first (its clients cannot wait in line), then the players, the line last, once the server is full
 let online = null;
 if (N.online > 0) {
-  const o = spawn(process.execPath, [path.join(REPO, 'web/tools/online-load.mjs'), '--base', BASE, '--clients', String(N.online),
-    '--seconds', String(SECONDS + 2 * ramp), '--out', path.join(OUT, 'online')], { stdio: ['ignore', 'pipe', 'pipe'] });
+  const o = own(spawn(process.execPath, [path.join(REPO, 'web/tools/online-load.mjs'), '--base', BASE, '--clients', String(N.online),
+    '--seconds', String(SECONDS + 2 * ramp), '--out', path.join(OUT, 'online')], { stdio: ['ignore', 'pipe', 'pipe'] }));
   let out = '';
   const olog = fs.createWriteStream(path.join(OUT, 'online.log'));
   o.stdout.on('data', d => { out += d; olog.write(d); });
@@ -141,8 +142,7 @@ const onlineOut = online ? (await online.done, online.out()) : '';
 clearInterval(sampler);
 const info = await get('/players');
 await sleep(500);
-server.kill('SIGTERM');
-await new Promise(r => server.once('exit', r));
+await stop(server);
 fs.rmSync(state, { recursive: true, force: true });
 
 // ---- the report ----
