@@ -1195,7 +1195,7 @@ async function menuCrews(list: Crew[], focus: (root: HTMLElement) => Element | n
 // --------------------------------------------------------- invite links --
 // A link's room or crew (invite.ts), offered to the player and joined only on Join.  The tab that owns the saves joins
 // it: in settings.ini for the next Play, and with a game in free roam in that game at once (a crew as the menu's
-// Crews joins one, a room where the module takes one: net NET_CAP_ROOM).  A tab that does not own them (the link
+// Crews joins one, a room through net setRoom).  A tab that does not own them (the link
 // opened a new tab while the game runs in another) asks that one to over INVITE_CHANNEL and says what it did; when it
 // does not answer (a page of before), this tab joins once it owns the saves.
 type Joined = 'live' | 'next' | 'full' | 'none';
@@ -1224,11 +1224,9 @@ function joinedText(how: Joined): string {
   if (how === 'full') return t(CREWS_FULL);
   return how === 'none' ? t('Joined.') : `${t('Joined.')} ${t(how === 'live' ? JOINED_NOW : JOINED_NEXT)}`;
 }
-/** whether the running game takes inv at once: it runs free roam (whatever the file says now), and a room only where
- *  the module takes one */
-function inviteLive(inv: Invite): boolean {
-  if (!session || roamCrews === null) return false;
-  return inv.room === undefined || sameName(inv.room, roamRoom ?? '') || !!session.net?.canRoom?.();
+/** whether the running game takes inv at once: it runs free roam (whatever the file says now) */
+function inviteLive(): boolean {
+  return !!session && roamCrews !== null;
 }
 
 /** Join inv here (this tab owns the saves): settings.ini, then the running game where it can. */
@@ -1251,7 +1249,7 @@ async function applyInvite(inv: Invite): Promise<Joined> {
   }
   // (the names, for the log as it leaves the browser: privacy.ts)
   privacy.name(inv.room, 'room'); if (inv.crew) privacy.name(inv.crew, 'crew');
-  const live = inviteLive(inv);
+  const live = inviteLive();
   if (live && session?.net && roamCrews && inv.crew && !roamCrews.some(c => sameName(c.name, inv.crew!)) && roamCrews.length < CREW_MAX) {
     roamCrews = [...roamCrews, { name: inv.crew, rgb: freeColour(roamCrews) }];
     session.net.crews?.(roamCrews.map(c => roomHash(c.name)), rgbWords(roamCrews));
@@ -1317,7 +1315,7 @@ async function offerInvite(inv: Invite) {
   else if (d.room) p(t('You leave room "{old}", so free roam shows everyone again.', v));
   if (inv.crew) p(t('Crew-mates always see each other in free roam, with names and map arrows in the crew\'s colour.'));
   if (d.roam) p(t('This turns on Free roam with others: everyone on this server sees your name, and whether you\'re driving or in the menus.'));
-  p(!owner ? t('The game is open in another tab of this browser: it joins there.') : t(inviteLive(inv) ? JOINED_NOW : JOINED_NEXT), 'hint');
+  p(!owner ? t('The game is open in another tab of this browser: it joins there.') : t(inviteLive() ? JOINED_NOW : JOINED_NEXT), 'hint');
   if (session) $('#stage').classList.add('cursor');
   const yes = await confirmBox(title, body, t('Join'), false, '', t('Not now'));
   if (session && !$<HTMLDialogElement>('#menu').open) { $('#stage').classList.remove('cursor'); $('#stage').querySelector('canvas')?.focus(); }

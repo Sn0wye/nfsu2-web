@@ -100,9 +100,6 @@
 #define NET_PAGE_IDLE        4u /* no mailbox wants the switch (want 0 for a while): the page let it go, so
                                    the place is free for another player; it connects again on want */
 
-/* caps (C): what the module takes from the page while it runs, besides what every module of this version takes */
-#define NET_CAP_ROOM         1u /* room_gen and room_name: free roam's room, changed while the game runs */
-
 /* peer_bits: one bit per host of the switch's network (at most a /21) */
 #define NET_PEER_BITS     2048u
 
@@ -112,13 +109,11 @@ typedef struct {
     uint32_t tx_slots, rx_slots, tx_off, rx_off;               /*  16: offsets from the mailbox */
     /* C -> page */
     uint32_t mode, port, tx_head, tx_bell;                     /*  32 */
-    uint32_t rx_tail, c_alive, want, caps;                     /*  48: c_alive: +1 per network-thread loop;
+    uint32_t rx_tail, c_alive, want, c_pad1;                   /*  48: c_alive: +1 per network-thread loop;
                                                                   want: this endpoint needs the switch now
                                                                   (free roam: while it runs; LAN play: from
                                                                   the game's WSAStartup to its last
-                                                                  WSACleanup), C rings tx_bell on a change;
-                                                                  caps: what this module takes from the page
-                                                                  (NET_CAP_*; 0 in a module of before) */
+                                                                  WSACleanup), C rings tx_bell on a change */
     /* page -> C */
     uint32_t page_state, vip, netmask, generation;             /*  64: generation: +1 per switch connection */
     uint32_t tx_tail, rx_head, rx_bell, rx_full_drop;          /*  80 */
@@ -142,7 +137,7 @@ typedef struct {
                                                                   it (an invite link), its name in UTF-8 ending in
                                                                   a 0 byte (none: no room), the words little-endian;
                                                                   room_gen +1 a change (0: not changed), written
-                                                                  after the name (roam_plat_room; NET_CAP_ROOM) */
+                                                                  after the name (roam_plat_room) */
     uint32_t pad[2];                                           /* 504 .. 511 */
 } net_mailbox;
 
@@ -167,7 +162,6 @@ _Static_assert(offsetof(net_mailbox, tx_wait_n) == 136, "tx_wait_n");
 _Static_assert(offsetof(net_mailbox, peer_bits) == 144, "peer_bits");
 _Static_assert(offsetof(net_mailbox, crews_gen) == 400, "crews_gen");
 _Static_assert(offsetof(net_mailbox, crews_rgb) == 420, "crews_rgb");
-_Static_assert(offsetof(net_mailbox, caps) == 60, "caps");
 _Static_assert(offsetof(net_mailbox, room_gen) == 436, "room_gen");
 _Static_assert(offsetof(net_mailbox, room_name) == 440, "room_name");
 _Static_assert(offsetof(net_slot, src_port) == 16, "src_port");

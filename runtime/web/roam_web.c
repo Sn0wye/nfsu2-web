@@ -119,7 +119,6 @@ static int mailbox_once(void){
     m->magic = NET_MAGIC; m->version = NET_VERSION; m->hdr_bytes = NET_HDR_BYTES; m->slot_bytes = NET_SLOT_BYTES;
     m->tx_slots = NET_TX_SLOTS; m->rx_slots = NET_RX_SLOTS;
     m->tx_off = NET_HDR_BYTES; m->rx_off = NET_HDR_BYTES + NET_TX_SLOTS * NET_SLOT_BYTES;
-    m->caps = NET_CAP_ROOM;
     MB = m;
     nfsu2_register(HOST_KIND_NET, m, NET_MAILBOX_BYTES);
     return 0;

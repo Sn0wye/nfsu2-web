@@ -160,8 +160,6 @@ export interface NetSubsystem extends Subsystem {
   crews?(hashes: readonly number[], rgbs: readonly number[]): void;
   /** free roam's room, changed while the game runs (an invite link): true when this game takes it now */
   room?(name: string): boolean;
-  /** whether this game takes a room changed while it runs (a module of before does not) */
-  canRoom?(): boolean;
 }
 
 export type AttachRenderer = (proc: GameProcess, canvas: HTMLCanvasElement, opts: RendererOptions) => RendererSubsystem | Promise<RendererSubsystem>;
