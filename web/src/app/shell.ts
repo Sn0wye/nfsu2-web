@@ -40,7 +40,7 @@ import type { PadPage } from '../input/gamepad';
 import type { NetQueue, NetRemoved } from '../net';
 import { blockList, checkSetting, HOST_FIXED, pageOnly, resolveEnv, settingsUpgrade, TEMPLATE, type Resolved } from './settings';
 import { exists, filesOf, listProfiles, PROFILES_DIR, readText, removeSaveDir, writeFile } from './savefs';
-import { turnOnAutosave } from './profile';
+import { newProfileName, turnOnAutosave } from './profile';
 import { crewControl, putKey, SettingsPanel, showCrewCounts } from './settings-ui';
 import { askCrews, queueText, roomHash, roomText, serverAnswers, watchPlayers, type PlayerCounts, type Reach } from './players';
 import { CREW_MAX, crewList, crewsOf, crewsValue, freeColour, rgbsValue, rgbWords, type Crew } from './crews';
@@ -578,6 +578,11 @@ async function startGame() {
     NFSU2_WIDTH: String(size.w & ~1), NFSU2_HEIGHT: String(size.h & ~1), NFSU2_DISPLAY_HZ: String(displayHz),
   };
   const r = resolved(host);
+  // no profile yet: the game's name field for the first one starts with Your name, not NAME (overrides.c
+  // sub_004ff3b0); the name typed, never the digits this game may play under instead
+  const profiles = await listProfiles(SAVE).catch(() => []);
+  const firstName = profiles.length || r.source.NFSU2_ROAM_NAME !== 'settings.ini' ? '' : newProfileName(r.env.NFSU2_ROAM_NAME ?? '');
+  if (firstName) r.env.NFSU2_NEW_PROFILE_NAME = firstName;
   if (playAs) r.env.NFSU2_ROAM_NAME = playAs;
   // the room and crews in Unicode's composed form, as the page hashes them (players.ts roomText): one "é" whichever way
   for (const k of ['NFSU2_ROAM_ROOM', 'NFSU2_ROAM_CREW'] as const) if (r.env[k]) r.env[k] = roomText(r.env[k]);
@@ -585,7 +590,8 @@ async function startGame() {
   privacy.name(r.env.NFSU2_ROAM_NAME, 'you');
   for (const c of crewList(r.env.NFSU2_ROAM_CREW ?? '')) privacy.name(c, 'crew');
   privacy.name(r.env.NFSU2_ROAM_ROOM, 'room');
-  for (const p of await listProfiles(SAVE).catch(() => [])) privacy.name(p.name, 'profile');
+  for (const p of profiles) privacy.name(p.name, 'profile');
+  if (firstName) privacy.name(firstName, 'profile');
   // offline mode: the server does not answer.  The movies stream from it, so unless every one of them is in this
   // browser they are off for this game (a movie the game could not read would stop it).
   setReach(await serverAnswers(2000));

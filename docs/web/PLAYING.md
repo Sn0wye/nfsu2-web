@@ -375,7 +375,8 @@ or use a Room to keep to a group.
    Not now, and Esc is Not now); it asks once, and the switch changes the answer later. While the server's free
    roam is busy (it gives each player fewer than 24 cars) it doesn't ask, and asks at a later Play instead.
    **Online, Your name** is the name the others see (empty: your profile name); the question shows it once there
-   is one, to change.
+   is one, to change. Typed before you have a profile, it is also what the game's name box for your first profile
+   starts with, instead of `NAME` (its letters and digits, 7 at most; Enter takes it).
 2. Everyone plays from the same server's address.
 3. Each player starts or loads a career and drives in free roam. Players find each other by themselves, and their
    cars appear in your city with their names over them, as in the game's own LAN races.
