@@ -1,5 +1,5 @@
 # Messages between friends on the player's own page, instance B (with roam_msg_app_a.txt): friends with Ann as in
-# roam_friend_app_b.txt, then Ann's message shows on the log with "T Write back"; T opens the answer to it (Ann's
+# roam_friend_app_b.txt, then Ann's message shows on the log with "I Write back"; I opens the answer to it (Ann's
 # message quoted), B types and Enter sends it.  Shots at each step.
 0     tapuntil RETURN MC_Background.fng 120 4000
 +120  tap LEFT
@@ -34,7 +34,7 @@
 +0    log KEY KeyF
 +600  log SHOT b_end
 +600  log SHOT b_got
-+60   log KEY KeyT                         # answers the newest message
++60   log KEY KeyI                         # answers the newest message
 +30   log KEY KeyO KeyN Space KeyM KeyY Space KeyW KeyA KeyY
 +20   log SHOT b_write
 +60   log KEY Enter

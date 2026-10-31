@@ -4,7 +4,7 @@
 // friend's page takes it with its friends list.  The server keeps a message only until it is delivered; the
 // conversations are kept here, in this browser (MessageStore).
 //   in the game  free roam's log on the left (quick chat's place: shell.ts msgLine), an envelope, the name and the
-//                text, wrapping; "T Write back" under the newest.  T opens a card in quick chat's picker place and
+//                text, wrapping; "I Write back" under the newest.  I opens a card in quick chat's picker place and
 //                look: the answer to the newest message of this game, or (none, or older than REPLY_MS) a friend to
 //                pick first, 1-9.  Enter sends, Esc closes; the game has no keys while the card is open.  On a touch
 //                screen a tap on a message answers it, and quick chat's sheet has "Message a friend".  A message that
@@ -18,9 +18,13 @@ import { touchFirst } from './device';
 
 /** an envelope: what marks a line in the log as a friend's message (quick chat's have a speech balloon) */
 export const MSG_ICON = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1.5 3.5h13v9h-13z" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M1.8 4l6.2 5 6.2-5" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>';
+/** the key that opens the card while driving in free roam, and its label.  Not T: the game's Career Status (T and F4,
+ *  its driving key map, dinput_kbd.c DIMAP=1, action 0x12; issue #52).  The game's driving map leaves E I O V Z free;
+ *  I is away from W A S D and the arrows, so an accidental press (the card takes the keys) is unlikely */
+export const MSG_KEY = 'KeyI', MSG_KEY_LABEL = 'I';
 /** a message at most (characters; the server's PAGE_MSG_LEN): three lines of the log */
 export const MSG_MAX = 120;
-/** T answers the newest message of this game when it came less than this long ago (ms); after that it asks whom */
+/** I answers the newest message of this game when it came less than this long ago (ms); after that it asks whom */
 const REPLY_MS = 120_000;
 /** a message's line in the log: this long, and longer for a long one (ms; quick chat's are 8 s) */
 const LINE_MS = 8000, LINE_MS_PER_CHAR = 60, LINE_MS_MAX = 15_000;
@@ -137,7 +141,7 @@ export interface FriendMessagesDeps {
   /** a message's line in the log (shell.ts msgLine): its name, text, whether it is the player's, a note after it, how
    *  long it stays, and what a tap on it does (none: nothing); returns the line */
   line(name: string, text: string, out: boolean, note: string, ms: number, tap?: () => void): HTMLElement;
-  /** "T Write back" under the newest message, for ms (shell.ts msgHint); null: gone */
+  /** "I Write back" under the newest message, for ms (shell.ts msgHint); null: gone */
   hint(ms: number | null): void;
   /** the card's place: the log's (shell.ts placeNotices calls place()) */
   placeNow(): void;
@@ -161,7 +165,7 @@ export class FriendMessages {
   /** the friends as the server last listed them, and where each plays */
   private friends: Friend[] = [];
   private listed = false;
-  /** the newest message of this game that was shown, for T */
+  /** the newest message of this game that was shown, for MSG_KEY */
   private newest: { name: string; at: number } | null = null;
   /** the friends' messages not shown yet (the player was not driving) */
   private queue: { from: string; body: string }[] = [];
@@ -179,9 +183,7 @@ export class FriendMessages {
     });
     c.addEventListener('keydown', e => this.cardKey(e));
     stage.append(c);
-    // caught before the game's input and quick chat's.  The game binds T (its key maps: dinput_kbd.c DIMAP=1): the next
-    // item of the HUD's icon in the top left, as F4 does too, which stays the game's; T is taken only while driving in
-    // free roam with others
+    // MSG_KEY, caught before the game's input and quick chat's; taken only while driving in free roam with others
     window.addEventListener('keydown', e => this.key(e), { capture: true });
     stage.addEventListener('pointerdown', e => {
       if (this.mode && this.touch && !c.contains(e.target as Node) && !(e.target as Element).closest?.('.notices .msg')) this.close();
@@ -274,7 +276,7 @@ export class FriendMessages {
   }
 
   private key(e: KeyboardEvent) {
-    if (!this.on || !this.session || e.metaKey || e.ctrlKey || e.altKey || e.code !== 'KeyT') return;
+    if (!this.on || !this.session || e.metaKey || e.ctrlKey || e.altKey || e.code !== MSG_KEY) return;
     const el = e.target as HTMLElement | null;
     if (el?.closest?.('input, textarea, select, dialog[open]') || document.querySelector('dialog[open]')) return;
     if (this.mode || !this.deps.driving()) return;

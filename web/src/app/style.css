@@ -842,7 +842,7 @@ html:has(> body > .stage:not([hidden])) { overflow: hidden; }
 .notices div.chat svg { width: 0.9em; height: 0.9em; flex: none; fill: rgba(200, 240, 136, 0.9); }
 /* a friend's message in the log (shell.ts msgLine, messages.ts): quick chat's line with an envelope, wrapping under the
  * name (the envelope's width in), a note after the player's own in grey; on a touch screen a tap on one answers it;
- * "T Write back" under the newest, as quick chat's picker shows its keys */
+ * "I Write back" under the newest, as quick chat's picker shows its keys */
 .notices div.msg { display: block; padding-left: 1.15em; text-indent: -1.15em; overflow-wrap: anywhere; }
 .notices div.msg svg { display: inline-block; vertical-align: -0.1em; margin-right: calc(2 * var(--u)); fill: none; color: rgba(200, 240, 136, 0.9); }
 .notices div.msg i { color: rgba(255, 255, 255, 0.62); }

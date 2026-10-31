@@ -113,8 +113,9 @@ While you drive:
 | N | Horn (free roam and races with other players) |
 | X | Drift mode in free roam: drift handling, the drift camera and a drift score (see below); on a touch screen the Drift button |
 | 1 to 4, then 1 to 4 | Quick chat in free roam with other players: a group, then a phrase (see section 6) |
-| T | Message a friend in free roam: the answer to the newest message, or a friend to pick (see section 6, Friends) |
+| I | Message a friend in free roam: the answer to the newest message, or a friend to pick (see section 6, Friends) |
 | M, Tab | Map, messages |
+| T | Career status: what the stage still needs |
 | Esc or P | Pause; Esc also goes back in menus |
 | Enter | Choose (menus); in free roam, start an event at its marker or take an outrun |
 | F12 | Photo mode while you drive (see below), and in it the photo; elsewhere a screenshot. Both are PNGs kept with your saves and shown in Saves on the start page |
@@ -579,7 +580,7 @@ Good to know:
   30 seconds (a player you block in EA Messenger never sends you one again). Your friends see the name of
   the room you play in, nobody else (it is told to the server only once you have a friend, and kept in memory only).
 - **Messages to friends:** a friend's message shows in the log on the left, where quick chat's phrases show, with an
-  envelope, and **T Write back** under it. In free roam press **T**: a card in quick chat's place answers the newest
+  envelope, and **I Write back** under it. In free roam press **I**: a card in quick chat's place answers the newest
   message, or, with none to answer, lists your friends (where each one plays) for **1** to **9** to pick one. Type
   (120 characters at most), **Enter** sends, **Esc** closes; the game gets no keys while the card is open. Your own
   message shows in the log as "To Bo ...". On a touch screen tap a message to answer it, or the chat button's

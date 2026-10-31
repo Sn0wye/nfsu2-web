@@ -1,7 +1,7 @@
 # Messages between friends on the player's own page (roam-pair --page app), instance A (with roam_msg_app_b.txt): the
-# two become friends as in roam_friend_app_a/b.txt (ghost mode, noses touching, F), then A presses T: no message to
+# two become friends as in roam_friend_app_a/b.txt (ghost mode, noses touching, F), then A presses I: no message to
 # answer, so the card lists the friends (Bob in free roam), 1 picks Bob, A types and Enter sends it; the log shows
-# "To Bob ...", then Bob's answer with "T Write back".  Shots at each step.  The keyphrase tokens are the test setting
+# "To Bob ...", then Bob's answer with "I Write back".  Shots at each step.  The keyphrase tokens are the test setting
 # NFSU2_TEST_CLAIM; the server's state folder has names.json with Ann and Bob claimed by them (43 A, 43 B).
 #   node web/tools/roam-pair.mjs --page app --base ... \
 #        --a "Ann:roam_msg_app_a.txt:NFSU2_ROAM_COLLIDE=0,NFSU2_TEST_CLAIM=<43 A>" \
@@ -38,7 +38,7 @@
 +400  log SHOT a_4
 +0    log KEY KeyF
 +600  log SHOT a_end
-+300  log KEY KeyT                         # nothing to answer: the friends to pick
++300  log KEY KeyI                         # nothing to answer: the friends to pick
 +60   log SHOT a_pick
 +60   log KEY Digit1
 +30   log KEY KeyH KeyI Space KeyB KeyO KeyB Space KeyR KeyA KeyC KeyE Space KeyL KeyA KeyT KeyE KeyR

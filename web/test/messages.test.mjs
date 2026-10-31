@@ -1,10 +1,10 @@
 // Messages between friends on the page (web/src/app/messages.ts), in a real browser (web/tools/browser.mjs):
 //   node --test web/test/messages.test.mjs
 // - in the game: a friend's message (one by one, or the ones that waited, with the list) on the log while the player
-//   drives in free roam, held until they do; "T Write back" under it; T answers the newest, else a friend to pick
+//   drives in free roam, held until they do; "I Write back" under it; I answers the newest, else a friend to pick
 //   (1-9, in free roam first), Enter sends {op:"msg"}, Esc closes; the server's answer puts the player's own on the
-//   log ("To Bo", a note when it waits) or says why not; no answer in 10 s: not sent; T never in a text field, with a
-//   modifier or while not driving
+//   log ("To Bo", a note when it waits) or says why not; no answer in 10 s: not sent; I never in a text field, with a
+//   modifier or while not driving; T stays the game's (its Career Status, issue #52)
 // - the conversations: kept in this browser per claimed name, the friends' unread until shown
 // - the start page's conversation (ChatDialog): the messages kept, Send, what became of it, why one did not go
 // The module is bundled from web/src with esbuild into a blank page.
@@ -43,7 +43,7 @@ async function page() {
     w.msgs = new w.M.FriendMessages(document.getElementById('stage'), w.store, {
       send: m => { w.sent.push(m); return w.answer; }, driving: () => w.driving,
       line: (name, text, out, note) => { w.lines.push(`${out ? '>' : '<'} ${name}: ${text}${note ? ` ${note}` : ''}`); return document.createElement('div'); },
-      hint: ms => w.hints.push(ms === null ? null : 'T'), placeNow: () => {}, focusGame: () => document.getElementById('game').focus(),
+      hint: ms => w.hints.push(ms === null ? null : 'I'), placeNow: () => {}, focusGame: () => document.getElementById('game').focus(),
       toast: s => w.toasts.push(s), log: () => {},
     });
     w.msgs.start({}, true);
@@ -64,16 +64,16 @@ const wait = (p, ms) => p.evaluate(t => new Promise(r => setTimeout(r, t)), ms);
 const list = { op: 'list', me: 'Al_', friends: ['Gus', 'Bo_', 'Cy_'], asks: [] };
 const where = { op: 'where', friends: [{ name: 'Gus', where: '' }, { name: 'Bo_', where: 'roam', room: '' }, { name: 'Cy_', where: 'online' }] };
 
-test('in the game: messages on the log, T answers, Enter sends, the answer', async () => {
+test('in the game: messages on the log, I answers, Enter sends, the answer', async () => {
   const p = await page();
   await server(p, { ...list, mail: [{ from: 'Bo_', body: 'meet me at the airport', at: 1000 }] });
   assert.deepEqual(await take(p, 'lines'), ['< Bo_: meet me at the airport'], 'the ones that waited, with the list');
-  assert.deepEqual(await take(p, 'hints'), ['T']);
-  // T: the answer to the newest, the message quoted; the game's keys go to the field
-  await p.keyboard.press('KeyT');
+  assert.deepEqual(await take(p, 'hints'), ['I']);
+  // I: the answer to the newest, the message quoted; the game's keys go to the field
+  await p.keyboard.press('KeyI');
   assert.equal(await card(p), 'Message Bo_ Bo_ meet me at the airport Enter sends · Esc closes 120');
   assert.equal(await p.evaluate(() => document.activeElement?.className), 'msg-input');
-  assert.deepEqual(await take(p, 'hints'), [null], '"T Write back" goes');
+  assert.deepEqual(await take(p, 'hints'), [null], '"I Write back" goes');
   await p.keyboard.type('on my way');
   assert.match(await card(p), / 111$/, 'the characters left');
   await p.keyboard.press('Enter');
@@ -87,19 +87,19 @@ test('in the game: messages on the log, T answers, Enter sends, the answer', asy
   await p.evaluate(() => { /** @type {any} */ (window).driving = false; });
   await server(p, { op: 'mail', from: 'Cy_', body: 'race later?', at: 2000 });
   assert.deepEqual(await take(p, 'lines'), []);
-  await p.keyboard.press('KeyT');
-  assert.equal(await card(p), null, 'no T while not driving');
+  await p.keyboard.press('KeyI');
+  assert.equal(await card(p), null, 'no I while not driving');
   await p.evaluate(() => { /** @type {any} */ (window).driving = true; });
   await wait(p, 300);
   assert.deepEqual(await take(p, 'lines'), ['< Cy_: race later?']);
   // a friend who is away: the note; why one did not go; no answer at all
-  await p.keyboard.press('KeyT');
+  await p.keyboard.press('KeyI');
   await p.keyboard.type('sure');
   await p.keyboard.press('Enter');
   await server(p, { op: 'msg', id: 2, name: 'Cy_', done: 'kept' });
   assert.deepEqual(await take(p, 'lines'), ['> To Cy_: sure (gets it when back)']);
   for (const [done, why] of [['none', 'Cy_ is not on your friends list'], ['off', 'You can\'t send messages for a few minutes'], ['rate', 'Wait a moment']]) {
-    await p.keyboard.press('KeyT');
+    await p.keyboard.press('KeyI');
     await p.keyboard.type('x');
     await p.keyboard.press('Enter');
     const { id } = (await take(p, 'sent')).at(-1);
@@ -112,11 +112,17 @@ test('in the game: messages on the log, T answers, Enter sends, the answer', asy
   await p.close();
 });
 
-test('in the game: T with nothing to answer picks a friend; Esc; never in a field', async () => {
+test('in the game: I with nothing to answer picks a friend; Esc; never in a field', async () => {
   const p = await page();
   await server(p, list);
   await server(p, where);
+  // T is the game's (Career Status): not taken, the game gets it
+  await p.evaluate(() => { const w = /** @type {any} */ (window); w.gameT = 0;
+    document.getElementById('game').addEventListener('keydown', e => { if (e.code === 'KeyT' && !e.defaultPrevented) w.gameT++; }); });
   await p.keyboard.press('KeyT');
+  assert.equal(await card(p), null, 'T opens nothing');
+  assert.equal(await p.evaluate(() => /** @type {any} */ (window).gameT), 1, 'T goes to the game');
+  await p.keyboard.press('KeyI');
   assert.deepEqual(await take(p, 'sent'), [{ op: 'where' }], 'where each plays now');
   assert.equal(await card(p), 'Message a friend 1 Bo_ free roam 2 Cy_ Online lobby 3 Gus offline Esc closes');
   await p.keyboard.press('Digit2');
@@ -127,27 +133,27 @@ test('in the game: T with nothing to answer picks a friend; Esc; never in a fiel
   // nobody yet
   await server(p, { ...list, friends: [] });
   await server(p, { op: 'where', friends: [] });
-  await p.keyboard.press('KeyT');
+  await p.keyboard.press('KeyI');
   assert.equal(await card(p), 'Message a friend Touch front bumpers in free roam for 3 s to add a player. Esc closes');
   await p.keyboard.press('Escape');
   // not in a text field, not with a modifier
   await p.focus('#field');
-  await p.keyboard.press('KeyT');
+  await p.keyboard.press('KeyI');
   assert.equal(await card(p), null);
-  assert.equal(await p.$eval('#field', e => e.value), 't');
+  assert.equal(await p.$eval('#field', e => e.value), 'i');
   await p.focus('#game');
-  await p.keyboard.press('Control+KeyT');
+  await p.keyboard.press('Control+KeyI');
   assert.equal(await card(p), null);
   // a message the link could not take; one the server never answered
   await server(p, { op: 'mail', from: 'Bo_', body: 'yo', at: 3 });
-  await p.keyboard.press('KeyT');
+  await p.keyboard.press('KeyI');
   await p.evaluate(() => { /** @type {any} */ (window).answer = false; });
   await p.keyboard.type('a');
   await p.keyboard.press('Enter');
   assert.deepEqual(await take(p, 'toasts'), ['The message was not sent: try again in a moment']);
   await p.keyboard.press('Escape');
   await p.evaluate(() => { /** @type {any} */ (window).answer = true; });
-  await p.keyboard.press('KeyT');
+  await p.keyboard.press('KeyI');
   await p.keyboard.type('b');
   await p.keyboard.press('Enter');
   await wait(p, 10_400);

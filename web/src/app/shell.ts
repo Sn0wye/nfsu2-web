@@ -58,7 +58,7 @@ import { LobbyPanel } from './lobby';
 import { ICON as CHAT_ICON, QuickChat } from './quickchat';
 import { groupsOf, phrasesOf } from './phrases';
 import { FriendPrompt, FriendsApi, FriendsPanel } from './friends';
-import { ChatDialog, FriendMessages, MSG_ICON, MessageStore } from './messages';
+import { ChatDialog, FriendMessages, MSG_ICON, MSG_KEY_LABEL, MessageStore } from './messages';
 import { GameSession } from './game';
 import { AwayCheck, AWAY_LIMITS, type AwayLimits } from './away';
 import { changelog } from './changelog';
@@ -149,7 +149,7 @@ let quickChat: QuickChat;                // free roam's fixed phrases (quickchat
 let friendPrompt: FriendPrompt;          // free roam's friends: Add friend over the game when front bumpers touch (friends.ts)
 let friendsPanel: FriendsPanel;          // ...and the friends on the start page
 const msgStore = new MessageStore();      // messages between friends (messages.ts): the conversations in this browser
-let friendMessages: FriendMessages;       // ...in the game: the log's lines, T and its card
+let friendMessages: FriendMessages;       // ...in the game: the log's lines, I and its card
 let chatDialog: ChatDialog;               // ...on the start page: one conversation
 let settings: SettingsPanel;
 let players: { now(): void; last(): PlayerCounts | null; fresh(ms: number): Promise<PlayerCounts | null> } | null = null;
@@ -1087,7 +1087,7 @@ function msgLine(name: string, text: string, out: boolean, note: string, ms: num
   setTimeout(() => line.remove(), ms);
   return line;
 }
-/** "T Write back" under the newest friend's message (messages.ts), for ms; null: gone */
+/** "I Write back" under the newest friend's message (messages.ts), for ms; null: gone */
 let msgHintTimer = 0;
 function msgHint(ms: number | null) {
   const box = $('#notices');
@@ -1097,7 +1097,7 @@ function msgHint(ms: number | null) {
   const h = document.createElement('div'), k = document.createElement('kbd');
   h.className = 'msg-hint';
   h.style.animationDuration = `${ms}ms`;
-  k.textContent = 'T';
+  k.textContent = MSG_KEY_LABEL;
   h.append(k, t('Write back'));
   box.append(h);
   msgHintTimer = window.setTimeout(() => h.remove(), ms);
