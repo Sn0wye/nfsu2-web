@@ -1122,12 +1122,13 @@ static void t_bigmesh(void){
         if ((t - now) % 1000000 == 0) big_hellos(&s, t);
         rc_tick(&s, t);
     }
-    int ok_new = 1, ok_old = g_big[OLD].hellos > 0 && g_big[OLD].hello_n <= RC_PEERS_V1 && g_big[OLD].hello_self &&
+    /* a HELLO to one player names that player alone (core 9: all a receiver reads of the ids is its own among them) */
+    int ok_new = 1, ok_old = g_big[OLD].hellos > 0 && g_big[OLD].hello_n == 1 && g_big[OLD].hello_self &&
                              g_big[OLD].peers > 0 && g_big[OLD].peers_n == RC_PEERS_V1;
-    for (int i = 0; i < NP; i++) if (i != OLD && (!g_big[i].hellos || g_big[i].hello_n != NP || !g_big[i].hello_self || g_big[i].peers_n != NP)) ok_new = 0;
-    CHECK(ok_new, "a group of %d: HELLOs and PEERS lists of all %d to cores of version %d (to player 0: %d ids, %d peers)", NP + 1, NP, RC_CORE_VER,
-          g_big[0].hello_n, g_big[0].peers_n);
-    CHECK(ok_old, "the player of core version 1: HELLOs of at most 7 ids with its own (%d, %s), PEERS of 7 (%d)",
+    for (int i = 0; i < NP; i++) if (i != OLD && (!g_big[i].hellos || g_big[i].hello_n != 1 || !g_big[i].hello_self || g_big[i].peers_n != NP)) ok_new = 0;
+    CHECK(ok_new, "a group of %d: HELLOs naming their receiver alone and PEERS lists of all %d to cores of version %d (to player 0: %d ids, %d peers)",
+          NP + 1, NP, RC_CORE_VER, g_big[0].hello_n, g_big[0].peers_n);
+    CHECK(ok_old, "the player of core version 1: HELLOs naming it alone (%d, %s), PEERS of 7 (%d)",
           g_big[OLD].hello_n, g_big[OLD].hello_self ? "with it" : "WITHOUT it", g_big[OLD].peers_n);
     /* snapshots by distance: player i is i * 100 + 50 m away; 20 a second
      * within 300 m, 5 to 1000 m, 2 past that */
