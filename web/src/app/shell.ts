@@ -842,6 +842,20 @@ function syncPicker() {
   }
 }
 
+/** the buttons at the top: without their icons where one's word doesn't fit beside its icon (a phone's two by two,
+ *  style.css), with them again where every word does.  Measured as the contents' width against the button's, less
+ *  8 px a side (the padding without icons): a button centres what it holds, so too much reaches into its padding on
+ *  both sides, and no scrollWidth shows it */
+function fitTop() {
+  const top = $('.top-end'), r = document.createRange();
+  top.removeAttribute('data-tight');
+  const tight = [...top.querySelectorAll<HTMLElement>('.btn')].some(b => {
+    r.selectNodeContents(b);
+    return r.getBoundingClientRect().width > b.clientWidth - 16;
+  });
+  top.toggleAttribute('data-tight', tight);
+}
+
 /** the controller's share of the page while a game runs (gamepad.ts): Home, or both sticks pressed in, opens or
  *  closes the menu (not over another dialog), and an open dialog of the page takes the controller (padnav.ts) */
 const PAD_PAGE: PadPage = {
@@ -1733,6 +1747,7 @@ export async function boot() {
   $('#donate-go').onclick = () => $<HTMLDialogElement>('#donate').close();
   // Changelog at the top: CHANGELOG.md's releases in a popup
   changelog($('#changelog-btn'), $<HTMLDialogElement>('#changelog'), $('#changelog-body'));
+  fitTop(); onLanguage(fitTop); window.addEventListener('resize', fitTop); void document.fonts.ready.then(fitTop);
   // who plays on this server now (Online): only while no game runs here; with free roam on in a room, that room too,
   // and in crews (free roam on or not: the row shows them either way), how many are in each (on the Crews row's lines)
   players = watchPlayers((line, crews) => { settings.setStatus(line); settings.setCrewCounts(crews); }, () => !session && !starting, setReach,

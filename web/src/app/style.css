@@ -1010,14 +1010,16 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.64); }
 @media (max-width: 559px) {
   .top, .panel { padding: 16px; }
   .brand h1 { font-size: 24px; }
-  /* the language list across the header; Changelog, Discord and Donate under it at a third of its width each, without
-     their icons.  A button is never narrower than its longest word: where the three don't fit (320 px, a long word in
-     another language) the last one takes a row of its own */
-  .top-end { flex: 1 1 100%; align-items: stretch; }
-  .top-end .lang-pick { flex: 1 1 100%; }
-  .lang-pick select { width: 100%; }
-  .top-end .btn { flex: 1 1 0; min-width: min-content; padding: 4px 8px; }
-  .top-end .btn svg { display: none; }
+  /* two by two under the note, at half its width each: the language list and Changelog, then Discord and Donate.  A
+     long language name ends in "…"; where a button's word doesn't fit beside its icon (a long word in another
+     language, a 320 px screen), the header goes without its icons, the globe too (shell.ts fitTop) */
+  .top-end { flex: 1 1 100%; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .top-end .lang-pick { min-width: 0; }
+  .lang-pick select { width: 100%; max-width: 100%; text-overflow: ellipsis; }
+  .top-end .btn svg { flex: none; }
+  .top-end[data-tight] .btn { padding-inline: 8px; }
+  .top-end[data-tight] svg { display: none; }
+  .top-end[data-tight] .lang-pick select { padding-left: 12px; }
   /* a button's words wrap where they are wider than the screen (another language's); one line stays 40 px tall */
   .btn { height: auto; min-height: 40px; padding: 4px 16px; white-space: normal; text-align: center; }
   /* the channel's name still in one piece, unless the whole link is wider than the line (Polish) */
