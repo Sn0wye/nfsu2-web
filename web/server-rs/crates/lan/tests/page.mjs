@@ -200,7 +200,7 @@ const cases = {
         await until(() => qb.length === 1);
         assert.deepEqual(qb[0], { pos: 1, of: 1 });
         assert.equal(b.state, 'queued');
-        assert.deepEqual(nb, ['The server is full: you are in line for a place, and join the others by yourself when it is your turn']);
+        assert.deepEqual(nb, ["The server is full: you're in line and join the others when it's your turn"]);
         assert.equal((await state(port)).info.waiting, 1);
         // its link drops: back to the same place, with no second notice
         b['ws'].close(4000, 'dropped');
