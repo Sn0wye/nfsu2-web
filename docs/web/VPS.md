@@ -608,7 +608,11 @@ After each multiplayer race from free roam, every player's game reports it once 
 laps and cars), the player's nickname, place (or "did not finish", "quit") and the car as the game rated it (its
 type, the game's class and rating, the race's average rating, power, weight, top speed, and the factor its engine
 power had in the race) and its time. For evening out the cars:
-`gzcat logs.gz | grep -F '[race]'`.
+`gzcat logs.gz | grep -F '[race]'`. Once the server judged the race (below), one more `[race]` line has its result as
+the racers' games saw it, every racer in order with its time, and names with its address any racer whose own game sent
+no report (`the result by 3 of 4 racers' games: 1 Bob 1:35.0, 2 Ann 1:41.0, DNF Cid; no report from its own game:
+10.77.3.41 "Bob"`): such a racer has no `[race]` line of its own, and no `[cheat]` line names it unless it won by
+cheating. To find a player's races: `grep -F '[race]' | grep -F ' Bob '`.
 
 Cheats are `[cheat]` lines, each with the player's virtual address and nickname, as [kick and ban](#kick-and-ban)
 take them. The lines are for you to read: nobody is kicked or banned by them. A line about a race (Online mode's, or
@@ -633,15 +637,26 @@ past a ban that still holds). Free roam's lines get none.
   not agree ("its own game: did not finish": a game out of step with the others, more likely than a cheat) or sent
   no report. A car no tuning makes (an
   edited save's: 600 kW, 420 km/h or a rating of 1000 or more; the game's best cars make 450 kW, 380 km/h and 800) is
-  a line of its own, `raced in the race of lobby … in an edited car`, whether it won or not.
+  a line of its own, `raced in the race of lobby … in an edited car`, whether it won or not. A car whose game data is
+  edited ("its game has the car's data edited (GlobalB)": the browser's copy of the game's car data changed, as a guide
+  passed among players does it) but whose numbers any tuning makes is such a line only when it gained by it: its time
+  beat 95 % of the honest cars rated like it (within 60) in the same race, of the last 1,024 the server saw since it
+  started, 10 of them at least. Else its `[race]` line says so ("no gain seen: its 50.90 s beat 48 % of the 282 honest
+  cars rated 505-625 in this race"): an edit may gain nothing, and five of a day's did not. Every edited-car line says
+  what its time beat (against any car's when too few were rated like it: that never decides).
   In Online mode each racer is judged by its own game's figures (`won the online race …`, "by its own game"): a time
   under the shortest its race type takes (the result is not taken either), 350 km/h or more on average, or a way
   under half another racer's own (both by their own games: "each by its own game"; a racer who finished, or was on
   the way when the race ended, 30 s after the first: a game that went on alone long after says nothing), or a top
   speed of 420 km/h or more, finished or not ("an edited car": of 39,000 players' top speed records 5 went over it);
   a race won in under 40 % of the next finisher's time, by the result; and, once the track (race type, track,
-  direction, laps) had 10 clean wins since the start, one won in under 70 % of the third quickest other winner's time
-  there, unless another racer finished close behind (over 70 % of its time). A report that
+  direction, laps) had 10 clean races since the start, one won in under 70 % of the third quickest other racer's time
+  there (any finisher's, not the winners' alone: quick cars' races are often close), unless another racer finished
+  close behind (over 70 % of its time). The time, average and way count only once another racer's game saw the racer
+  finish at the same time (within 1 s), and not when another finisher came within 5 % of it: an honest game's own
+  figures can be wrong (in a day, two drag winners' own times 7 s short of what the other racer's game saw, a circuit
+  winner at "388 km/h" with a top speed of 183 and the second 0.15 s behind, and one whose game counted the first lap
+  of two), while a cheat's own figures are the others' too. A report that
   leaves out a player of the race (one who joined as it started and never raced) is taken and looked at, as any
   other. An Online line names the track and laps and the racer's own top speed;
   the other racers' times are on that race's `[online]` lines (`grep -F '"<race name>"'`). A drift race is won by

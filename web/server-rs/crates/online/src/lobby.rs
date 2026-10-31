@@ -245,14 +245,17 @@ const MIN_RACE_S: [f64; 7] = [20.0, 20.0, 5.0, 20.0, 20.0, 20.0, 20.0];
 /// it finishes); a drift race is won by points, and is left out.
 const FAR_AHEAD: f64 = 0.4;
 const KIND_DRIFT: u8 = 3;
-/// A race's winner in under this share of the third quickest other winner's time of its track (race type, track,
-/// direction and laps), once the track had QUICK_WINS clean wins (two finishers or more, no line), is a `[cheat]` line
-/// (`quick_win`): a car made faster than any tuning makes one, a speed hack, wins far quicker than the best honest
-/// racers do (the free-roam lobbies' races of 2026-10-30 on nfsu2.xyz: one player's sprint in 0.58 of it; of 4,727
-/// other wins the quickest 0.78).  Not when another finisher of the race came close (the winner over THIRD_SHARE of
-/// its time): that time can be driven, and the track's best winners were slower cars (nfsu2.xyz, 2026-10-31: four
-/// racers within 4 s of each other, all under 70 % of the third quickest of 10 clean wins).  The tracks kept
-/// (`Lobby::wins`), and the quickest winners each.
+/// A race's winner in under this share of the third quickest other racer's time of its track (race type, track,
+/// direction and laps: each finisher's of its clean races, two finishers or more and no line of the racer), once the
+/// track had QUICK_WINS clean races, is a `[cheat]` line (`quick_win`): a car made faster than any tuning makes one, a
+/// speed hack, wins far quicker than the best honest racers do (the free-roam lobbies' races of 2026-10-30 on
+/// nfsu2.xyz: one player's sprint in 0.58 of it; of 4,727 other wins the quickest 0.78).  Not when another finisher of
+/// the race came close (the winner over THIRD_SHARE of its time): that time can be driven, and the track's best
+/// winners were slower cars (nfsu2.xyz, 2026-10-31: four racers within 4 s of each other, all under 70 % of the third
+/// quickest of 10 clean wins).  Every finisher counts, not the winners alone: the quick cars' races are often close,
+/// one of them the winner (nfsu2.xyz, 2026-10-31: a drag racer won two drags in 23.3 s, under 70 % of the third
+/// quickest of 12 winners' 36.9 s, having finished within 0.6 s of two others in 23.4 to 24.0 s in another).  The
+/// tracks kept (`Lobby::wins`), and the quickest racers each.
 const THIRD_SHARE: f64 = 0.7;
 const QUICK_WINS: u32 = 10;
 const TRACKS_KEPT: usize = 4096;
@@ -266,6 +269,18 @@ const DROVE_SHARE: f64 = 0.5;
 /// others' race: nfsu2.xyz, 2026-10-31, one went on alone for 12 minutes, drove 19.6 km and made the race's 2:54
 /// winner one who drove "under half"
 const ENDED_S: f64 = 40.0;
+/// A racer's own figures are taken (`race_cheats`: its time, its average, the way it drove) once another racer's game
+/// showed it finish within AGREE_S of its own time (the games send each other their finish times: their reports agree
+/// to a tenth), and only when no other finisher came within CLOSE_SHARE of it.  nfsu2.xyz, 2026-10-31: two drag
+/// winners' own games had their times 7 s short (0:17.35 to the other racer's game's 0:24.14) and so 357 and 500 km/h
+/// on average; one circuit winner's own game had it at 388 km/h on average with a top speed of 183, the second 0.15 s
+/// behind; one counted only the first lap of two (3 km in 1:22, the other racer's game saw 2:35): all honest racers,
+/// in close races all day.  A cheat's own figures are the others' too (a racewin's 4.77 s, a teleport's), and nobody
+/// finishes near it.
+const AGREE_S: f64 = 1.0;
+const CLOSE_SHARE: f64 = 0.95;
+/// the finish times kept of what the other racers' games showed of a racer (`Player::seen`)
+const SEEN_KEPT: usize = 8;
 /// a top speed no car of the game makes, however tuned (m/s: 420 km/h), an edited save's (`race_cheats`): of the
 /// 38,967 personas with a top speed record on nfsu2.xyz on 2026-10-30, half had under 218 km/h, the fastest tuned
 /// cars 377, 12 over 380 and 5 over 420 (one the racer of a circuit won at 383 km/h on average); a free-roam lobby
@@ -361,6 +376,8 @@ pub struct Player {
     pub results: Option<SessId>,
     /// what its own game measured of it in the race (its own entry in its first report of the right shape)
     pub own: Option<Own>,
+    /// the finish times the other racers' games showed of it, in their reports of the right shape (SEEN_KEPT at most)
+    pub seen: Vec<f64>,
 }
 
 /// A racer's own figures (`race_cheats`): finished, its place, time (s), average and top speed (m/s), a drift race's
@@ -532,11 +549,11 @@ pub struct Lobby {
     /// lower-case persona -> its last lines (said_lines of the last said_ms), the oldest first; a persona's lines
     /// stay after it left
     pub said: HashMap<String, VecDeque<Said>>,
-    /// the clean wins of each track (race type, track, direction, laps) since the start (`quick_win`)
+    /// the clean races of each track (race type, track, direction, laps) since the start (`quick_win`)
     pub wins: HashMap<(u8, u16, u8, u8), Wins>,
 }
 
-/// A track's clean wins: how many, and the quickest winners (each once by lower-case name, its best, quickest first)
+/// A track's clean races: how many, and the quickest finishers (each once by lower-case name, its best, quickest first)
 #[derive(Clone, Debug, Default)]
 pub struct Wins {
     pub wins: u32,
@@ -544,8 +561,8 @@ pub struct Wins {
 }
 
 impl Wins {
+    /// one finisher's time (a race counts in `wins` by itself)
     fn add(&mut self, who: String, time: f64) {
-        self.wins += 1;
         match self.top.iter_mut().find(|(w, _)| *w == who) {
             Some(x) => x.1 = x.1.min(time),
             None => self.top.push((who, time)),
@@ -554,7 +571,7 @@ impl Wins {
         self.top.truncate(TOP_KEPT);
     }
 
-    /// the third quickest winner's time but `who`'s, once there were QUICK_WINS
+    /// the third quickest racer's time but `who`'s, once there were QUICK_WINS races
     fn third(&self, who: &str) -> Option<f64> {
         (self.wins >= QUICK_WINS).then(|| self.top.iter().filter(|(w, _)| w != who).nth(2).map(|x| x.1)).flatten()
     }
@@ -803,8 +820,11 @@ fn fit(fields: Fields, max: usize, drop: &[&str]) -> Fields {
 /// average, or a way (its average times its time) under DROVE_SHARE of another racer's own, finished or still on the
 /// way when the race ended (ENDED_S) (a cheat that ends its race at once: a test's racewin won a sprint in 4.77 s
 /// having driven 65 m, the other racer 1021 m by the race's end 30 s later; an honest finisher drives the whole way,
-/// and nobody twice as much before the race ends).  The way is looked at again at every report: the other racer's
-/// may come after the finisher's.  A drift race is won by points: only its top speed is looked at.  The line names
+/// and nobody twice as much before the race ends).  The time, the average and the way count only once another racer's
+/// game showed the racer finish at its own time (AGREE_S), and not when another finisher came close (CLOSE_SHARE): an
+/// honest game's own figures may be wrong.  `views`: the finishers' times as this report shows them (game player, s),
+/// its reporter's own left out.  The way is looked at again at every report: the other racer's may come after the
+/// finisher's.  A drift race is won by points: only its top speed is looked at.  The line names
 /// the race's track and laps and the racer's top speed: the other finishers' times are on the race's `[online]` lines
 /// (often none yet: one who won in 30 s had the others give up).
 fn race_cheats(
@@ -813,6 +833,7 @@ fn race_cheats(
     me: usize,
     mine: Option<&ReportPlayer>,
     edited: Option<u8>,
+    views: &[(usize, f64)],
     players: &mut [Player],
 ) -> Vec<String> {
     let kind = r.kind;
@@ -826,6 +847,11 @@ fn race_cheats(
         let score = p.score.max(0);
         players[me].own = Some(Own { finished, place: p.place, time, score, avg: speed(p.avg), top: speed(p.top), edited, told: false });
     }
+    for &(j, t) in views {
+        if j != me && players[j].seen.len() < SEEN_KEPT {
+            players[j].seen.push(t);
+        }
+    }
     let ty = REPORT_TYPES.get(kind as usize).copied().unwrap_or("race");
     let laps = if r.laps > 0 { format!(", {} lap{}", r.laps, if r.laps == 1 { "" } else { "s" }) } else { String::new() };
     let mut lines = Vec::new();
@@ -836,14 +862,19 @@ fn race_cheats(
         if !o.finished && o.top < CAR_MPS && o.edited.is_none() {
             continue;
         }
+        // its own time, average and way: a finisher's that another game saw finish then, no other finisher close
+        let agreed = players[i].seen.iter().any(|&t| (t - o.time).abs() <= AGREE_S);
+        let close = players.iter().enumerate().any(|(j, x)| {
+            j != i && x.own.filter(|y| y.finished).map(|y| y.time).into_iter().chain(x.seen.iter().copied()).any(|t| t * CLOSE_SHARE <= o.time)
+        });
+        let taken = !drift && o.finished && agreed && !close;
         if let Some(&min) = MIN_RACE_S.get(kind as usize)
-            && !drift
-            && o.finished
+            && taken
             && o.time < min
         {
             why.push(format!("under the {} s a {ty} race takes at least", js::number_to_string(min)));
         }
-        if !drift && o.finished && o.avg >= RACE_MPS {
+        if taken && o.avg >= RACE_MPS {
             why.push(format!("{:.0} km/h on average, which no car does", o.avg * 3.6));
         }
         let most = players
@@ -853,8 +884,7 @@ fn race_cheats(
             .map(|(x, name)| (x.avg * x.time, name))
             .max_by(|a, b| a.0.total_cmp(&b.0));
         let each = if let Some((d, other)) = most
-            && !drift
-            && o.finished
+            && taken
             && drove < DROVE_SHARE * d
         {
             why.push(format!("having driven {drove:.0} m, under half the {d:.0} m \"{other}\" drove"));
@@ -922,8 +952,9 @@ fn far_ahead(game: &str, kind: u8, order: &[RacePlayer], players: &[Player]) -> 
 }
 
 /// The `[cheat]` line of a race whose result stands, when its winner took under THIRD_SHARE of the third quickest other
-/// winner's time of its track, and no other finisher came close (THIRD_SHARE); else None, and a clean win (two
-/// finishers or more, its winner told of by no line, `told`) counts in the track's
+/// racer's time of its track, and no other finisher came close (THIRD_SHARE); else None, and a clean race (two
+/// finishers or more, its winner told of by no line, `told`) counts in the track's, with each finisher's time but those
+/// a line told of
 fn quick_win(
     wins: &mut HashMap<(u8, u16, u8, u8), Wins>,
     game: &str,
@@ -945,7 +976,7 @@ fn quick_win(
         let laps = if r.laps > 0 { format!(", {} lap{}", r.laps, if r.laps == 1 { "" } else { "s" }) } else { String::new() };
         return Some(format!(
             "[cheat] {} \"{}\": won the online race \"{game}\" ({ty}, track {}{laps}) in {}, under {:.0} % of the third \
-             quickest other winner's time of the track's {} clean wins ({}): as the result stands",
+             quickest other racer's time of the track's {} clean races ({}): as the result stands",
             vip_str(vip),
             w.name,
             r.track,
@@ -957,7 +988,12 @@ fn quick_win(
     }
     let finished = order.iter().filter(|p| p.place != 0 && p.time > 0.0).count();
     if finished >= 2 && !told && (wins.len() < TRACKS_KEPT || wins.contains_key(&key)) {
-        wins.entry(key).or_default().add(who, w.time);
+        let track = wins.entry(key).or_default();
+        track.wins += 1;
+        let told_of = |name: &str| players.iter().any(|p| lower(&p.name) == lower(name) && p.own.is_some_and(|o| o.told));
+        for p in order.iter().filter(|p| p.place != 0 && p.time > 0.0 && !told_of(&p.name)) {
+            track.add(lower(&p.name), p.time);
+        }
     }
     None
 }
@@ -1767,7 +1803,18 @@ impl Core {
             && why.is_empty()
         {
             let mine = r.players.iter().find(|p| lower(&names[p.index as usize]) == persona);
-            let lines = race_cheats(&gname, r, me, mine, edited_code(code), &mut self.lobby.game_mut(g).expect("held").players);
+            let players = &mut self.lobby.game_mut(g).expect("held").players;
+            // (the finishers' times as this report shows them, by game player: what this game saw of the others)
+            let views: Vec<(usize, f64)> = r
+                .players
+                .iter()
+                .filter(|p| !p.dropped && p.place >= 1 && p.time > 0.0 && p.time < 100_000.0)
+                .filter_map(|p| {
+                    let want = lower(&names[p.index as usize]);
+                    Some((players.iter().position(|x| lower(&x.name) == want)?, p.time))
+                })
+                .collect();
+            let lines = race_cheats(&gname, r, me, mine, edited_code(code), &views, players);
             for line in lines {
                 self.llog(&line, s);
             }
@@ -2393,6 +2440,7 @@ impl Core {
             reported: false,
             results: None,
             own: None,
+            seen: Vec::new(),
         }
     }
 

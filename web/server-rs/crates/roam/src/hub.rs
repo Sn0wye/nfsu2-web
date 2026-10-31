@@ -189,14 +189,111 @@ const CAR_KW: f64 = 600.0;
 const CAR_KMH: f64 = 420.0;
 const CAR_RATING: f64 = 1000.0;
 
-/// A player's race report's `[cheat]` line when its car is one no tuning makes (an edited save's), or its game says the
-/// car's data is edited (an edited GlobalB's: a guide passed among players, 2026-10-31, has an AI agent make one car type
-/// 3,600 kW with x2.5 grip and brakes in the browser's copy of the file; the game sums each type's record, mprace.c):
-/// `who` its address and name (`10.77.3.41 "Bob"`)
-fn edited_car_line(who: &str, r: &wire::RaceRep) -> Option<String> {
-    let over = r.kw >= CAR_KW || r.kmh >= CAR_KMH || r.rating >= CAR_RATING;
+/// whether a race report's car is one no tuning makes (CAR_KW, CAR_KMH, CAR_RATING)
+fn over_the_game(r: &wire::RaceRep) -> bool {
+    r.kw >= CAR_KW || r.kmh >= CAR_KMH || r.rating >= CAR_RATING
+}
+
+/// the honest times of the lobbies' races an edited car's is compared with (`Times`): the last TIMES_KEPT of each race
+/// (its id and laps), of at most TIMES_RACES races since the start
+const TIMES_KEPT: usize = 1024;
+const TIMES_RACES: usize = 2048;
+/// an edited car's time is compared with the honest cars' rated within LIKE_RATING of it, when there are LIKE_MIN of
+/// them, else with every honest car's of the race, when there are LIKE_MIN
+const LIKE_RATING: f64 = 60.0;
+const LIKE_MIN: usize = 10;
+/// A car whose game data is edited but whose numbers any tuning makes is a `[cheat]` line only when its time beat this
+/// share of the honest cars' rated like it (LIKE_RATING) in the same race: the edit won it time no driving of that car
+/// does.  An edit may gain nothing (nfsu2.xyz, 2026-10-31: five such cars, an RX8 of 236 kW, a Miata of 96 kW, a
+/// 240SX, a Civic and a Mustang; four beat 11 to 55 % of the honest cars rated like them, the fifth 83 % of any car's,
+/// too few being rated like it).  Every car beats most of any rating's when it is a strong one: that never decides.
+const GAIN_SHARE: f64 = 0.95;
+const MODE_DRIFT: u8 = 3;
+
+/// The honest finishers' times of the lobbies' races, per race (id, laps), the newest last: (rating, s) of each car
+/// whose game data is the game's and whose numbers any tuning makes, in a race of two cars or more, as its own game
+/// timed it (a drift race is won by points: none of it)
+#[derive(Default)]
+struct Times(HashMap<(u32, u8), std::collections::VecDeque<(f32, f32)>>);
+
+/// what a finisher's time beat (`Times::compare`): how many of how many honest times, their median (s), and the
+/// ratings they were of (None: any car's, too few rated like it)
+struct Compared {
+    beat: usize,
+    of: usize,
+    median: f64,
+    like: Option<(f64, f64)>,
+}
+
+impl Times {
+    fn add(&mut self, r: &wire::RaceRep) {
+        if r.edited || over_the_game(r) || r.players < 2 || r.place == 0 || r.time <= 0.0 || r.mode == MODE_DRIFT {
+            return;
+        }
+        let key = (r.race, r.laps);
+        if self.0.len() >= TIMES_RACES && !self.0.contains_key(&key) {
+            return;
+        }
+        let v = self.0.entry(key).or_default();
+        if v.len() >= TIMES_KEPT {
+            v.pop_front();
+        }
+        v.push_back((r.rating as f32, r.time as f32));
+    }
+
+    /// what a finisher's time beat: the honest cars' of its race rated like it, else any car's, LIKE_MIN of them at
+    /// least; None when too few, or the report has no time to compare (not finished, a drift race)
+    fn compare(&self, r: &wire::RaceRep) -> Option<Compared> {
+        if r.place == 0 || r.time <= 0.0 || r.mode == MODE_DRIFT {
+            return None;
+        }
+        let all = self.0.get(&(r.race, r.laps))?;
+        let (lo, hi) = (r.rating - LIKE_RATING, r.rating + LIKE_RATING);
+        let near: Vec<f64> = all.iter().filter(|x| (lo..=hi).contains(&f64::from(x.0))).map(|x| f64::from(x.1)).collect();
+        let (mut t, like) =
+            if near.len() >= LIKE_MIN { (near, Some((lo.max(0.0), hi))) } else { (all.iter().map(|x| f64::from(x.1)).collect(), None) };
+        if t.len() < LIKE_MIN {
+            return None;
+        }
+        t.sort_by(f64::total_cmp);
+        let beat = t.iter().filter(|&&x| x > r.time).count();
+        Some(Compared { beat, of: t.len(), median: t[t.len() / 2], like })
+    }
+}
+
+/// an edited car's time against the honest ones (`Times::compare`), for its lines: "its 50.90 s beat 48 % of the 282
+/// honest cars rated 505-625 in this race (their median 51.91 s)"
+fn compared_text(r: &wire::RaceRep, c: Option<&Compared>) -> String {
+    if r.mode == MODE_DRIFT {
+        return "a drift race, won by points: no time to compare".into();
+    }
+    if r.place == 0 || r.time <= 0.0 {
+        return "no time to compare".into();
+    }
+    let Some(c) = c else { return format!("its {:.2} s: too few honest times of this race to compare it with", r.time) };
+    let share = if c.beat == c.of { format!("all {}", c.of) } else { format!("{} % of the {}", c.beat * 100 / c.of, c.of) };
+    let cars = match c.like {
+        Some((lo, hi)) => format!("honest cars rated {lo:.0}-{hi:.0}"),
+        None => "honest cars of any rating (too few rated like it)".to_string(),
+    };
+    format!("its {:.2} s beat {share} {cars} in this race (their median {:.2} s)", r.time, c.median)
+}
+
+/// A player's race report's `[cheat]` line (`who` its address and name, `10.77.3.41 "Bob"`) when its car is one no
+/// tuning makes (an edited save's), or its game says the car's data is edited (an edited GlobalB's: a guide passed
+/// among players, 2026-10-31, has an AI agent make one car type 3,600 kW with x2.5 grip and brakes in the browser's copy
+/// of the file; the game sums each type's record, mprace.c) and its time beat GAIN_SHARE of the honest cars' rated like
+/// it (`c`); each line says what its time beat.  Else, for a car of edited data, what its `[race]` line adds ("" for
+/// any other).
+fn edited_car_line(who: &str, r: &wire::RaceRep, c: Option<&Compared>) -> (Option<String>, String) {
+    let over = over_the_game(r);
     if r.players < 2 || !(over || r.edited) {
-        return None;
+        return (None, String::new());
+    }
+    let gain = c.is_some_and(|c| c.like.is_some() && c.beat as f64 >= GAIN_SHARE * c.of as f64);
+    let cmp = compared_text(r, c);
+    if !over && !gain {
+        return (None, format!("; its game has the car's data edited (GlobalB), no gain seen: {cmp}"));
     }
     let mut why = Vec::new();
     if r.edited {
@@ -206,9 +303,9 @@ fn edited_car_line(who: &str, r: &wire::RaceRep) -> Option<String> {
         why.push(format!("no car of the game makes {CAR_KW:.0} kW, {CAR_KMH:.0} km/h or a rating of {CAR_RATING:.0}"));
     }
     let name: String = r.name.iter().map(|&c| c as char).collect();
-    Some(format!(
+    let line = format!(
         "[cheat] {who}: raced in the race of lobby {:08x} (race {:08x}: {}, {} lap{}) in an edited car, {}: {name} (type {}), \
-         {:.0} kW, {:.0} kg, {:.0} km/h, rated {:.0}; {}",
+         {:.0} kW, {:.0} kg, {:.0} km/h, rated {:.0}; {}; {cmp}",
         r.lobby,
         r.race,
         results::mode_name(r.mode),
@@ -221,7 +318,8 @@ fn edited_car_line(who: &str, r: &wire::RaceRep) -> Option<String> {
         r.kmh,
         r.rating,
         why.join("; ")
-    ))
+    );
+    (Some(line), String::new())
 }
 
 /// how a race report's player did: "2nd of 4", "did not finish", "quit"
@@ -614,6 +712,8 @@ pub struct Hub {
     /// the races' results as the players' games showed them, until each race is judged (results.rs), and the lobbies
     /// whose players' results are taken, by their ids
     results: Results,
+    /// the lobbies' races' honest times, an edited car's compared with them (`edited_car_line`)
+    times: Times,
     joined: HashMap<u32, Joined>,
     /// each browser's lobbies in `joined`, oldest first; when `joined` was last pruned
     joined_by_vip: HashMap<u32, Vec<u32>>,
@@ -675,6 +775,7 @@ impl Hub {
             crewed: 0,
             kept: HashMap::new(),
             results: Results::default(),
+            times: Times::default(),
             joined: HashMap::new(),
             joined_by_vip: HashMap::new(),
             joined_pruned: 0.0,
@@ -986,8 +1087,11 @@ impl Hub {
             // one report a race (its lobby), and none within REPORT_GAP_MS of the player's last; its results the same
             Msg::RaceRep(r) if sender == p.id && !p.reported.is_some_and(|(l, t)| l == r.lobby || now - t < REPORT_GAP_MS) => {
                 p.reported = Some((r.lobby, now));
-                report = Some(race_line(&p.name, &r));
-                edited = edited_car_line(&format!("{} \"{}\"", vip_str(p.vip), p.name), &r);
+                // (an edited car's time against the honest ones before this report: its own is none of them)
+                let (line, note) = edited_car_line(&format!("{} \"{}\"", vip_str(p.vip), p.name), &r, self.times.compare(&r).as_ref());
+                self.times.add(&r);
+                report = Some(race_line(&p.name, &r) + &note);
+                edited = line;
             }
             Msg::RaceRes(r) if sender == p.id && !p.resulted.is_some_and(|(l, t)| l == r.lobby || now - t < REPORT_GAP_MS) => {
                 p.resulted = Some((r.lobby, now));
@@ -1418,12 +1522,16 @@ impl Hub {
             self.st.cheat_lines += 1;
             (self.log)(&line);
         }
-        // the races whose results all came (or a while ago): the ones won by cheating
-        for v in self.results.due(now) {
-            let who = |id: u32| v.names.get(&id).cloned().or_else(|| self.who(id)).unwrap_or_else(|| format!("player {id:08x}"));
-            let line = results::line(&v, &who);
-            self.st.cheat_lines += 1;
-            (self.log)(&line);
+        // the races whose results all came (or a while ago): each one's result, and the ones won by cheating
+        for (o, v) in self.results.judged(now) {
+            let who = |id: u32| o.names.get(&id).cloned().or_else(|| self.who(id)).unwrap_or_else(|| format!("player {id:08x}"));
+            let result = results::result_line(&o, &who);
+            let cheat = v.map(|v| results::line(&v, &who));
+            (self.log)(&result);
+            if let Some(line) = cheat {
+                self.st.cheat_lines += 1;
+                (self.log)(&line);
+            }
         }
         for &slot in &self.order {
             if let Some(Some(p)) = self.slots.get_mut(slot as usize)
