@@ -148,6 +148,11 @@ const CREW_LINKS: u32 = 16;
 /// a crew of more players than this in one room gets no links first (its pairs grow as the square of its players:
 /// 64 are 2016), its players link by distance as everyone does, and it counts in `crewSkips`
 const CREW_GROUP_MAX: usize = 64;
+/// the friends a browser's list here holds at most (the server's lists hold 50, and others' friendships add to it)
+const FRIENDS_MAX: usize = 64;
+/// how near two players' cars are, at most, for one to ask the other to be friends (`linked_with`): their cars touched
+/// front bumpers, and a SNAP is a few hundred ms old at most (30 m: 100 km/h for a second)
+const FRIEND_NEAR_M: f64 = 30.0;
 
 /// A player's race report as a log line (one each player of a race, back in free roam: the lines of one race share
 /// its lobby), for evening out the cars: the race, how the player did, the car as its game rated it.  Grep `[race]`.
@@ -299,6 +304,9 @@ struct Player {
     at: u32,
     /// the keyphrase its page plays with (nfsu2-claims' owner: its hello to the switch named it), if any
     owner: Option<Arc<str>>,
+    /// one id a friendship of its owner's (`friend_id`), each friend once: a friend of its room is linked with it
+    /// first, as a crew-mate is (`crew_pairs`)
+    friend_ids: Vec<u32>,
     /// its name is claimed by another keyphrase (nfsu2-claims): it gets no links, shows on no map and counts nowhere,
     /// as of the claims' `generation` in `checked` (0: not looked at yet)
     impostor: bool,
@@ -364,6 +372,35 @@ fn distinct(crews: [u32; wire::CREWS]) -> [u32; wire::CREWS] {
 /// a player's crews: the nonzero ones of its `crews`
 fn crews_of(p: &Player) -> impl Iterator<Item = u32> + '_ {
     p.crews.iter().copied().take_while(|&c| c != 0)
+}
+
+/// The id of the friendship of keyphrases a and b (nfsu2-claims' owners), the same both ways: each of the two players
+/// has it only when each one's friends list names the other, so the two are a crew of two (`crew_pairs`).  An FNV-1a
+/// of the two, as a crew's word is one (a crew sharing it would only link the two first too); never 0.
+fn friend_id(a: &str, b: &str) -> u32 {
+    let (lo, hi) = if a <= b { (a, b) } else { (b, a) };
+    let mut h: u32 = 0x811C_9DC5;
+    for &c in lo.as_bytes().iter().chain(b"\0").chain(hi.as_bytes()) {
+        h = (h ^ c as u32).wrapping_mul(0x0100_0193);
+    }
+    h.max(1)
+}
+
+/// a player's friendships (`friend_id`): of its owner with each of `friends` (theirs), none without an owner
+fn friend_ids(owner: Option<&Arc<str>>, friends: Option<&Vec<Arc<str>>>) -> Vec<u32> {
+    let (Some(o), Some(f)) = (owner, friends) else { return Vec::new() };
+    let mut ids: Vec<u32> = f.iter().filter(|x| ***x != **o).map(|x| friend_id(o, x)).collect();
+    ids.sort_unstable();
+    ids.dedup();
+    ids
+}
+
+/// Where a friend is (`Hub::whereabouts`): in free roam, in this room (rc_room_hash; 0: the room of everyone), whose
+/// name its page told the hub (`Hub::room_name`; None: not told)
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Whereabouts {
+    pub room: u32,
+    pub room_name: Option<String>,
 }
 
 /// the nearest integer, a half up (to +infinity, where `f64::round` takes it away from 0)
@@ -547,6 +584,12 @@ pub struct Hub {
     blocks: HashMap<u32, Block>,
     /// per browser, its page's name on the switch (`page_name`), until it leaves the switch
     pages: HashMap<u32, Page>,
+    /// per browser, its keyphrase's friends (their owners: `friends`), and the name of the room its page plays in
+    /// (`room_name`: for its friends' Join), until it leaves the switch
+    friends: HashMap<u32, Vec<Arc<str>>>,
+    room_names: HashMap<u32, String>,
+    /// the players in free roam by their keyphrase (made at each tick): `whereabouts`
+    owners_at: HashMap<Arc<str>, u32>,
     /// the pairs of players kept apart at the last tick (`block_pairs`), as slots, the lower first, sorted: the world
     /// map and the lobby list read them between ticks
     apart: Vec<(u32, u32)>,
@@ -612,6 +655,9 @@ impl Hub {
             by_key: HashMap::new(),
             blocks: HashMap::new(),
             pages: HashMap::new(),
+            friends: HashMap::new(),
+            room_names: HashMap::new(),
+            owners_at: HashMap::new(),
             apart: Vec::new(),
             per_vip: HashMap::new(),
             crewed: 0,
@@ -845,6 +891,7 @@ impl Hub {
                     watch: Watch::new((self.now)()),
                     at: 0,
                     owner: owner.cloned(),
+                    friend_ids: friend_ids(owner, self.friends.get(&from)),
                     impostor: false,
                     checked: 0,
                     seen_claim: f64::NEG_INFINITY,
@@ -889,6 +936,7 @@ impl Hub {
                 if p.owner.as_ref() != owner {
                     p.owner = owner.cloned();
                     p.checked = 0;
+                    p.friend_ids = friend_ids(owner, self.friends.get(&from));
                 }
                 check = true;
                 p.degree = degree;
@@ -1186,6 +1234,8 @@ impl Hub {
     pub fn peer_gone(&mut self, vip: u32) {
         self.blocks.remove(&vip);
         self.pages.remove(&vip);
+        self.friends.remove(&vip);
+        self.room_names.remove(&vip);
         if !self.per_vip.contains_key(&vip) {
             return;
         }
@@ -1201,6 +1251,67 @@ impl Hub {
         let mut b = Block::new(&names);
         b.owners_of(self.claims.as_deref(), (self.now)());
         self.blocks.insert(vip, b);
+    }
+
+    /// Browser `vip`'s keyphrase (`me`) has these friends (their keyphrases: the server reads its friends list when its
+    /// page asks): each one in its room is linked with it first, while each one's list here names the other
+    /// (`friend_id`).  A friendship goes both ways in the server's lists, so each of these friends in free roam now (as
+    /// of the last tick) has `me` on its list here too: one befriended while it was away is linked from now on.
+    pub fn friends(&mut self, vip: u32, me: Arc<str>, owners: Vec<Arc<str>>) {
+        let theirs: Vec<u32> = owners.iter().filter_map(|o| self.player(*self.owners_at.get(o)?)).map(|p| p.vip).filter(|&v| v != vip).collect();
+        if owners.is_empty() {
+            self.friends.remove(&vip);
+        } else {
+            self.friends.insert(vip, owners);
+        }
+        for v in &theirs {
+            let l = self.friends.entry(*v).or_default();
+            if !l.contains(&me) && l.len() < FRIENDS_MAX {
+                l.push(me.clone());
+            }
+        }
+        for v in std::iter::once(vip).chain(theirs) {
+            let f = self.friends.get(&v);
+            for p in self.slots.iter_mut().flatten().filter(|p| p.vip == v) {
+                p.friend_ids = friend_ids(p.owner.as_ref(), f);
+            }
+        }
+    }
+
+    /// browser `vip`'s page plays in the room of this name (the hub has only its hash otherwise): told to its friends,
+    /// for their Join (`whereabouts`)
+    pub fn room_name(&mut self, vip: u32, name: String) {
+        self.room_names.insert(vip, name.chars().take(64).collect());
+    }
+
+    /// The player of browser `vip` is linked now with one under `name` (its Online form, as nfsu2-claims compares
+    /// names), its car within FRIEND_NEAR_M of this one's (their last SNAPs): that player's browser and keyphrase
+    /// (None: its page plays with none; a name under another keyphrase's claim has no links).  A page may ask to
+    /// befriend only a player whose car touched its own, never just any name (a room of fewer players than the links
+    /// a player has links them all, near or not).
+    pub fn linked_with(&self, vip: u32, name: &str) -> Option<(u32, Option<Arc<str>>)> {
+        let canon = nfsu2_claims::canonical(name)?;
+        self.slots.iter().flatten().filter(|p| p.vip == vip && !p.impostor).find_map(|p| {
+            p.links.iter().find_map(|l| {
+                let q = self.player(l.slot)?;
+                let near = matches!((p.p, q.p), (Some(a), Some(b)) if {
+                    let (dx, dy, dz) = (a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+                    dx * dx + dy * dy + dz * dz <= FRIEND_NEAR_M * FRIEND_NEAR_M
+                });
+                (q.canon == canon && !q.impostor && q.vip != vip && near).then(|| (q.vip, q.owner.clone()))
+            })
+        })
+    }
+
+    /// Where each of these keyphrases plays in free roam (as of the last tick), None: it does not
+    pub fn whereabouts(&self, owners: &[Arc<str>]) -> Vec<Option<Whereabouts>> {
+        owners
+            .iter()
+            .map(|o| {
+                let p = self.player(*self.owners_at.get(o)?)?;
+                Some(Whereabouts { room: p.room, room_name: self.room_names.get(&p.vip).cloned() })
+            })
+            .collect()
     }
 
     /// browser `vip`'s page goes by `name` on the switch (its hello's): its players' names are held against it
@@ -1315,14 +1426,19 @@ impl Hub {
         }
         self.apart.clear();
 
-        // the rooms: the players with a position younger than `stale_ms`, in the order they came
+        // the rooms: the players with a position younger than `stale_ms`, in the order they came (and by keyphrase,
+        // where friends find them: `whereabouts`)
         let s = &mut self.s;
         s.room_of.clear();
+        self.owners_at.clear();
         let mut rooms = 0;
         for &slot in &self.order {
             let Some(Some(p)) = self.slots.get(slot as usize) else { continue };
             if p.p.is_none() || now - p.pos_at > self.o.stale_ms || p.impostor {
                 continue;
+            }
+            if let Some(o) = &p.owner {
+                self.owners_at.insert(o.clone(), slot);
             }
             let r = *s.room_of.entry(p.room).or_insert_with(|| {
                 if rooms == s.rooms.len() {
@@ -1347,8 +1463,8 @@ impl Hub {
             lobby_pairs(&self.slots, &list, now, s);
             block_pairs(&self.slots, &list, &self.blocks, s);
             self.apart.extend(s.bpairs.iter().map(|&(a, b)| (list[a as usize], list[b as usize])).map(|(x, y)| (x.min(y), x.max(y))));
-            // (no player in a crew, nothing to look for)
-            if self.crewed > 0 {
+            // (no player in a crew and none with friends, nothing to look for)
+            if self.crewed > 0 || !self.friends.is_empty() {
                 crew_skips += crew_pairs(&self.slots, &list, &w, s);
             } else {
                 s.cpairs.clear();
@@ -1783,6 +1899,8 @@ fn crew_pairs(slots: &[Option<Player>], list: &[u32], w: &Weigh, s: &mut Scratch
     for (j, &q) in list.iter().enumerate() {
         if let Some(p) = player(slots, q) {
             cmembers.extend(crews_of(p).map(|c| (c, j as u32)));
+            // (friends: a crew of two each, `friend_id`)
+            cmembers.extend(p.friend_ids.iter().map(|&f| (f, j as u32)));
         }
     }
     // by crew, each crew's players by place (each (crew, place) once: a player's crews are distinct)

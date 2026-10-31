@@ -15,6 +15,7 @@ pub mod control;
 pub mod days;
 mod etag;
 mod files;
+mod friends;
 mod kept;
 mod lan;
 mod manifest;
@@ -153,7 +154,7 @@ const STATUS: [(u16, &str); 8] = [
     (503, "Service Unavailable"),
 ];
 
-pub const ROBOTS_TXT: &str = "User-agent: *\nAllow: /\nDisallow: /data/\nDisallow: /data-manifest\nDisallow: /game.wasm\nDisallow: /game.json\nDisallow: /players\nDisallow: /seen\nDisallow: /lan\nDisallow: /vault\nDisallow: /names";
+pub const ROBOTS_TXT: &str = "User-agent: *\nAllow: /\nDisallow: /data/\nDisallow: /data-manifest\nDisallow: /game.wasm\nDisallow: /game.json\nDisallow: /players\nDisallow: /seen\nDisallow: /lan\nDisallow: /vault\nDisallow: /names\nDisallow: /friends";
 
 /// what a client may ask a file to be sent as
 const TYPES: [(&str, &str); 11] = [
@@ -229,6 +230,8 @@ pub struct App {
     pub vault: Option<vault::VaultRoute>,
     /// claimed names (/names), none without keyphrase saves
     pub names: Option<names::NamesRoute>,
+    /// free roam's friends (/friends and the pages' friend messages), none without the Online host, the hub or names
+    pub friends: Option<Arc<friends::Friends>>,
     /// the operator's bans (the control socket: control.rs), checked at /lan
     pub bans: Arc<nfsu2_bans::Bans>,
     /// how many come each day (days.rs: /seen, the hellos, the sweep)
@@ -322,6 +325,10 @@ impl App {
             raw.insert(code, s.into_bytes());
         }
         let max_conns = limits::max_connections(o.max_peers);
+        let friends = match (&online, &roam, &names) {
+            (Some(on), Some(r), Some(n)) => Some(friends::Friends::new(on.clone(), r.clone(), lan.clone(), n.claims.clone())),
+            _ => None,
+        };
         App {
             host_check,
             real_state,
@@ -350,6 +357,7 @@ impl App {
             roam,
             vault: vault.map(vault::VaultRoute::new),
             names,
+            friends,
             bans,
             days,
             lan_sndbuf,
@@ -542,12 +550,15 @@ impl App {
         if q.method == "PUT" && self.o.dev && !self.o.artifacts.is_empty() && p.starts_with("/artifacts/") {
             return self.put_artifact(q, s, &p[11..]).await;
         }
-        // keyphrase saves and claimed names: their own methods and bodies (vault.rs, names.rs)
+        // keyphrase saves, claimed names and friends: their own methods and bodies (vault.rs, names.rs, friends.rs)
         if p == "/vault" {
             return self.vault(q, s, &u).await;
         }
         if p == "/names" {
             return self.names(q, s, &u).await;
+        }
+        if p == "/friends" {
+            return self.friends_route(q, s, &u).await;
         }
         if q.method != "GET" && q.method != "HEAD" {
             return self

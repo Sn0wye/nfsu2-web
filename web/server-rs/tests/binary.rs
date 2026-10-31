@@ -1003,3 +1003,183 @@ async fn the_control_socket_goes_with_its_server() {
     assert_eq!(b.stop().await, Some(0));
     assert!(std::fs::symlink_metadata(&sock).is_err(), "gone with the later server");
 }
+
+/// one HTTP request (Host: localhost), its status and body
+async fn http(port: u16, method: &str, path: &str, headers: &[(&str, &str)], body: &str) -> (u16, String) {
+    let mut s = tokio::net::TcpStream::connect(("127.0.0.1", port)).await.unwrap();
+    let mut q = format!("{method} {path} HTTP/1.1\r\nHost: localhost:{port}\r\nConnection: close\r\nContent-Length: {}\r\n", body.len());
+    for (k, v) in headers {
+        q.push_str(&format!("{k}: {v}\r\n"));
+    }
+    q.push_str("\r\n");
+    q.push_str(body);
+    s.write_all(q.as_bytes()).await.unwrap();
+    let mut r = Vec::new();
+    s.read_to_end(&mut r).await.unwrap();
+    let r = String::from_utf8_lossy(&r).to_string();
+    let code = r.get(9..12).and_then(|c| c.parse().ok()).unwrap_or(0);
+    (code, r.split_once("\r\n\r\n").map(|(_, b)| b.to_string()).unwrap_or_default())
+}
+
+/// a page's friend messages from the server, past the first `from` of them (free roam's friends: src/app/friends.rs)
+fn friend_msgs(g: &Got, from: usize) -> Vec<Value> {
+    g.ctl.iter().filter(|m| m["t"] == "friend").skip(from).cloned().collect()
+}
+
+// Free roam's friends through the whole server (src/app/friends.rs): pages whose players the hub linked ask about each
+// other and befriend each other with their messages on /lan, each hears of the other's request and of the friendship;
+// /friends shows the lists to the start page (where each friend plays) and takes its answers, a removal, a block;
+// what is no claimed name, not linked, or not this server's own page takes no part; and the friends are kept over a
+// restart (the friends lists' shelf, nfsu2-online buddy.rs)
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn free_roams_friends_through_the_server() {
+    use nfsu2_claims::{Claims, owner_of_token};
+    let tmp = tempfile::tempdir().unwrap();
+    let (data, wasm) = game_folder(tmp.path());
+    let state = tmp.path().join("state");
+    std::fs::create_dir_all(&state).unwrap();
+    let tok = |c: char| c.to_string().repeat(43);
+    let now = nfsu2_util::now_ms();
+    let claims = Claims::open(&state, now);
+    for (n, c) in [("Al", 'A'), ("Bo", 'B'), ("Cy", 'C')] {
+        claims.claim(n, &owner_of_token(&tok(c)).unwrap(), now).unwrap();
+    }
+    claims.save(now).unwrap();
+    let port = free_port();
+    let mut srv = Server::spawn(command(&data, &wasm, port, &state, &["--vault-gb", "1"]), port);
+    srv.ready().await;
+    let bearer = |c: char| format!("Bearer {}", tok(c));
+    let lists = |c: char| {
+        let b = bearer(c);
+        async move {
+            let (code, body) = http(port, "GET", "/friends", &[("authorization", &b), ("sec-fetch-site", "same-origin")], "").await;
+            assert_eq!(code, 200, "{body}");
+            serde_json::from_str::<Value>(&body).unwrap()
+        }
+    };
+    // the start page: its own lists; no keyphrase, another site, a keyphrase without a name
+    assert_eq!(lists('A').await, serde_json::json!({ "me": "Al_", "done": "ok", "friends": [], "asks": [], "sent": [] }));
+    assert_eq!(http(port, "GET", "/friends", &[], "").await.0, 401);
+    assert_eq!(http(port, "GET", "/friends", &[("authorization", &bearer('A')), ("sec-fetch-site", "cross-site")], "").await.0, 403);
+    assert_eq!(http(port, "GET", "/friends", &[("authorization", &bearer('A')), ("origin", "https://evil.example")], "").await.0, 403);
+    assert_eq!(lists('D').await["me"], Value::Null);
+    // in free roam: Al and Bo 4 m apart, Cy 2 km off, Dee (no keyphrase) beside Al
+    let host = format!("localhost:{port}");
+    let page = |name: &'static str, key: Option<char>, id: u32, x: f32| {
+        let host = host.clone();
+        async move {
+            let b = Browser::open_at(&host, port, "", None).await;
+            let mut h = serde_json::json!({ "t": "hello", "name": name });
+            if let Some(k) = key {
+                h["claim"] = tok(k).into();
+            }
+            b.text(&h.to_string());
+            b.binary(to_hub(&roam_hello_named(id, name.as_bytes())));
+            b.binary(to_hub(&roam_snap(id, [x, 0.0, 0.0])));
+            b
+        }
+    };
+    let al = page("Al", Some('A'), 701, 0.0).await;
+    let bo = page("Bo", Some('B'), 702, 4.0).await;
+    let cy = page("Cy", Some('C'), 703, 2000.0).await;
+    let dee = page("Dee", None, 704, -4.0).await;
+    for x in [&al, &bo, &cy, &dee] {
+        x.text(r#"{"t":"friend","op":"list"}"#);
+    }
+    let n = |b: &Browser| friend_msgs(&b.got(), 0).len();
+    async fn first(b: &Browser, op: &'static str, from: usize) -> Value {
+        b.until_ms(4000, move |g| friend_msgs(g, from).into_iter().find(|m| m["op"] == op)).await
+    }
+    assert_eq!(first(&al, "list", 0).await["me"], "Al_");
+    assert_eq!(first(&dee, "list", 0).await["me"], Value::Null);
+    // (the hub's ticks: linked)
+    sleep(1500).await;
+    let ask = |b: &Browser, op: &str, name: &str| b.text(&serde_json::json!({ "t": "friend", "op": op, "name": name }).to_string());
+    let (na, nb) = (n(&al), n(&bo));
+    ask(&al, "can", "Bo");
+    let c = first(&al, "can", na).await;
+    assert_eq!((c["name"].as_str(), c["st"].as_str()), (Some("Bo_"), Some("new")), "{c}");
+    for (who, st) in [("Cy", "far"), ("Dee", "theirs"), ("Nobody", "far")] {
+        let k = n(&al);
+        ask(&al, "can", who);
+        assert_eq!(first(&al, "can", k).await["st"], st, "{who}");
+    }
+    let k = n(&dee);
+    ask(&dee, "can", "Al");
+    assert_eq!(first(&dee, "can", k).await["st"], "claim", "Dee has no claimed name");
+    let k = n(&al);
+    ask(&al, "add", "Cy");
+    assert_eq!(first(&al, "add", k).await["done"], "far", "a request to a player it is not linked with");
+    // Al asks: Bo hears of it; the start pages see the request each way
+    let k = n(&al);
+    ask(&al, "add", "Bo");
+    assert_eq!(first(&al, "add", k).await["done"], "asked");
+    assert_eq!(first(&bo, "asks", nb).await["name"], "Al_");
+    assert_eq!(lists('A').await["sent"], serde_json::json!(["Bo_"]));
+    assert_eq!(lists('B').await["asks"], serde_json::json!(["Al_"]));
+    // Bo asks back: friends, both told, their lists again (and the hub has them)
+    let (ka, kb) = (n(&al), n(&bo));
+    ask(&bo, "add", "Al");
+    assert_eq!(first(&bo, "add", kb).await["done"], "friends");
+    assert_eq!(first(&al, "friends", ka).await["name"], "Bo_");
+    assert_eq!(first(&al, "list", ka).await["friends"], serde_json::json!(["Bo_"]));
+    assert_eq!(first(&bo, "list", kb).await["friends"], serde_json::json!(["Al_"]));
+    let k = n(&al);
+    ask(&al, "can", "Bo");
+    assert_eq!(first(&al, "can", k).await["st"], "friends");
+    // the start page: Bo plays in free roam, in the room of everyone; then Bo leaves
+    assert_eq!(lists('A').await["friends"], serde_json::json!([{ "name": "Bo_", "where": "roam", "room": "" }]));
+    bo.close().await;
+    sleep(1200).await;
+    assert_eq!(lists('A').await["friends"], serde_json::json!([{ "name": "Bo_", "where": "" }]));
+    // the start page's answers: a removal (friends no more, on both lists), a block, an op that is none
+    let post = |c: char, op: &str, name: &str| {
+        let (b, body) = (bearer(c), serde_json::json!({ "op": op, "name": name }).to_string());
+        async move {
+            let (code, r) = http(port, "POST", "/friends", &[("authorization", &b), ("content-type", "application/json")], &body).await;
+            assert_eq!(code, 200, "{r}");
+            serde_json::from_str::<Value>(&r).unwrap()
+        }
+    };
+    assert_eq!(post('B', "remove", "Al_").await["done"], "ok");
+    assert_eq!(lists('A').await["friends"], serde_json::json!([]));
+    assert_eq!(post('A', "remove", "Bo_").await["done"], "none");
+    assert_eq!(http(port, "POST", "/friends", &[("authorization", &bearer('A'))], r#"{"op":"befriend","name":"Bo"}"#).await.0, 400, "no such op");
+    assert_eq!(post('A', "block", "Cy").await["done"], "name", "a name as the lists have it: its Online form");
+    assert_eq!(post('A', "block", "Cy_").await["done"], "ok");
+    // befriended again in free roam, then a restart: kept
+    let bo = page("Bo", Some('B'), 705, 4.0).await;
+    bo.text(r#"{"t":"friend","op":"list"}"#);
+    sleep(1500).await;
+    let kb = n(&bo);
+    ask(&al, "add", "Bo");
+    ask(&bo, "add", "Al");
+    let _ = bo.until_ms(4000, move |g| friend_msgs(g, kb).into_iter().find(|m| m["op"] == "list" && m["friends"] == serde_json::json!(["Al_"]))).await;
+    for x in [al, bo, cy, dee] {
+        x.close().await;
+    }
+    assert_eq!(srv.stop().await, Some(0));
+    let lines = srv.lines();
+    for l in ["\"Al_\" asked \"Bo_\" to be friends (free roam)", "\"Bo_\" and \"Al_\" are friends (asked back in free roam)"] {
+        assert!(lines.iter().any(|x| x.contains(l)), "{l}: {lines:?}");
+    }
+    let mut srv = Server::spawn(command(&data, &wasm, port, &state, &["--vault-gb", "1"]), port);
+    srv.ready().await;
+    assert_eq!(lists('A').await["friends"], serde_json::json!([{ "name": "Bo_", "where": "" }]), "over the restart");
+    // the limits: a page's friend messages (10, then one every 2 s), a client's reads of /friends (60, then one a second)
+    let al = page("Al", Some('A'), 706, 0.0).await;
+    sleep(300).await;
+    for _ in 0..30 {
+        ask(&al, "can", "Bo");
+    }
+    sleep(1500).await;
+    let answered = friend_msgs(&al.got(), 0).iter().filter(|m| m["op"] == "can").count();
+    assert!((9..=11).contains(&answered), "{answered} of 30 asked at once answered");
+    let mut codes = Vec::new();
+    for _ in 0..70 {
+        codes.push(http(port, "GET", "/friends", &[("authorization", &bearer('A'))], "").await.0);
+    }
+    assert!(codes.iter().filter(|&&c| c == 429).count() >= 5 && codes[0] == 200, "{codes:?}");
+    al.close().await;
+    assert_eq!(srv.stop().await, Some(0));
+}

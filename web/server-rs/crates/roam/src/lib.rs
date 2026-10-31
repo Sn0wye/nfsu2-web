@@ -124,7 +124,7 @@ use nfsu2_util::cpu::{Busy, QuotaBusy, WorkersBusy};
 use nfsu2_util::{FrameCtx, Host, SwitchSend};
 use tokio::sync::oneshot;
 
-pub use hub::Hub;
+pub use hub::{Hub, Whereabouts};
 pub use wire::{decode_roam, encode_peers, encode_peers_crews};
 
 /// 10.77.0.253, runtime/web/net_proto.h NET_ROAM_HUB
@@ -236,6 +236,10 @@ enum Cmd {
     Blocks(u32, Vec<String>),
     PageName(u32, String),
     OtherNames(oneshot::Sender<HashMap<u32, Vec<String>>>),
+    Friends(u32, Arc<str>, Vec<Arc<str>>),
+    RoomName(u32, String),
+    Linked(u32, String, oneshot::Sender<Option<(u32, Option<Arc<str>>)>>),
+    Where(Vec<Arc<str>>, oneshot::Sender<Vec<Option<hub::Whereabouts>>>),
     Stop,
 }
 
@@ -331,6 +335,31 @@ impl RoamHub {
     pub fn attach_switch(&self, send: SwitchSend) {
         let _ = self.tx.send(Cmd::Attach(send));
     }
+
+    /// browser `vip`'s keyphrase `me` has these friends (their keyphrases): `Hub::friends`
+    pub fn friends(&self, vip: u32, me: Arc<str>, owners: Vec<Arc<str>>) {
+        let _ = self.tx.send(Cmd::Friends(vip, me, owners));
+    }
+
+    /// browser `vip`'s page plays in the room of this name: `Hub::room_name`
+    pub fn room_name(&self, vip: u32, name: String) {
+        let _ = self.tx.send(Cmd::RoomName(vip, name));
+    }
+
+    /// the browser and keyphrase of the player under `name` that browser `vip`'s player is linked with now:
+    /// `Hub::linked_with`
+    pub fn linked_with(&self, vip: u32, name: String) -> oneshot::Receiver<Option<(u32, Option<Arc<str>>)>> {
+        let (tx, rx) = oneshot::channel();
+        let _ = self.tx.send(Cmd::Linked(vip, name, tx));
+        rx
+    }
+
+    /// where each of these keyphrases plays in free roam: `Hub::whereabouts`
+    pub fn whereabouts(&self, owners: Vec<Arc<str>>) -> oneshot::Receiver<Vec<Option<hub::Whereabouts>>> {
+        let (tx, rx) = oneshot::channel();
+        let _ = self.tx.send(Cmd::Where(owners, tx));
+        rx
+    }
 }
 
 /// a panic in the hub (a bug) leaves the hub's thread running: the panic hook has printed it, the next frame or
@@ -401,6 +430,14 @@ fn run(
             Cmd::PageName(vip, name) => guard(|| hub.page_name(vip, name)),
             Cmd::OtherNames(tx) => guard(|| {
                 let _ = tx.send(hub.other_names());
+            }),
+            Cmd::Friends(vip, me, owners) => guard(|| hub.friends(vip, me, owners)),
+            Cmd::RoomName(vip, name) => guard(|| hub.room_name(vip, name)),
+            Cmd::Linked(vip, name, tx) => guard(|| {
+                let _ = tx.send(hub.linked_with(vip, &name));
+            }),
+            Cmd::Where(owners, tx) => guard(|| {
+                let _ = tx.send(hub.whereabouts(&owners));
             }),
             Cmd::Stop => {
                 // no more ticks, so no more lists: the switch's send goes too (it holds the switch, which holds

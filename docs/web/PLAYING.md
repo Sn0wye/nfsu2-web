@@ -552,6 +552,18 @@ Good to know:
   reads as a slur is no crew. Everyone else is still there, unlike a Room. Not private: anyone who types the same name
   joins, but other players never learn your crews: the server tells each game which players near it share one. A
   player on an older version is in no crew.
+- **Friends:** touch front bumpers with another player (nose to nose, both cars' fronts) for 3 seconds, solid or in
+  ghost mode, and a line under the middle of the picture offers **Add Bo as a friend**: press **F**, click or tap the
+  line, or use the page menu (F9, ☰, or Home on a controller). The other player's line then says **Al wants to be
+  friends: accept**; once both said yes you are friends. Touching the side or the back of a car offers nothing, nor
+  does a race, an outrun or a race lobby. Both of you need a claimed name ("Your name": a claim needs cloud saves);
+  without one the line says so. Your friends are listed under **Friends** in the Online section of the start page:
+  where each one plays now (free roam and its room, the game's Online lobby, offline), with **Join** to drive in their
+  room, and **Remove**; a request you could not answer in the game waits there (30 days), with Accept and Decline.
+  In free roam the server pairs friends first, as crew-mates, so you see each other however busy it is. A friend is a
+  friend in the game's Online mode too (EA Messenger), up to 50. The server takes a request only between two players
+  whose cars are within 30 m of each other, so nobody can ask you from across the map. Your friends see the name of
+  the room you play in, nobody else (it is told to the server only once you have a friend, and kept in memory only).
 - **Rooms:** set the same "Room" to see only some of the players' cars. A room is a filter between players, not
   privacy: every browser on the server still sees your name ("Your name", or the profile name), whether you are in
   the menus or driving, and the room, and someone with their own tools could join it. Play on a server only with

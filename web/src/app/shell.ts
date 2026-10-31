@@ -56,6 +56,7 @@ import { FpsOverlay, FPS_MODES, type FpsMode } from './overlay';
 import { LobbyPanel } from './lobby';
 import { ICON as CHAT_ICON, QuickChat } from './quickchat';
 import { groupsOf, phrasesOf } from './phrases';
+import { FriendPrompt, FriendsApi, FriendsPanel } from './friends';
 import { GameSession } from './game';
 import { AwayCheck, AWAY_LIMITS, type AwayLimits } from './away';
 import { changelog } from './changelog';
@@ -74,7 +75,10 @@ type Phase = 'boot' | 'ready' | 'error' | 'waiting' | 'starting' | 'playing' | '
 const $ = <T extends HTMLElement = HTMLElement>(sel: string) => document.querySelector<T>(sel)!;
 
 // the page address's test aids, once boot knows whether the server is a development server
-const TEST_PARAMS = ['env', 'save', 'fresh', 'reg', 'script', 'artifacts', 'dumpscale', 'away', 'rendercheck', 'playtime'];
+const TEST_PARAMS = ['env', 'save', 'fresh', 'reg', 'script', 'artifacts', 'dumpscale', 'away', 'rendercheck', 'playtime', 'claim'];
+/** a test page's keyphrase token (claim=, or env=NFSU2_TEST_CLAIM=: a development server's only): its claimed name and
+ *  friends without cloud saves */
+const testClaim = (): string | null => q.get('claim') ?? ENVIRONMENT.NFSU2_TEST_CLAIM ?? null;
 const addr = new URLSearchParams(location.search);
 let q = new URLSearchParams();
 let SAVE = 'save';
@@ -140,6 +144,8 @@ let radio: Radio | null = null;          // made at the first click on Radio: a 
 const theRadio = () => radio ??= new Radio(radioPort, l => log.add(`[radio] ${l}`));
 let lobbyPanel: LobbyPanel;
 let quickChat: QuickChat;                // free roam's fixed phrases (quickchat.ts)
+let friendPrompt: FriendPrompt;          // free roam's friends: Add friend over the game when front bumpers touch (friends.ts)
+let friendsPanel: FriendsPanel;          // ...and the friends on the start page
 let settings: SettingsPanel;
 let players: { now(): void; last(): PlayerCounts | null; fresh(ms: number): Promise<PlayerCounts | null> } | null = null;
 let saves: SavesPanel;
@@ -662,9 +668,10 @@ async function startGame() {
     // scope, and with it this game, reachable
     const ids = net ? await keepPageId() : null;
     session = await GameSession.start({
-      module: loaded!.module, info: loaded!.info, saveDir: SAVE, env: r.env, canvas, stage, audio, displayHz, netName, notice, lobby, say, marks,
+      module: loaded!.module, info: loaded!.info, saveDir: SAVE, env: r.env, canvas, stage, audio, displayHz, netName, notice, lobby, say, marks, bump,
+      friend: friendMsg,
       netBack, netQueue, onSaved,
-      netId: ids?.id, netWas: ids?.was, netClaim: net ? await vault.token().catch(() => null) ?? undefined : undefined, netRemoved,
+      netId: ids?.id, netWas: ids?.was, netClaim: net ? testClaim() ?? await vault.token().catch(() => null) ?? undefined : undefined, netRemoved,
       netBlock: net && r.env.NFSU2_ROAM === '1' ? blockList(r.env.NFSU2_ROAM_BLOCK ?? '') : undefined,
       artifacts: q.get('artifacts') ?? undefined, dumpScale: q.get('dumpscale') ? +q.get('dumpscale')! : undefined,
       toggleFullscreen, padPage: PAD_PAGE, log: logLine, onFatal: stopFatal, onOtherBuild: otherBuild,
@@ -692,6 +699,7 @@ async function startGame() {
   pauseHint.start(session);
   driftPanel.start(session);
   photo.start(session);
+  friendPrompt.start(session, net && r.env.NFSU2_ROAM === '1');
   quickChat.start(session, net && r.env.NFSU2_ROAM === '1' && r.env.NFSU2_ROAM_SAY !== '0',
     phrasesOf(r.env.NFSU2_ROAM_SAY_PHRASES), groupsOf(r.env.NFSU2_ROAM_SAY_GROUPS));
   fps.memory = session.proc.memory;
@@ -864,6 +872,7 @@ function endStage() {
   driftPanel.stop();
   photo.stop();
   quickChat.stop();
+  friendPrompt.stop();
   awake?.(); awake = null;
   away?.stop(); away = null;
   playTime?.stop(); playTime = null;
@@ -925,6 +934,7 @@ function onExit(s: GameSession, code: number) {
   }
   void saves.refresh();               // new or changed profiles
   vault.gameEnded();                  // and to the keyphrase with them
+  void friendsPanel.refresh(true);    // friends made in the game
   showNewer();                        // the note on the log, now that there is one
   void checkNewer();
 }
@@ -993,6 +1003,9 @@ function say(json: string) {
   quickChat.said(json);
 }
 function marks(n: number, m: Float32Array, ids: Uint32Array) { quickChat.marks(n, m, ids); }
+/** free roam's friends: front bumpers touching (the game), and the server's friend messages (friends.ts) */
+function bump(json: string) { friendPrompt.bump(json); }
+function friendMsg(m: Record<string, unknown>) { friendPrompt.server(m); }
 /** quick chat's line in the log: a speech balloon, the name, the phrase; in the notices' box, for 8 s */
 function chatLine(name: string, text: string, me: boolean) {
   const box = $('#notices'), line = document.createElement('div'), b = document.createElement('b');
@@ -1126,6 +1139,9 @@ function openMenu() {
   const crews = m.querySelector<HTMLButtonElement>('[data-act="crews"]')!;
   crews.hidden = roamCrews === null || !session?.net?.crews;
   crews.textContent = crewsLabel();
+  const fr = m.querySelector<HTMLButtonElement>('[data-act="friend"]')!, item = friendPrompt.menuItem();
+  fr.hidden = !item;
+  if (item) fr.textContent = item.label;
   m.querySelector<HTMLButtonElement>('[data-act="quit"]')!.textContent = quitLabel();
   showRadio(m);
   const line = $('#menu-save');
@@ -1255,7 +1271,10 @@ async function applyInvite(inv: Invite): Promise<Joined> {
     roamCrews = [...roamCrews, { name: inv.crew, rgb: freeColour(roamCrews) }];
     session.net.crews?.(roamCrews.map(c => roomHash(c.name)), rgbWords(roamCrews));
   }
-  if (live && inv.room !== undefined && !sameName(inv.room, roamRoom ?? '') && session?.net?.room?.(roomText(inv.room))) roamRoom = inv.room;
+  if (live && inv.room !== undefined && !sameName(inv.room, roamRoom ?? '') && session?.net?.room?.(roomText(inv.room))) {
+    roamRoom = inv.room;
+    friendPrompt.roomChanged();
+  }
   log.add(`[app] invite link: joined${d.room ? ` room "${inv.room}"` : ''}${d.crew ? ` crew "${inv.crew}"` : ''}${d.roam ? ', free roam on' : ''}` +
     ` (${live ? 'the game takes it now' : 'from the next Play'})`);
   return live ? 'live' : 'next';
@@ -1404,6 +1423,7 @@ async function menuAction(act: string) {
       break;
     }
     case 'crews': openCrews(); break;
+    case 'friend': m.close(); friendPrompt.menuItem()?.act(); break;
     case 'radio-folder': case 'radio': await radioClick(act); showRadio(m); break;
     case 'playlist': openPlaylist(); break;
     case 'help': m.close(); openHelp(); break;
@@ -1583,7 +1603,7 @@ function calm(): boolean {
 }
 /** the game's link to the server came back after losing it (a server restart, as for a deploy): asked within 30 s,
  *  spread out, so that a restarted server's players do not all ask at once */
-function netBack() { setTimeout(() => void checkNewer(), Math.random() * 30_000); }
+function netBack() { setTimeout(() => void checkNewer(), Math.random() * 30_000); friendPrompt.online(); }
 /** Reload for the server's version rev.  sessionStorage names it (afterUpdate); by itself only then (false: not
  *  reloaded), at Play either way. */
 async function reloadFor(rev: string, why: string, byItself: boolean): Promise<boolean> {
@@ -1658,7 +1678,7 @@ function showOverrides(given: string[], dev: boolean) {
   const env = Object.entries(ENVIRONMENT).map(([k, v]) => `${k}=${v}`);
   live(o, () => t('Test settings from this page\'s address (development server): save folder "{folder}"', { folder: SAVE }) +
     (env.length ? t('; {vars} (wins over Settings)', { vars: env.join(', ') }) : '') +
-    ['fresh', 'reg', 'script', 'artifacts', 'dumpscale', 'away', 'playtime'].filter(k => q.has(k)).map(k => `; ${k}`).join('') + '.');
+    ['fresh', 'reg', 'script', 'artifacts', 'dumpscale', 'away', 'playtime', 'claim'].filter(k => q.has(k)).map(k => `; ${k}`).join('') + '.');
 }
 
 export async function boot() {
@@ -1739,8 +1759,13 @@ export async function boot() {
     saveDir: SAVE, owner: () => instance.owner, playing: () => !!session, busy: () => !!session || starting || !instance.owner,
     confirm: confirmBox, choose: (title, body, ok, cancel) => choiceBox(title, body, ok, cancel),
     onRestored: () => { void loadSettings(); void settings.refresh(); void saves.refresh(); }, log: logLine,
-    // another passphrase here (or none): the line under Your name asks again with it
-    onLink: () => void nameRow.ask(),
+    // another passphrase here (or none): the line under Your name asks again with it, and the friends
+    onLink: () => { void nameRow.ask(); void friendsPanel.refresh(true); },
+  });
+  friendsPanel = new FriendsPanel($('#friends'), {
+    api: new FriendsApi(() => testClaim() ? Promise.resolve(testClaim()) : vault ? vault.token() : Promise.resolve(null)),
+    join: room => void offerInvite({ room }), confirm: (title, body, ok) => confirmBox(title, body, ok),
+    idle: () => !session && !starting, log: logLine,
   });
   $<HTMLButtonElement>('#play').onclick = () => void play();
   $<HTMLButtonElement>('#retry').onclick = () => void loadModule();
@@ -1799,6 +1824,7 @@ export async function boot() {
   // what the page drew itself, again in the language picked (the markup and the live texts redraw themselves)
   onLanguage(() => {
     renderProblems(); evaluate(); settings.render(); void saves.refresh(); vault.refresh(); keySheet.relabel(); lobbyPanel.redraw(); touch.relabel();
+    friendsPanel.render();
     helpSheet = null; $('#help-body').replaceChildren();
     syncPicker();
   });
@@ -1809,6 +1835,9 @@ export async function boot() {
   quickChat = new QuickChat($('#stage'), { line: chatLine, lobby: (name, text) => lobbyPanel.say(name, text), place: placeNotices, log: logLine });
   touch = new TouchControls($('#stage'), { toast, log: logLine, chat: () => quickChat.toggle(), chatOn: () => quickChat.enabled,
     settings: () => openHelp('keys') });
+  friendPrompt = new FriendPrompt($('#stage'), {
+    send: m => session?.net?.friend?.(m) ?? false, room: () => roamRoom ?? '', toast: s => toast(s, 5000), log: logLine,
+  });
   textField = new TextField($('#stage'), { log: logLine });
   pauseHint = new PauseHint($('#stage'), {
     open: openMenu, log: logLine,
@@ -1834,7 +1863,7 @@ export async function boot() {
   // the settings and saves show at once (read only until this tab owns the saves), and again once it does
   void settings.refresh();
   void saves.refresh();
-  void vault.start();
+  void vault.start().then(() => friendsPanel.refresh(true));
   void instance.whenOwner.then(async () => { await loadSettings(); evaluate(); void settings.refresh(); void saves.refresh(); vault.ownerNow(); syncPicker(); });
   // invite links: the one this page was opened with, one pasted into its address later, one another tab took for it
   hearInvites();

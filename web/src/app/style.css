@@ -721,6 +721,11 @@ html:has(> body > .stage:not([hidden])) { overflow: hidden; }
 }
 .pause-hint-list { color: var(--muted); }
 .pause-hint-list::before { content: " · "; }
+/* free roam's friends (friends.ts): the line over the game while front bumpers touch, as the pause menu's line; one
+ * that offers nothing (a request sent, or why not) is no button.  On the start page a row a friend, where it plays in
+ * lime while it plays */
+.friend-prompt:not(.offer), .friend-prompt:not(.offer):active { cursor: default; color: var(--muted); }
+.friend-state.ok { color: var(--lime); }
 /* the away check (away.ts): in the middle, until the player is back; a kick or a ban (shell.ts netRemoved) the same,
  * over the touch controls it leaves; upright, in the middle of the picture */
 .toast.away {

@@ -299,6 +299,13 @@ int roam_plat_said(const char *json){
     if (n <= 0 || n > (int)NET_MAX_PAYLOAD) return 1;
     return tx_push(NET_KIND_SAY, 0, 0, (const uint8_t *)json, n) ? 1 : -1;
 }
+/* front bumpers: the page's "Add friend" (NET_KIND_FRIEND) */
+int roam_plat_friend(const char *json){
+    int n = (int)strlen(json);
+    if (!MB) return -1;
+    if (n <= 0 || n > (int)NET_MAX_PAYLOAD) return 1;
+    return tx_push(NET_KIND_FRIEND, 0, 0, (const uint8_t *)json, n) ? 1 : -1;
+}
 void roam_plat_say_marks(const uint32_t *ids, const float *xys, int n){
     GwMark m[GW_MARKS_MAX];
     if (n > GW_MARKS_MAX) n = GW_MARKS_MAX;

@@ -150,6 +150,12 @@
 //! most 32, each cut to 24 printable characters: members.rs `block_names`): the switch hands them to the free-roam hub
 //! with the page's address (`Host::blocks`), which links the two with none of them.  They go with the connection.
 //!
+//! ## Friends
+//!
+//! A page's {"t":"friend",...} and {"t":"room",...} go to the server as they came ([`LanSwitch::on_text`], with the
+//! page's address, its keyphrase's owner and its client), under the text messages' budget (`text_rate`, `max_text`):
+//! free roam's friends (the server's friends.rs).  The server answers one page with [`LanSwitch::send_text`].
+//!
 //! ## Test aids
 //!
 //! The trace (`Tap`, the server's --online-trace, nfsu2-online's trace.rs) sees every frame the switch takes from a
@@ -500,6 +506,9 @@ pub struct Hello<'a> {
 }
 /// `AttachOpts::on_claim`: the hello's "claim" (a keyphrase's token) -> the owner the hosts are told of, or None
 pub type OnClaim = Box<dyn Fn(&str) -> Option<Arc<str>> + Send + Sync>;
+/// `LanSwitch::on_text`: a page's message for the server (the crate doc's Friends): its address, its keyphrase's owner
+/// (`AttachOpts::on_claim`), its client's opaque id (`AttachOpts::group`), and the message
+pub type OnText = Box<dyn Fn(u32, Option<Arc<str>>, Arc<str>, Map<String, Value>) + Send + Sync>;
 
 /// What the server tells the switch about a new connection (never its address: the crate doc's What a peer learns).
 #[derive(Default)]
@@ -834,6 +843,8 @@ pub struct LanSwitch {
     /// the players who left in the last `GONE_MS`, oldest first (`who`)
     gone: Mutex<std::collections::VecDeque<Who>>,
     stopped: CancellationToken,
+    /// where the pages' messages for the server go (`on_text`)
+    on_text: OnceLock<OnText>,
 }
 
 /// The bundle clock's tick for `n` players who take bundles: what sends them `bundle_budget` bundles a second in all
@@ -904,6 +915,7 @@ impl LanSwitch {
             slow,
             gone: Mutex::new(Default::default()),
             stopped: CancellationToken::new(),
+            on_text: OnceLock::new(),
             me: me.clone(),
             o,
         });
@@ -1193,6 +1205,25 @@ impl LanSwitch {
         let g = self.gone.lock();
         v.extend(g.iter().rev().filter(|w| w.vip == vip && w.left.is_some_and(|t| now - t <= GONE_MS)).cloned());
         v
+    }
+
+    /// where the pages' messages for the server go (the crate doc's Friends; the first one set stays)
+    pub fn on_text(&self, f: OnText) {
+        let _ = self.on_text.set(f);
+    }
+
+    /// a page's message for the server (`on_text`)
+    pub(crate) fn page_text(&self, peer: &Peer, m: Map<String, Value>) {
+        if let Some(f) = self.on_text.get() {
+            f(peer.vip, peer.conn.owner.get().cloned(), peer.group.id.clone(), m);
+        }
+    }
+
+    /// a control message to the page at `vip`, when it is there and has room (false: it is not)
+    pub fn send_text(&self, vip: u32, msg: Bytes) -> bool {
+        let guard = slot(vip).map(|i| self.table[i].load());
+        let Some(p) = guard.as_ref().and_then(|g| g.as_ref()).filter(|p| p.open()) else { return false };
+        self.send(p, Out::Text(msg))
     }
 
     /// The operator removes the player at `vip` (the crate doc's Kicks and bans): its page gets `msg` (a control

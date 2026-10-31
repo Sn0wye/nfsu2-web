@@ -86,6 +86,11 @@ export interface NetOptions {
   onLobby?: (json: string) => void;
   /** quick chat from the game (NET_KIND_SAY): a phrase said, by a friend or the player, as JSON */
   onSay?: (json: string) => void;
+  /** free roam's friends: the player's car and another's touched front bumpers for 3 s, or parted after that
+   *  (NET_KIND_FRIEND), as JSON from the game */
+  onBump?: (json: string) => void;
+  /** free roam's friends: a {"t":"friend",...} message from the server (server-rs src/app/friends.rs) */
+  onFriend?: (m: Record<string, unknown>) => void;
   /** the switch welcomed this page again after the link was lost (a server restart, as for a deploy) */
   onBack?: () => void;
   /** the server is full and this page waits in line for a place: where it is, as the switch last said; null: not
@@ -147,6 +152,9 @@ export interface NetLink {
   setSolid(on: boolean): void;
   /** quick chat: the player says phrase p (runtime/roam_game.c say_frame sends it); false: no free roam */
   say(p: number): boolean;
+  /** free roam's friends: a message to the server ({"t":"friend",...m}, or m's own "t": "room"); false: the link is
+   *  not up now */
+  friend(m: Record<string, unknown>): boolean;
   /** free roam's crews, changed while the game runs (the page menu): their hashes (players.ts roomHash), in the
    *  player's order, at most 4, and their colours (0x00rrggbb; 0 or none: the place's default) */
   setCrews(hashes: readonly number[], rgbs?: readonly number[]): void;
@@ -513,6 +521,12 @@ class Link implements NetLink {
     Atomics.store(this.roam.i32, P.W_SAY, (this.picks << 8 | (p & 0xff)) | 0);
     return true;
   }
+  friend(m: Record<string, unknown>): boolean {
+    const ws = this.ws;
+    if (!ws || ws.readyState !== WebSocket.OPEN || this.state !== 'online') return false;
+    ws.send(JSON.stringify({ t: 'friend', ...m }));
+    return true;
+  }
   setCrews(hashes: readonly number[], rgbs: readonly number[] = []) {
     this.crews = hashes.slice(0, P.CREW_WORDS);
     this.crewsRgb = rgbs.slice(0, P.CREW_WORDS).map(v => v & 0xffffff);
@@ -663,6 +677,8 @@ class Link implements NetLink {
       for (const g of m.gone) if (this.peerMap.delete(g >>> 0)) this.peerLeft(g >>> 0);
       for (const p of m.peers) this.peerMap.set(p.vip >>> 0, { name: String(p.name ?? ''), server: !!p.server });
       this.peersUpdated();
+    } else if (m.t === 'friend') {
+      this.o.onFriend?.(m);
     } else if (m.t === 'pong' && typeof m.id === 'number') {
       const t0 = this.pings.get(m.id);
       if (t0 === undefined) return;
@@ -754,6 +770,9 @@ class Link implements NetLink {
       } else if (dv.getUint32(s + P.S_KIND, true) === P.NET_KIND_SAY) {
         // quick chat: the same
         if (len <= P.NET_MAX_PAYLOAD) this.o.onSay?.(new TextDecoder().decode(ep.u8.slice(s + P.S_DATA, s + P.S_DATA + len)));
+      } else if (dv.getUint32(s + P.S_KIND, true) === P.NET_KIND_FRIEND) {
+        // front bumpers: the same
+        if (len <= P.NET_MAX_PAYLOAD) this.o.onBump?.(new TextDecoder().decode(ep.u8.slice(s + P.S_DATA, s + P.S_DATA + len)));
       } else if (open && len <= P.NET_MAX_PAYLOAD) {
         const f = new Uint8Array(P.F_DATA + len), fv = new DataView(f.buffer), dst = dv.getUint32(s + P.S_DST_IP, true);
         f[P.F_KIND] = dv.getUint32(s + P.S_KIND, true);

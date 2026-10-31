@@ -68,6 +68,9 @@
                                    (roam_game.c mp_panel) */
 #define NET_KIND_SAY      18u   /* TX ring only, never on the switch: quick chat, a phrase said (by a friend near,
                                    one in our race lobby, or the player), as a JSON object (roam_game.c say_*) */
+#define NET_KIND_FRIEND   19u   /* TX ring only, never on the switch: the player's car and a friend's touched front
+                                   bumpers for 3 s, or parted after that, as a JSON object {"id","name","on"}
+                                   (roam_game.c bump_*): the page's "Add friend" */
 #define NET_BROADCAST      0xFFFFFFFFu
 #define NET_ROAM_HUB       0x0A4D00FDu  /* 10.77.0.253: the server's free-roam hub (web/server-rs/crates/roam),
                                    an address the switch never hands out */

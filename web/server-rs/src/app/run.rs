@@ -237,6 +237,10 @@ pub async fn run(o: Options, cores: usize) {
         // the threads that keep the game data's blocks at brotli's best (kept.rs; 0: none)
         env_num("NFSU2_COMPRESS_THREADS", COMPRESS_THREADS) as usize,
     ));
+    // the pages' friend messages (friends.rs)
+    if let Some(f) = &app.friends {
+        f.attach();
+    }
     let o = &app.o;
     let control = super::control::listen(app.clone());
 
@@ -378,6 +382,9 @@ pub async fn run(o: Options, cores: usize) {
                 app.lan_opens.prune();
                 if let Some(v) = &app.vault {
                     v.prune();
+                }
+                if let Some(f) = &app.friends {
+                    f.prune();
                 }
                 // the claimed names: the ended ones go, names.json written when anything changed
                 if let Some(n) = &app.names {

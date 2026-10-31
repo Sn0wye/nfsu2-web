@@ -234,13 +234,16 @@ fn onl3_messenger_memory() {
             if w.c(cb).l("RADD").code.is_empty() {
                 ok += 1;
             }
+            // (gone: a persona online keeps its list in memory, one that left makes room)
+            w.close(cb);
+            w.close(cl);
         }
         ok
     };
     assert!(made(&mut w, "G") <= 5, "one client: at most listRate new lists");
     made(&mut w, "H");
     made(&mut w, "I");
-    assert!(w.core.buddies.lists.len() <= 10, "{} lists kept (the cap is 10)", w.core.buddies.lists.len());
+    assert!(w.core.buddies.lists.len() <= 10, "{} lists in memory (the cap is 10)", w.core.buddies.lists.len());
 }
 
 // ONL-4: a Messenger connection that logged in twice and closed breaks nobody's Messenger
@@ -347,7 +350,7 @@ fn onl6_blocked_list_follows_the_name() {
     w.send(mb, "RADM", fields![("USER", "Alice"), ("ID", 3)]);
     w.close(mb);
     w.core.buddy_save();
-    let stored = std::fs::read_to_string(dir.join("buddies.json")).unwrap();
+    let stored = crate::buddy::shelf_texts(&dir).join("\n");
     assert!(stored.contains(r#""I":["Mallory"]"#), "the blocked list is kept: {stored}");
     assert!(!stored.contains("still there") && !stored.contains(r#""R""#), "nothing of Mallory's waits: {stored}");
     // over a restart: whoever plays as Alice has the list
@@ -364,7 +367,7 @@ fn onl6_blocked_list_follows_the_name() {
     w.send(b2, "RDEL", fields![("LIST", "I"), ("USER", "Mallory")]);
     assert!(!w.core.buddies.blocked("mallory"));
     w.core.buddy_save();
-    assert!(!std::fs::read_to_string(dir.join("buddies.json")).unwrap().contains(r#""I""#));
+    assert!(!crate::buddy::shelf_texts(&dir).join("\n").contains(r#""I""#));
 }
 
 fn board(w: &mut World, kind: u32) -> Vec<String> {

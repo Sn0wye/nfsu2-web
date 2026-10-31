@@ -1324,6 +1324,8 @@ impl Core {
         x.lkey = Some(rand::hex(15));
         let addr = x.addr.clone();
         self.lobby.by_persona.insert(lower(&mine), s);
+        // (its Messenger lists in memory while it plays: the chat hides the lines of the players it blocks)
+        self.buddy_fetch(&lower(&mine));
         let taken = match (mine != asked, claimed) {
             (false, _) => String::new(),
             (true, false) => format!(" (\"{asked}\" is taken)"),
