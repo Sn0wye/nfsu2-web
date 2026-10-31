@@ -5,10 +5,12 @@
 //        layout independent) and its Windows virtual-key code; e.key gives
 //        the characters the layout typed (WM_CHAR, cp1252).  The C side
 //        applies keyboard_mac.m's delivery rules (Alt and SYS messages,
-//        autorepeat, keys whose release was lost).  Every key the game uses
-//        has its browser default prevented; Meta combinations stay the
-//        browser's, and Meta going down releases every held key because
-//        macOS browsers send no keyup for keys released while Cmd is held.
+//        autorepeat, keys whose release was lost, keys held through a
+//        release, which their next autorepeat presses again).  Every key
+//        the game uses has its browser default prevented; Meta combinations
+//        stay the browser's, and Meta going down releases every held key
+//        because macOS browsers send no keyup for keys released while Cmd
+//        is held.
 // Mouse: positions relative to the shown image (the C side maps them into
 //        the game's client area and HUD), buttons with pointer capture, the
 //        wheel in WHEEL_DELTA units.  The OS cursor is hidden over the game.
@@ -23,7 +25,8 @@
 // Pads:  polled every frame (gamepad.ts), with the page's share (padPage) and
 //        the touch controls' virtual controller merged in (touchPad).
 // Life:  blur and a hidden page deactivate the game (it parks, as after an
-//        alt-tab on Windows) and release everything held; focus and a visible
+//        alt-tab on Windows) and release everything held (a key still down
+//        is pressed again by its next autorepeat); focus and a visible
 //        page reactivate it; requestQuit() is WM_CLOSE.  Fullscreen locks the
 //        keyboard (navigator.keyboard.lock) so Escape and the browser's
 //        reserved shortcuts reach the game; holding Escape leaves fullscreen.
@@ -182,9 +185,6 @@ export function attachInput(proc: GameProcess, element: HTMLElement, opts: Input
   };
 
   // ---- keys ------------------------------------------------------------------
-  // keys the game holds, and those a focus loss let go of while the key stayed down: that key's next autorepeat is a press again
-  const down = new Set<string>(), regain = new Set<string>();
-  const letGo = () => { for (const c of down) regain.add(c); down.clear(); };
   const ignored = (e: Event) => {
     if (opts.ignore) return opts.ignore(e);
     const t = e.target as HTMLElement | null;
@@ -214,9 +214,7 @@ export function attachInput(proc: GameProcess, element: HTMLElement, opts: Input
     if (!pass.has(e.code)) e.preventDefault();
     if (mac && e.code === 'CapsLock') { push(IEV_KEY_TAP, k.dik, k.vk, flagsOf(e)); return; }
     const { chars, dead, sys } = charsOf(e.code, e);
-    const again = regain.delete(e.code) && e.repeat;
-    down.add(e.code);
-    push(IEV_KEY_DOWN, k.dik, vkOf(e.code, e, k.vk), flagsOf(e) | (e.repeat && !again ? IKF_REPEAT : 0) | (dead ? IKF_DEAD : 0), chars, 0, sys);
+    push(IEV_KEY_DOWN, k.dik, vkOf(e.code, e, k.vk), flagsOf(e) | (e.repeat ? IKF_REPEAT : 0) | (dead ? IKF_DEAD : 0), chars, 0, sys);
   }
   function onKeyUp(e: KeyboardEvent) {
     // every release goes to the game, even one aimed at the page's own UI:
@@ -226,7 +224,6 @@ export function attachInput(proc: GameProcess, element: HTMLElement, opts: Input
     if (isMeta(e.code) || e.key === 'Meta') return;
     const k = CODES[e.code];
     if (!k) return;
-    down.delete(e.code); regain.delete(e.code);
     if (!pass.has(e.code) && !ignored(e)) e.preventDefault();   // also keeps Alt from opening a menu bar
     if (mac && e.code === 'CapsLock') { push(IEV_KEY_TAP, k.dik, k.vk, flagsOf(e)); return; }
     push(IEV_KEY_UP, k.dik, k.vk, flagsOf(e));
@@ -337,14 +334,14 @@ export function attachInput(proc: GameProcess, element: HTMLElement, opts: Input
   const onContextMenu = (e: Event) => e.preventDefault();
 
   // ---- lifecycle -------------------------------------------------------------------
-  const onBlur = () => { letGo(); setActive(false, IREASON_WINDOW); };
+  const onBlur = () => setActive(false, IREASON_WINDOW);
   const onFocus = () => { if (!document.hidden) setActive(true, IREASON_WINDOW); };
   const onVisibility = () => {
     if (document.hidden) setActive(false, IREASON_VISIBILITY);
     else if (document.hasFocus()) setActive(true, IREASON_VISIBILITY);
   };
   const onPageHide = () => push(IEV_RELEASE_ALL, 0, 0, 0, [], 0, IREASON_PAGEHIDE);
-  const onElementBlur = () => { letGo(); push(IEV_RELEASE_ALL, 0, 0, 0, [], 0, IREASON_ELEMENT); };
+  const onElementBlur = () => push(IEV_RELEASE_ALL, 0, 0, 0, [], 0, IREASON_ELEMENT);
   const onFullscreen = () => {
     if (document.fullscreenElement) return;
     // leaving fullscreen (a held Escape, the browser's own key) can swallow key ups
