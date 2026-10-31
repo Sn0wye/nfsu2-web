@@ -520,6 +520,67 @@ fn a_race_no_racer_drives_is_a_cheat_line() {
     assert_eq!(cheats(&w).len(), 3, "{:?}", cheats(&w));
 }
 
+/// a drift race's report: (index, place, time, points, the biggest single drift's points, top speed m/s, dropped)
+fn resu_drift(players: &[(u8, u8, f32, i32, i32, f32, bool)]) -> String {
+    let mut b = vec![0u8; 8 + 55 * players.len()];
+    b[0] = 3;
+    b[1] = players.len() as u8;
+    b[2] = 3;
+    b[4..6].copy_from_slice(&4311u16.to_be_bytes());
+    b[7] = 3;
+    for (i, (index, place, time, score, best, top, out)) in players.iter().enumerate() {
+        let o = 8 + 55 * i;
+        b[o] = *index;
+        b[o + 1] = *place;
+        b[o + 2] = if *out { 0x0b } else { 1 };
+        b[o + 8..o + 12].copy_from_slice(&time.to_be_bytes());
+        b[o + 16..o + 20].copy_from_slice(&(top * 0.6).to_be_bytes());
+        b[o + 20..o + 24].copy_from_slice(&top.to_be_bytes());
+        b[o + 44..o + 48].copy_from_slice(&score.to_be_bytes());
+        b[o + 48..o + 52].copy_from_slice(&best.to_be_bytes());
+        if *out {
+            b[o + 32..o + 36].copy_from_slice(&(-1.0f32).to_be_bytes());
+        }
+    }
+    use base64::Engine;
+    base64::engine::general_purpose::STANDARD.encode(b)
+}
+
+// a drift race: each racer's own game's points and biggest drift on a line of its own, the result by points with the
+// track; a top speed no car makes is an edited car's, as in other races
+#[test]
+fn a_drift_races_points_are_logged_and_an_edited_car_is_a_cheat_line() {
+    let mut w = world();
+    let (ga, gb) = (client(&mut w, "10.77.7.1"), client(&mut w, "10.77.7.2"));
+    let (x, y) = (login(&mut w, ga, "Slider"), login(&mut w, gb, "Rocket"));
+    let auth = race(&mut w, "dh", &[x, y], vec![]).unwrap();
+    w.advance(100_000.0);
+    // (Rocket first with 1.2 million points and 125 m/s: 450 km/h)
+    let rows = [(1, 1, 70.0, 1_200_000, 1_150_000, 125.0, false), (0, 2, 80.5, 310_400, 42_000, 61.0, false)];
+    for c in [x, y] {
+        w.send(c, "rank", fields![("AUTH", auth.as_str()), ("RESU", resu_drift(&rows)), ("NAME0", "Slider"), ("NAME1", "Rocket")]);
+    }
+    let t = w.text();
+    let has = |want: &str| t.iter().any(|l| l == want);
+    assert!(
+        has("[online] \"dh\" (drift, track 4311, 3 laps): Slider's own game: 2 of 2, 310400 points, its biggest drift 42000, top speed 220 km/h, 1:20.50"),
+        "{}",
+        t.join("\n")
+    );
+    assert!(
+        has("[online] \"dh\" (drift, track 4311, 3 laps): Rocket's own game: 1 of 2, 1200000 points, its biggest drift 1150000, top speed 450 km/h, 1:10.00"),
+        "{}",
+        t.join("\n")
+    );
+    assert!(has("[online] \"dh\" (drift, unranked, track 4311, 3 laps): 1 Rocket 1200000 points, 2 Slider 310400 points"), "{}", t.join("\n"));
+    let cheats: Vec<&String> = t.iter().filter(|l| l.starts_with("[cheat]")).collect();
+    assert_eq!(
+        cheats,
+        ["[cheat] 10.77.7.2 \"Rocket\": won the online race \"dh\" (drift, track 4311, 3 laps) with 1200000 points, an edited car \
+          (no car of the game makes 420 km/h): by its own game; its top speed 450 km/h"]
+    );
+}
+
 // what a game shows of another racer is no [cheat] line (nfsu2.xyz, 2026-10-29: Ozz's game had Nef win a 4-minute
 // sprint at 7457 km/h, and a racer who left at 91 km): only each racer's own game's figures count
 #[test]
@@ -631,7 +692,7 @@ fn race_types() {
     for x in [c, d] {
         report(&mut w, x, &auth, &["Drift1", "Drift2"], &[(0, 1, 104.0), (1, 2, 92.0)], 3);
     }
-    assert!(w.logged("\"drift\" (drift, unranked): 1 Drift1"), "{}", w.text().join("\n"));
+    assert!(w.logged("\"drift\" (drift, unranked, track 4014, 2 laps): 1 Drift1 0 points, 2 Drift2 0 points"), "{}", w.text().join("\n"));
     assert_eq!(boards(&mut w), [0, 0, 2, 2, 0, 0]);
     // the seventh: the result is taken and logged; no board or career counts it
     let g = client(&mut w, "10.77.0.6");

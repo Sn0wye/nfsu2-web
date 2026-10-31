@@ -636,7 +636,12 @@ past a ban that still holds). Free roam's lines get none.
   leaves out a player of the race (one who joined as it started and never raced) is taken and looked at, as any
   other. An Online line names the track and laps and the racer's own top speed;
   the other racers' times are on that race's `[online]` lines (`grep -F '"<race name>"'`). A drift race is won by
-  points and is left out.
+  points: of the checks above only the edited car's top speed is made (and in a free-roam lobby the edited car's
+  line). An Online drift race's result line has the points and the track (`(drift, ranked, track 4311, 3 laps): 1 Bob
+  310400 points, ...`), and each racer's report a line of what its own game said (`Bob's own game: 1 of 4, 310400
+  points, its biggest drift 42000, top speed 220 km/h, 3:10.50`): what the game does with a car that hits a barrier
+  mid-drift (its drift so far lost) never reaches the server, so there is no line for it, and points far above the
+  others' on a track are for you to compare.
 - **Speed hacks in races**: a game whose clock runs fast does not get past a race's start, in a free-roam lobby
   (1.25 and 1.5 times as fast in a test) or in Online mode (1.5): every racer stays on the pre-race screen. The race's
   finish times are the same in every game, so they could not show one either.
