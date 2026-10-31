@@ -57,6 +57,9 @@ export const W_MAGIC = 0, W_VERSION = 1, W_HDR_BYTES = 2, W_SLOT_BYTES = 3;
 export const W_TX_SLOTS = 4, W_RX_SLOTS = 5, W_TX_OFF = 6, W_RX_OFF = 7;
 export const W_MODE = 8, W_PORT = 9, W_TX_HEAD = 10, W_TX_BELL = 11;          // C -> page
 export const W_RX_TAIL = 12, W_C_ALIVE = 13, W_WANT = 14;
+// LAN play: NET_UDP_PORTS_SET and bit port % 31 of each UDP port a socket is bound to (0: an older module that does not say)
+export const W_UDP_PORTS = 15;
+export const NET_UDP_PORTS_SET = 0x80000000;
 export const W_PAGE_STATE = 16, W_VIP = 17, W_NETMASK = 18, W_GENERATION = 19;   // page -> C
 export const W_TX_TAIL = 20, W_RX_HEAD = 21, W_RX_BELL = 22, W_RX_FULL_DROP = 23;
 export const W_TX_OFFLINE_DROP = 24, W_RX_OVERSIZE = 25, W_SWITCH_PEERS = 26;

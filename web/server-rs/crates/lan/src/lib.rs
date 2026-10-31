@@ -275,6 +275,17 @@ pub(crate) const BASE: u32 = (10 << 24) | (77 << 16);
 const KIND_UDP: u8 = 1;
 /// LAN play's UDP and ICMP (with TCP, kinds 3-5): broadcasts only to the browsers with LAN play open
 const KIND_LAN_UDP: u8 = 3;
+/// a page's "udp" (runtime/web/net_proto.h udp_ports): set when it says which UDP ports LAN play's sockets are bound
+/// to, bit port % 31 of each under it
+pub(crate) const UDP_SET: u32 = 0x8000_0000;
+
+/// a hello's or {"t":"lan"}'s "udp": the ports' bits under `UDP_SET`, or 0 (not said, or not a mask of them)
+pub(crate) fn udp_of(v: Option<&serde_json::Value>) -> u32 {
+    match v.and_then(nfsu2_util::json::safe_integer).map(u32::try_from) {
+        Some(Ok(m)) if m & UDP_SET != 0 => m,
+        _ => 0,
+    }
+}
 const KIND_LAN_ICMP: u8 = 5;
 /// LAN play's TCP segments: never dropped
 const KIND_STREAM: u8 = 4;
@@ -554,6 +565,9 @@ pub struct Breakdown {
     pub away: usize,
     /// the snapshots left out so far (the switch's `thinned`, since it started)
     pub thinned: u64,
+    /// LAN broadcasts not sent so far to pages with no socket on their port, and their bytes (`Peer::takes_udp`)
+    pub bcast_skipped: u64,
+    pub bcast_skipped_bytes: u64,
     /// what compact bundles carried to pages so far: car states' bytes and entries, how many of those went by their
     /// fields (fpred.rs), the rest's bytes and entries
     pub snap_bytes: u64,
@@ -600,6 +614,10 @@ pub(crate) struct Stats {
     shed: Counter,
     /// free roam's snapshots left out for a receiver behind on its path (lag.rs)
     thinned: Counter,
+    /// LAN broadcasts not sent to a page with LAN play open: no socket there on their port (`Peer::takes_udp`), and
+    /// their bytes
+    bcast_skipped: Counter,
+    bcast_skipped_bytes: Counter,
     bundles_in: Counter,
     bundles_out: Counter,
     /// addresses given back to their token
@@ -629,8 +647,8 @@ pub(crate) struct Stats {
 
 impl Stats {
     /// an entry of a compact bundle that went to a page: `data` the datagram, `e` its entry
-    pub(crate) fn entry_out(&self, data: &[u8], dst: u32, e: &[u8]) {
-        let k = mix::of_entry(data, dst);
+    pub(crate) fn entry_out(&self, data: &[u8], src: u32, dst: u32, e: &[u8]) {
+        let k = mix::of_entry(data, src, dst);
         self.mix.add(k, e.len() as u64);
         self.mix.add(mix::KINDS + k, 1);
         if data.len() > 16 + 5 && data[1] == compact::ROAM_OK && data[16 + 5] == 3 {
@@ -707,6 +725,9 @@ pub(crate) struct Peer {
     bundle: AtomicBool,
     /// LAN play open (its hello or {"t":"lan"} said so)
     lan: AtomicBool,
+    /// LAN play's bound UDP ports as its page last said them ("udp" in the hello or {"t":"lan"}): `UDP_SET` and bit
+    /// port % 31 of each; 0 not said (an older page or module), every LAN broadcast (`takes_udp`)
+    udp: AtomicU32,
     frames_in: AtomicU64,
     frames_out: AtomicU64,
     /// its reader posted a frame to the Online host while it handled the message it read last (route.rs; the reader
@@ -736,6 +757,11 @@ impl Peer {
     }
     fn lan(&self) -> bool {
         self.lan.load(Relaxed)
+    }
+    /// a LAN broadcast to `port` is for it: it has a socket there (or its page does not say which it has)
+    fn takes_udp(&self, port: u16) -> bool {
+        let m = self.udp.load(Relaxed);
+        m & UDP_SET == 0 || m & (1 << (port % 31)) != 0
     }
     fn open(&self) -> bool {
         self.conn.open()
@@ -1067,12 +1093,26 @@ impl LanSwitch {
             self.stats.dropped.inc();
             return SendResult::Gone;
         };
-        if p.conn.out.buffered() > self.o.online_queue {
+        if p.conn.out.buffered() + p.conn.out.dgram() > self.o.online_queue {
             self.stats.shed.inc();
             return SendResult::Full;
         }
         if let Some(c) = cause {
             c.spend(1, data.len());
+        }
+        // the free-roam hub's lists, map and lobbies to a page that takes bundles: in its next one (compact, a list as
+        // what changed since the last), not a message of their own.  Each message is what the server and the tunnel
+        // pay for, and the lists (2 a second to each free-roam player) were one in six of those to the pages
+        // (nfsu2.xyz 2026-10-31: 13,300 a second of them at 6,700 players); the writer counts them as it bundles them
+        let src = (data.len() >= 16 && data[0] == KIND_UDP).then(|| u32::from_be_bytes([data[4], data[5], data[6], data[7]]));
+        if let Some(src) = src.filter(|&s| Some(s) == self.roam_vip && p.takes_bundles()) {
+            if !self.room(p, Cut::Slow) {
+                self.stats.dropped.inc();
+                return SendResult::Full;
+            }
+            p.conn.push_dgram(compact::mark(&data), src, vip, self.clock.as_deref());
+            p.frames_out.fetch_add(1, Relaxed);
+            return SendResult::Sent;
         }
         let k = mix::of_host(&data, self.roam_vip, self.online_vip);
         let n = data.len() as u64;
@@ -1150,6 +1190,7 @@ impl LanSwitch {
             }
         }
         n.thinned = self.stats.thinned.get();
+        (n.bcast_skipped, n.bcast_skipped_bytes) = (self.stats.bcast_skipped.get(), self.stats.bcast_skipped_bytes.get());
         let s = &self.stats;
         (n.snap_bytes, n.snap_entries, n.fpred_entries) = (s.snap_bytes.get(), s.snap_entries.get(), s.fpred_entries.get());
         (n.other_bytes, n.other_entries) = (s.other_bytes.get(), s.other_entries.get());
@@ -1319,6 +1360,8 @@ impl LanSwitch {
             ("refused", &s.refused),
             ("shed", &s.shed),
             ("thinned", &s.thinned),
+            ("bcastSkipped", &s.bcast_skipped),
+            ("bcastSkippedBytes", &s.bcast_skipped_bytes),
             ("bundlesIn", &s.bundles_in),
             ("bundlesOut", &s.bundles_out),
             ("snapBytes", &s.snap_bytes),

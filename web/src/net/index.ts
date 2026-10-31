@@ -30,7 +30,9 @@
 // mailbox has wanted it for idleMs the page closes the socket ("idle": the
 // switch frees the address at once) and tells C (NET_PAGE_IDLE); the next
 // want connects again.  The switch also hears whether LAN play is open
-// ({"t":"lan"}): LAN broadcasts go only to the browsers that have it open.
+// ({"t":"lan"}): LAN broadcasts go only to the browsers that have it open,
+// and with "udp" (the bound UDP ports as bits, Endpoint.udpPorts) only to
+// those of them with a socket on the broadcast's port.
 // A player who is away (the app's check, web/src/app/away.ts) gives the place
 // back the same way, wanted or not: setAway(true) closes the socket ("idle")
 // and tells C NET_PAGE_IDLE (Online and LAN play lose their connections, free
@@ -296,6 +298,8 @@ class Endpoint {
   mode() { return Atomics.load(this.i32, P.W_MODE); }
   /** C needs the switch now */
   wants() { return Atomics.load(this.i32, P.W_WANT) !== 0; }
+  /** LAN play: the UDP ports its sockets are bound to, as bits (P.W_UDP_PORTS), or 0 when the module does not say */
+  udpPorts() { return Atomics.load(this.i32, P.W_UDP_PORTS) >>> 0; }
   ring() { Atomics.add(this.i32, P.W_RX_BELL, 1); Atomics.notify(this.i32, P.W_RX_BELL); }
   /** a received frame into the RX ring; false = the ring is full */
   put(b: ArrayBuffer): boolean {
@@ -338,6 +342,8 @@ class Link implements NetLink {
   private idleTimer: ReturnType<typeof setTimeout> | null = null;
   /** whether LAN play is open, as the switch last heard it (hello or {"t":"lan"}) */
   private lanSent = false;
+  /** the UDP ports the switch last heard (lanPorts), 0 none said */
+  private udpSent = 0;
   /** the last body of each source's free-roam datagrams of each type in this connection's compact bundles (the
    *  switch's deltas are made against them: proto.ts unpackCompact) */
   private refs = new Map<number, Uint8Array>();
@@ -445,6 +451,9 @@ class Link implements NetLink {
   }
   /** LAN play is open: the game's LAN or Online screens */
   private lanOpen() { return !!this.lan && this.lan.wants(); }
+  /** the UDP ports LAN play's sockets are bound to (Endpoint.udpPorts): the switch sends a LAN broadcast only to a
+   * page with a socket on its port, the others would drop it (0: the module does not say, every broadcast) */
+  private lanPorts() { return (this.lan && (this.lan.udpPorts() & P.NET_UDP_PORTS_SET) ? this.lan.udpPorts() : 0); }
   /** connect when a mailbox wants the switch, let it go idleMs after none does, and tell the switch about LAN play */
   private checkWant() {
     if (this.closed) return;
@@ -456,9 +465,10 @@ class Link implements NetLink {
       this.idleTimer = setTimeout(() => this.goIdle(), this.o.idleMs ?? 10_000);
     }
     const lan = this.lanOpen(), ws = this.ws;
-    if (lan !== this.lanSent && ws && ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({ t: 'lan', on: lan ? 1 : 0 }));
-      this.lanSent = lan;
+    const udp = lan ? this.lanPorts() : 0;
+    if ((lan !== this.lanSent || udp !== this.udpSent) && ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ t: 'lan', on: lan ? 1 : 0, ...(udp ? { udp } : {}) }));
+      this.lanSent = lan; this.udpSent = udp;
     }
   }
   /** nothing wanted the switch for idleMs: its place goes back (the switch frees the address at once) */
@@ -587,7 +597,8 @@ class Link implements NetLink {
       // connection); fpred: and a friend's car state by its fields, rounded (proto.ts fpredTake; `fp`); ldelta: and
       // every other datagram (a race's) as what changed since its source's last one of its kind (`others`)
       this.lanSent = this.lanOpen();
-      ws.send(JSON.stringify({ t: 'hello', name: this.o.name ?? 'player', lan: this.lanSent ? 1 : 0, bundle: 1, compact: 1, delta: 1, fpred: 1, ldelta: 1,
+      this.udpSent = this.lanSent ? this.lanPorts() : 0;
+      ws.send(JSON.stringify({ t: 'hello', name: this.o.name ?? 'player', lan: this.lanSent ? 1 : 0, ...(this.udpSent ? { udp: this.udpSent } : {}), bundle: 1, compact: 1, delta: 1, fpred: 1, ldelta: 1,
         ...(this.o.id ? { id: this.o.id } : {}), ...(this.o.id && this.o.was?.length ? { was: this.o.was } : {}),
         ...(this.o.claim ? { claim: this.o.claim } : {}), ...(this.o.block?.length ? { block: this.o.block } : {}),
         ...(this.vipNum && this.token ? { vip: P.ipStr(this.vipNum), token: this.token } : {}), ...(this.ticket ? { ticket: this.ticket } : {}) }));

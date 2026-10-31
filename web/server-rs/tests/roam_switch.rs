@@ -52,6 +52,7 @@ async fn on_the_switch_frames_to_the_hub_reach_it_its_lists_come_back_a_departur
     // its next tick (one a second)
     let (got, vip, id) = a.until_ms(2500, |g| list_from_hub(g, a.vip)).await;
     assert_eq!(be32(&got, 8), a.vip, "Ann got a list from 10.77.0.253");
+    assert!(a.until(|g| Some(g.bundled.is_empty())).await, "a page that takes no bundles: the list alone");
     assert_eq!(be16(&got, 12), 47210);
     assert_eq!(be16(&got, 14), 47210);
     assert_eq!(vip, b.vip);

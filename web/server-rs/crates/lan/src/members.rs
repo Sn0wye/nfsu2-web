@@ -181,6 +181,7 @@ impl LanSwitch {
             hello: false.into(),
             bundle: false.into(),
             lan: false.into(),
+            udp: 0.into(),
             frames_in: 0.into(),
             frames_out: 0.into(),
             fed_online: false.into(),
@@ -669,6 +670,7 @@ fn greet(peer: &Peer, m: &Map<String, Value>, fpred: bool) {
     let compact = if compact >= DELTAS && is_num(m.get("ldelta"), 1.0) { compact | OTHERS } else { compact };
     peer.conn.compact.store(compact, Relaxed);
     peer.lan.store(is_num(m.get("lan"), 1.0), Relaxed);
+    peer.udp.store(crate::udp_of(m.get("udp")), Relaxed);
     if let Some(Value::String(name)) = m.get("name") {
         let _ = peer.name.set(crate::clean_name(name).into_boxed_str());
     }

@@ -520,6 +520,8 @@ pub struct Got {
     /// binary messages counted, not kept (a measurement's clients: their memory is the test process's too)
     pub drop_frames: bool,
     pub frame_count: usize,
+    /// of `frames`, the indexes of those that came inside a bundle (kind 32)
+    pub bundled: Vec<usize>,
     /// the last echo reply's sequence number
     pub echoed: u32,
     echo_seq: u32,
@@ -544,6 +546,22 @@ impl Got {
         Some(list)
     }
     fn frame(&mut self, f: Vec<u8>) {
+        // a bundle from the switch (kind 32, entries of n = 0: the frame with its own destination): its frames, as the
+        // page takes them (the hub's lists come in them since they stopped being messages of their own)
+        if f.first() == Some(&32) {
+            let mut i = 4;
+            while i + 4 <= f.len() {
+                let n = u16::from_be_bytes([f[i + 2], f[i + 3]]) as usize;
+                let at = i + 4 + 4 * f[i] as usize;
+                if at + n > f.len() {
+                    break;
+                }
+                self.bundled.push(self.frames.len());
+                self.frame(f[at..at + n].to_vec());
+                i = at + n;
+            }
+            return;
+        }
         self.frame_count += 1;
         // the virtual host's echo replies (ICMP type 0): their sequence numbers, the barrier of `echo()`
         if f.len() >= 32 && f[0] == 5 && f[24] == 0 && be32(&f, 4) == VHOST_VIP {

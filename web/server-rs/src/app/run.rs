@@ -283,6 +283,15 @@ pub async fn run(o: Options, cores: usize) {
                     b.thinning,
                     b.thinned - thinned
                 ));
+                // LAN broadcasts (server.dll's adverts) not sent to pages with LAN play open but no socket on their port
+                // (nfsu2-lan Peer::takes_udp)
+                let skipped = b.bcast_skipped - was.bcast_skipped;
+                if skipped > 0 {
+                    log::line(&format!(
+                        "[players] LAN broadcasts not sent since the last count (no socket on their port there): {skipped} ({:.1} Mbit/s)",
+                        (b.bcast_skipped_bytes - was.bcast_skipped_bytes) as f64 * 8.0 / 1e6 / BREAKDOWN_EVERY.as_secs_f64()
+                    ));
+                }
                 // the line (nfsu2-lan queue.rs): pages waiting for a place, and how long the longest of those let in
                 // waited
                 if b.waiting > 0 || b.waited > 0 {

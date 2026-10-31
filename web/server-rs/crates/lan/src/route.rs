@@ -164,7 +164,15 @@ impl LanSwitch {
         if dst == BROADCAST {
             match all {
                 Some(all) if count > 0 => {
+                    // LAN play's UDP: only to the pages with a socket on its port (the others drop it on arrival:
+                    // runtime/web/net_lan.c udp_ports).  Its sender paid for them all (`route`), as before.
+                    let port = (data[0] == KIND_LAN_UDP && data.len() >= 16).then(|| u16::from_be_bytes([data[14], data[15]]));
                     for p in all.iter().filter(|p| reaches(p)) {
+                        if port.is_some_and(|d| !p.takes_udp(d)) {
+                            self.stats.bcast_skipped.inc();
+                            self.stats.bcast_skipped_bytes.add(data.len() as u64);
+                            continue;
+                        }
                         self.deliver(peer, p, data, dst);
                     }
                 }
@@ -423,6 +431,7 @@ fn own(data: &Bytes, src: u32, dst: u32) -> Bytes {
 #[cfg(test)]
 pub(crate) mod tests {
     use super::*;
+    use crate::{BASE, UDP_SET};
     use crate::{AttachCtx, LanOptions};
 
     /// a peer on the switch without a socket: its connection's queue only fills
@@ -565,6 +574,111 @@ pub(crate) mod tests {
         bc.terminate();
         sw.closed(&bc, &bctx);
         assert_eq!(on(&sw), [a.vip], "gone with its connection");
+        sw.stop();
+    }
+
+    /// A LAN broadcast goes only to the pages with a socket on its port as their "udp" says (server.dll's advert on
+    /// 9999: a joiner closed the server list's socket, the Online screens never had one), and to every page that does
+    /// not say (an older page or module); one that sends its ports with {"t":"lan"} changes where they go
+    #[tokio::test]
+    async fn a_lan_broadcast_goes_only_where_a_socket_takes_its_port() {
+        let sw = LanSwitch::new(LanOptions::default(), "", None, None, None, None);
+        let (_ac, _actx, a) = peer(&sw, "a");
+        let (_bc, _bctx, b) = peer(&sw, "b");
+        let (_cc, _cctx, c) = peer(&sw, "c");
+        let (_dc, _dctx, d) = peer(&sw, "d");
+        let hello = |udp: &str| match crate::text::parse_json(format!(r#"{{"t":"hello","name":"x","lan":1{udp}}}"#).as_bytes()) {
+            Some(serde_json::Value::Object(m)) => m,
+            _ => unreachable!(),
+        };
+        let bit = |port: u32| 1u32 << (port % 31);
+        sw.hello(&a, &hello(""));
+        sw.hello(&b, &hello(&format!(r#","udp":{}"#, UDP_SET | bit(9999) | bit(3658))));
+        sw.hello(&c, &hello(&format!(r#","udp":{}"#, UDP_SET | bit(3658))));
+        sw.hello(&d, &hello(""));
+        let advert = |port: u16| {
+            let mut f = frame(KIND_LAN_UDP, BROADCAST).to_vec();
+            f[12..14].copy_from_slice(&port.to_be_bytes());
+            f[14..16].copy_from_slice(&port.to_be_bytes());
+            Bytes::from(f)
+        };
+        let got = |p: &Peer| p.conn.out.q.lock().iter().filter(|o| matches!(o, Out::Frame { .. })).count();
+        assert!(sw.route(&a, &advert(9999), std::iter::once(BROADCAST)));
+        assert_eq!((got(&b), got(&c), got(&d)), (1, 0, 1), "b has 9999, c only 3658, d does not say");
+        assert_eq!(sw.stats.bcast_skipped.get(), 1);
+        assert_eq!(sw.stats.bcast_skipped_bytes.get(), 40);
+        // the same bit (3658 + 31 x 1): it goes, as a port with a socket would
+        assert!(sw.route(&a, &advert(3658 + 31), std::iter::once(BROADCAST)));
+        assert_eq!((got(&b), got(&c), got(&d)), (2, 1, 2));
+        // c's server list opens (9999 bound): {"t":"lan"} with its ports; a mask without UDP_SET, or none, says nothing
+        c.udp.store(crate::udp_of(Some(&serde_json::json!(UDP_SET | bit(9999)))), Relaxed);
+        b.udp.store(crate::udp_of(Some(&serde_json::json!(bit(5)))), Relaxed);
+        assert!(sw.route(&a, &advert(9999), std::iter::once(BROADCAST)));
+        assert_eq!((got(&b), got(&c), got(&d)), (3, 2, 3));
+        // not LAN play's UDP (its ICMP, kind 5): every page with LAN play open, whatever its ports
+        c.udp.store(UDP_SET, Relaxed);
+        assert!(sw.route(&a, &frame(KIND_LAN_ICMP, BROADCAST), std::iter::once(BROADCAST)));
+        assert_eq!(got(&c), 3);
+        assert_eq!(sw.stats.bcast_skipped.get(), 1);
+        sw.stop();
+    }
+
+    /// the free-roam hub for these tests: only its address (10.77.0.253)
+    struct Hub;
+    impl nfsu2_util::Host for Hub {
+        fn vip(&self) -> u32 {
+            BASE | 0xFD
+        }
+        fn name(&self) -> &str {
+            ""
+        }
+        fn listed(&self) -> bool {
+            false
+        }
+        fn frame(&self, _from: u32, _data: Bytes, _ctx: FrameCtx) {}
+        fn peer_gone(&self, _vip: u32) {}
+        fn info(&self) -> tokio::sync::oneshot::Receiver<serde_json::Value> {
+            tokio::sync::oneshot::channel().1
+        }
+        fn vips(&self) -> tokio::sync::oneshot::Receiver<std::collections::HashSet<u32>> {
+            tokio::sync::oneshot::channel().1
+        }
+        fn stop(&self) {}
+    }
+
+    /// The hub's lists, map and lobbies (`send_to` from 10.77.0.253) to a page that takes bundles go in its next
+    /// bundle, marked for the compact form; to one that does not, a message of their own as before, and so does any
+    /// other host's frame (the Online host's TCP segments)
+    #[tokio::test]
+    async fn the_hubs_frames_go_in_a_bundle_to_a_page_that_takes_them() {
+        let sw = LanSwitch::new(LanOptions::default(), "", None, Some(Arc::new(Hub)), None, None);
+        let (_ac, _actx, a) = peer(&sw, "a");
+        let (_bc, _bctx, b) = peer(&sw, "b");
+        let hello = |bundle: u8| match crate::text::parse_json(format!(r#"{{"t":"hello","name":"x","bundle":{bundle},"compact":{bundle}}}"#).as_bytes()) {
+            Some(serde_json::Value::Object(m)) => m,
+            _ => unreachable!(),
+        };
+        sw.hello(&a, &hello(1));
+        sw.hello(&b, &hello(0));
+        let from = |src: u32, to: u32, kind: u8| {
+            let mut f = frame(kind, to).to_vec();
+            f[4..8].copy_from_slice(&src.to_be_bytes());
+            Bytes::from(f)
+        };
+        let hub = BASE | 0xFD;
+        assert!(matches!(sw.send_to(a.vip, from(hub, a.vip, KIND_UDP), None), nfsu2_util::SendResult::Sent));
+        assert!(matches!(sw.send_to(b.vip, from(hub, b.vip, KIND_UDP), None), nfsu2_util::SendResult::Sent));
+        assert!(matches!(sw.send_to(a.vip, from(BASE | 1, a.vip, KIND_STREAM), None), nfsu2_util::SendResult::Sent));
+        let kinds = |p: &Peer| {
+            p.conn.out.q.lock().iter().filter_map(|o| match o {
+                Out::Dgram { src, dst, .. } => Some(format!("dgram {src:x}>{dst:x}")),
+                Out::Raw(f) => Some(format!("raw {:x}", u32::from_be_bytes([f[4], f[5], f[6], f[7]]))),
+                _ => None,
+            }).collect::<Vec<_>>()
+        };
+        assert_eq!(kinds(&a), [format!("dgram {hub:x}>{:x}", a.vip), format!("raw {:x}", BASE | 1)]);
+        assert_eq!(kinds(&b), [format!("raw {hub:x}")]);
+        assert!(a.conn.out.dgram() > 0, "counted as a bundle's entry");
         sw.stop();
     }
 
