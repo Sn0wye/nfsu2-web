@@ -114,6 +114,8 @@ enum { RC_MSG_HELLO = 1, RC_MSG_PEERS = 2, RC_MSG_SNAP = 3, RC_MSG_CFG = 4, RC_M
 /* RACEREP flags */
 #define RC_RR_HOST       0x01       /* the reporter hosted the race */
 #define RC_RR_QUIT       0x02       /* ...left it with its pause menu's Quit */
+#define RC_RR_EDITED     0x04       /* ...in a car whose game data is edited (mprace_type_edited: its type's record in
+                                       GLOBAL\GlobalB not the game's); a hub before it refuses the report */
 /* RACERES row flags */
 #define RC_RS_FINISHED   0x01       /* the racer finished (its time is the race's) */
 #define RC_RS_OURS       0x02       /* the reporter's own row (one at most) */

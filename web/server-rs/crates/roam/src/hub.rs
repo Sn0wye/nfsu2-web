@@ -189,17 +189,26 @@ const CAR_KW: f64 = 600.0;
 const CAR_KMH: f64 = 420.0;
 const CAR_RATING: f64 = 1000.0;
 
-/// A player's race report's `[cheat]` line when its car is one no tuning makes (an edited save's): `who` its address
-/// and name (`10.77.3.41 "Bob"`)
+/// A player's race report's `[cheat]` line when its car is one no tuning makes (an edited save's), or its game says the
+/// car's data is edited (an edited GlobalB's: a guide passed among players, 2026-10-31, has an AI agent make one car type
+/// 3,600 kW with x2.5 grip and brakes in the browser's copy of the file; the game sums each type's record, mprace.c):
+/// `who` its address and name (`10.77.3.41 "Bob"`)
 fn edited_car_line(who: &str, r: &wire::RaceRep) -> Option<String> {
-    if r.players < 2 || (r.kw < CAR_KW && r.kmh < CAR_KMH && r.rating < CAR_RATING) {
+    let over = r.kw >= CAR_KW || r.kmh >= CAR_KMH || r.rating >= CAR_RATING;
+    if r.players < 2 || !(over || r.edited) {
         return None;
+    }
+    let mut why = Vec::new();
+    if r.edited {
+        why.push("its game has the car's data edited (GlobalB)".to_string());
+    }
+    if over {
+        why.push(format!("no car of the game makes {CAR_KW:.0} kW, {CAR_KMH:.0} km/h or a rating of {CAR_RATING:.0}"));
     }
     let name: String = r.name.iter().map(|&c| c as char).collect();
     Some(format!(
         "[cheat] {who}: raced in the race of lobby {:08x} (race {:08x}: {}, {} lap{}) in an edited car, {}: {name} (type {}), \
-         {:.0} kW, {:.0} kg, {:.0} km/h, rated {:.0}; no car of the game makes {CAR_KW:.0} kW, {CAR_KMH:.0} km/h or a \
-         rating of {CAR_RATING:.0}",
+         {:.0} kW, {:.0} kg, {:.0} km/h, rated {:.0}; {}",
         r.lobby,
         r.race,
         results::mode_name(r.mode),
@@ -210,7 +219,8 @@ fn edited_car_line(who: &str, r: &wire::RaceRep) -> Option<String> {
         r.kw,
         r.kg,
         r.kmh,
-        r.rating
+        r.rating,
+        why.join("; ")
     ))
 }
 

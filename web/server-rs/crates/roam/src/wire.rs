@@ -133,6 +133,8 @@ pub(crate) struct RaceRep<'a> {
     pub host: bool,
     /// left with its pause menu's Quit
     pub quit: bool,
+    /// raced in a car whose game data is edited (its type's record in GLOBAL\GlobalB not the game's: RC_RR_EDITED)
+    pub edited: bool,
     pub car_type: u8,
     /// 0 fastest .. 3; -1 not rated
     pub class: i8,
@@ -161,7 +163,7 @@ fn racerep(d: &[u8], o: usize) -> Option<RaceRep<'_>> {
         || !(1..=LOBBY_PLAYERS as u8).contains(&players)
         || place > players
         || !(-1..=3).contains(&class)
-        || flags & !3 != 0
+        || flags & !7 != 0
     {
         return None;
     }
@@ -184,6 +186,7 @@ fn racerep(d: &[u8], o: usize) -> Option<RaceRep<'_>> {
         players,
         host: flags & 1 != 0,
         quit: flags & 2 != 0,
+        edited: flags & 4 != 0,
         car_type: d[o + 15],
         class,
         rating: nums[0],

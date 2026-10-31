@@ -523,6 +523,43 @@ fn a_race_no_racer_drives_is_a_cheat_line() {
     assert_eq!(cheats(&w).len(), 3, "{:?}", cheats(&w));
 }
 
+// a racer whose game says its car's data is edited (the rank's code "ed" and the car type: runtime/mprace.c; a guide
+// passed among players, 2026-10-31, edits one car in the browser's copy of GlobalB) is a [cheat] line however it did,
+// finished or not; the game's own code (0) and other codes are none
+#[test]
+fn a_car_of_edited_game_data_is_a_cheat_line() {
+    use crate::aries::encode_frame;
+    let mut w = world();
+    let cheats = |w: &World| w.text().iter().filter(|l| l.starts_with("[cheat]")).cloned().collect::<Vec<_>>();
+    let race_of = |w: &mut World, name: &str, a: &str, b: &str, codes: [&str; 2], players: &[(u8, u8, f32, f32, bool)]| {
+        let (ga, gb) = (client(w, &format!("10.77.5.{}", name.len())), client(w, &format!("10.77.6.{}", name.len())));
+        let (x, y) = (login(w, ga, a), login(w, gb, b));
+        let auth = race(w, name, &[x, y], vec![]).unwrap();
+        w.advance(61_000.0);
+        for (c, code) in [x, y].into_iter().zip(codes) {
+            let f = fields![("AUTH", auth.as_str()), ("RESU", resu_avg(1, players)), ("NAME0", a), ("NAME1", b)];
+            w.send_raw(c, &encode_frame("rank", code, &f).unwrap());
+        }
+    };
+    let honest = [(0, 1, 56.49, 29.83, false), (1, 2, 58.15, 29.64, false)];
+    race_of(&mut w, "plain", "Fast1", "Slow1", ["", "filt"], &honest);
+    race_of(&mut w, "odd", "Fast2", "Slow2", ["edz9", "ed1"], &honest);
+    assert_eq!(cheats(&w), Vec::<String>::new());
+    race_of(&mut w, "supra", "Tuner", "Slow3", ["ed0f", ""], &honest);
+    assert_eq!(
+        cheats(&w),
+        ["[cheat] 10.77.5.5 \"Tuner\": won the online race \"supra\" (sprint, track 4102, 1 lap) in 0:56.49, an edited car \
+          (SUPRA, type 15: its game has the car's data edited, GlobalB): by its own game; its top speed 134 km/h"]
+    );
+    // not finished, and a car its game could not tell
+    race_of(&mut w, "gone", "Slow4", "Quit", ["", "edff"], &[(0, 1, 56.49, 29.83, false), (1, 0, 30.0, 25.0, true)]);
+    assert_eq!(
+        cheats(&w)[1..],
+        ["[cheat] 10.77.6.4 \"Quit\": raced in the online race \"gone\" (sprint, track 4102, 1 lap), an edited car (type \
+          unknown: its game has the car's data edited, GlobalB): by its own game; its top speed 112 km/h"]
+    );
+}
+
 /// a drift race's report: (index, place, time, points, the biggest single drift's points, top speed m/s, dropped)
 fn resu_drift(players: &[(u8, u8, f32, i32, i32, f32, bool)]) -> String {
     let mut b = vec![0u8; 8 + 55 * players.len()];

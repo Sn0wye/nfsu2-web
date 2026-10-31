@@ -4168,7 +4168,7 @@ static void mp_report(void){
     m.mode = (uint8_t)r.mode; m.laps = (uint8_t)r.laps; m.track = (uint16_t)r.track;
     m.players = (uint8_t)(r.cars < 1 ? 1 : r.cars > RC_LOBBY_MAX ? RC_LOBBY_MAX : r.cars);
     m.place = (uint8_t)(r.place < 0 || r.place > m.players ? 0 : r.place);
-    m.flags = (uint8_t)((r.host ? RC_RR_HOST : 0) | (r.quit ? RC_RR_QUIT : 0));
+    m.flags = (uint8_t)((r.host ? RC_RR_HOST : 0) | (r.quit ? RC_RR_QUIT : 0) | (mprace_type_edited(r.car.type) ? RC_RR_EDITED : 0));
     m.type = (uint8_t)r.car.type; m.cls = (int8_t)(r.car.cls < -1 || r.car.cls > 3 ? -1 : r.car.cls);
     m.rating = rr_in(r.car.rating, 0.f, 5000.f); m.field = rr_in(r.field, 0.f, 5000.f); m.factor = rr_in(r.factor, 0.01f, 100.f);
     m.kw = rr_in(r.car.power / 1000.f, 0.f, 10000.f); m.kg = rr_in(r.car.mass, 0.f, 50000.f); m.kmh = rr_in(r.car.top * 3.6f, 0.f, 2000.f);
@@ -4192,9 +4192,9 @@ static void mp_report(void){
         q.n++;
     }
     roam_plat_lock(); int sent = rc_send_racerep(&g_s, &m), sent_res = q.n && rc_send_raceres(&g_s, &q); roam_plat_unlock();
-    rlog("[roam] f=%ld race lobby %08x: its race reported to the server%s: place %d of %d, %s rated %.1f (the cars' average %.1f); "
-         "its results, %d rows%s\n", rh_frame(), m.lobby, sent ? "" : " (not sent: no hub)", m.place, m.players, m.name, (double)m.rating,
-         (double)m.field, q.n, sent_res ? "" : " (not sent)");
+    rlog("[roam] f=%ld race lobby %08x: its race reported to the server%s: place %d of %d, %s%s rated %.1f (the cars' average %.1f); "
+         "its results, %d rows%s\n", rh_frame(), m.lobby, sent ? "" : " (not sent: no hub)", m.place, m.players, m.name,
+         m.flags & RC_RR_EDITED ? " (its game data edited)" : "", (double)m.rating, (double)m.field, q.n, sent_res ? "" : " (not sent)");
 }
 /* we open a lobby for race r */
 static int mp_open(int64_t host, uint32_t r){

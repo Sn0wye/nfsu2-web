@@ -364,7 +364,7 @@ pub struct Player {
 }
 
 /// A racer's own figures (`race_cheats`): finished, its place, time (s), average and top speed (m/s), a drift race's
-/// points, and whether a `[cheat]` line told of it
+/// points, the car type its game says it raced with edited data (`edited_code`), and whether a `[cheat]` line told of it
 #[derive(Clone, Copy, Debug)]
 pub struct Own {
     pub finished: bool,
@@ -373,7 +373,29 @@ pub struct Own {
     pub score: i32,
     pub avg: f64,
     pub top: f64,
+    pub edited: Option<u8>,
     pub told: bool,
+}
+
+/// the game's player car types (CarTypeInfo 0..30 in GLOBAL\GlobalB), for `edited_code`'s
+const CAR_TYPES: [&str; 31] = [
+    "PEUGOT", "FOCUS", "COROLLA", "240SX", "MIATA", "CIVIC", "PEUGOT106", "CORSA", "HUMMER", "NAVIGATOR", "ESCALADE", "TIBURON",
+    "SENTRA", "CELICA", "IS300", "SUPRA", "GOLF", "A3", "RSX", "ECLIPSE", "TT", "RX8", "350Z", "G35", "3000GT", "GTO", "MUSTANGGT",
+    "SKYLINE", "LANCEREVO8", "RX7", "IMPREZAWRX",
+];
+
+/// A rank's code from a game that raced a car whose data is edited (runtime/mprace.c mprace_rank_code: the car type's
+/// record in its copy of GLOBAL\GlobalB is not the game's; a guide passed among players, 2026-10-31, has an AI agent
+/// make one car 3,600 kW with x2.5 grip and brakes in the browser's copy): "ed" and the type in two hex digits, "edff"
+/// when the game had no car to tell (0xff here).  None for any other code (the game's own: 0)
+fn edited_code(code: &str) -> Option<u8> {
+    let hex = code.strip_prefix("ed").filter(|h| h.len() == 2)?;
+    u8::from_str_radix(hex, 16).ok()
+}
+
+/// "SUPRA, type 15" for `edited_code`'s type; "type unknown" when the game could not tell
+fn edited_car(t: u8) -> String {
+    CAR_TYPES.get(t as usize).map_or("type unknown".to_string(), |n| format!("{n}, type {t}"))
 }
 
 #[derive(Clone, Debug)]
@@ -785,7 +807,14 @@ fn fit(fields: Fields, max: usize, drop: &[&str]) -> Fields {
 /// may come after the finisher's.  A drift race is won by points: only its top speed is looked at.  The line names
 /// the race's track and laps and the racer's top speed: the other finishers' times are on the race's `[online]` lines
 /// (often none yet: one who won in 30 s had the others give up).
-fn race_cheats(game: &str, r: &RaceReport, me: usize, mine: Option<&ReportPlayer>, players: &mut [Player]) -> Vec<String> {
+fn race_cheats(
+    game: &str,
+    r: &RaceReport,
+    me: usize,
+    mine: Option<&ReportPlayer>,
+    edited: Option<u8>,
+    players: &mut [Player],
+) -> Vec<String> {
     let kind = r.kind;
     let drift = kind == KIND_DRIFT;
     if let Some(p) = mine
@@ -795,7 +824,7 @@ fn race_cheats(game: &str, r: &RaceReport, me: usize, mine: Option<&ReportPlayer
         let time = if p.time < 100_000.0 { p.time.max(0.0) } else { 0.0 };
         let finished = !p.dropped && p.place >= 1 && time > 0.0;
         let score = p.score.max(0);
-        players[me].own = Some(Own { finished, place: p.place, time, score, avg: speed(p.avg), top: speed(p.top), told: false });
+        players[me].own = Some(Own { finished, place: p.place, time, score, avg: speed(p.avg), top: speed(p.top), edited, told: false });
     }
     let ty = REPORT_TYPES.get(kind as usize).copied().unwrap_or("race");
     let laps = if r.laps > 0 { format!(", {} lap{}", r.laps, if r.laps == 1 { "" } else { "s" }) } else { String::new() };
@@ -804,7 +833,7 @@ fn race_cheats(game: &str, r: &RaceReport, me: usize, mine: Option<&ReportPlayer
         let Some(o) = players[i].own.filter(|o| !o.told) else { continue };
         let drove = o.avg * o.time;
         let mut why = Vec::new();
-        if !o.finished && o.top < CAR_MPS {
+        if !o.finished && o.top < CAR_MPS && o.edited.is_none() {
             continue;
         }
         if let Some(&min) = MIN_RACE_S.get(kind as usize)
@@ -833,6 +862,9 @@ fn race_cheats(game: &str, r: &RaceReport, me: usize, mine: Option<&ReportPlayer
         } else {
             ""
         };
+        if let Some(t) = o.edited {
+            why.push(format!("an edited car ({}: its game has the car's data edited, GlobalB)", edited_car(t)));
+        }
         if o.top >= CAR_MPS {
             why.push(format!("an edited car (no car of the game makes {:.0} km/h)", CAR_MPS * 3.6));
         }
@@ -1191,7 +1223,7 @@ impl Core {
             "gsta" => self.game_start(s),
             "gdel" => self.game_delete(s),
             "glea" => self.game_leave(s, Some("glea")),
-            "rank" => self.rank(s, f),
+            "rank" => self.rank(s, f, code),
             "snap" => self.snap(s, f),
             "rept" => self.complaint(s, f),
             _ => self.lsend(s, kind, &[], "badc"),
@@ -1698,7 +1730,7 @@ impl Core {
     /// reported (2026-10-24); such a report is logged, and its player sees the table.  A ranked race of fewer than
     /// three players (the game's own minimum) counts as unranked.  The game is told "Unranked" either way (what the
     /// game shows after the race); a ranked game's players see its table on their results screens (`results_table`).
-    fn rank(&mut self, s: SessId, f: &FieldMap) {
+    fn rank(&mut self, s: SessId, f: &FieldMap, code: &str) {
         let reply = |core: &mut Core| {
             let time = (core.now() / 1000.0).floor() % 100_000.0;
             core.lsend(s, "rank", &fields![("RANK", "Unranked"), ("TIME", time)], "");
@@ -1735,7 +1767,7 @@ impl Core {
             && why.is_empty()
         {
             let mine = r.players.iter().find(|p| lower(&names[p.index as usize]) == persona);
-            let lines = race_cheats(&gname, r, me, mine, &mut self.lobby.game_mut(g).expect("held").players);
+            let lines = race_cheats(&gname, r, me, mine, edited_code(code), &mut self.lobby.game_mut(g).expect("held").players);
             for line in lines {
                 self.llog(&line, s);
             }

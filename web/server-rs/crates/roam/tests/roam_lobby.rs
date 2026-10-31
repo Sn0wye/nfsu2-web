@@ -362,7 +362,7 @@ fn race_reports_are_logged_once_a_race() {
     for (what, d) in [
         ("a place past its cars", racerep(100, 0xA4, 3, 2, 0, 239.3, b"PEUGOT", 64)),
         ("no cars", racerep(100, 0xA4, 0, 0, 0, 239.3, b"PEUGOT", 64)),
-        ("an unknown flag", racerep(100, 0xA4, 1, 2, 4, 239.3, b"PEUGOT", 64)),
+        ("an unknown flag", racerep(100, 0xA4, 1, 2, 8, 239.3, b"PEUGOT", 64)),
         ("a rating out of range", racerep(100, 0xA4, 1, 2, 0, 9999.0, b"PEUGOT", 64)),
         ("a rating not a number", racerep(100, 0xA4, 1, 2, 0, f32::NAN, b"PEUGOT", 64)),
         ("an unprintable name", racerep(100, 0xA4, 1, 2, 0, 239.3, b"PE\x07GOT", 64)),
@@ -395,6 +395,35 @@ fn an_edited_car_in_a_race_is_a_cheat_line() {
                 (type 0), 128 kW, 1055 kg, 256 km/h, rated 5000; no car of the game makes 600 kW, 420 km/h or a rating of 1000";
     assert!(lines[1].starts_with("[cheat] ") && lines[1].ends_with(want), "{lines:?}");
     assert_eq!(k.info("cheatLines"), 1.0);
+}
+
+// a car whose game data is edited (RC_RR_EDITED: its type's record in the browser's copy of GlobalB not the game's, a
+// guide passed among players, 2026-10-31) is a [cheat] line however its numbers look; with numbers no tuning makes
+// too, both reasons
+#[test]
+fn a_car_of_edited_game_data_in_a_race_is_a_cheat_line() {
+    let mut k = Kit::new(RoamOptions::default());
+    k.from(W(0), &hello_with(100, &HelloOpts { core: 5, name: b"Ed", ..Default::default() }));
+    k.from(W(0), &racerep(100, 0xA1, 2, 3, 4, 239.3, b"SUPRA", 64));
+    let lines = k.lines.lock().clone();
+    assert_eq!(lines.len(), 2, "{lines:?}");
+    let want = "\"Ed\": raced in the race of lobby 000000a1 (race 0badf00d: drag, 1 lap) in an edited car, 2nd of 3: SUPRA \
+                (type 0), 128 kW, 1055 kg, 256 km/h, rated 239; its game has the car's data edited (GlobalB)";
+    assert!(lines[1].starts_with("[cheat] ") && lines[1].ends_with(want), "{lines:?}");
+    k.lines.lock().clear();
+    k.step(25000.0);
+    k.from(W(0), &racerep(100, 0xA2, 1, 3, 5, 5000.0, b"SUPRA", 64));
+    let lines = k.lines.lock().clone();
+    assert!(lines[0].contains(": Ed (host) 1st of 3;"), "{lines:?}");
+    assert!(
+        lines[1].ends_with("rated 5000; its game has the car's data edited (GlobalB); no car of the game makes 600 kW, 420 km/h or a rating of 1000"),
+        "{lines:?}"
+    );
+    k.lines.lock().clear();
+    k.step(25000.0);
+    k.from(W(0), &racerep(100, 0xA3, 1, 1, 4, 239.3, b"SUPRA", 64));
+    assert_eq!(k.lines.lock().len(), 1, "alone in its race: the [race] line only, {:?}", k.lines.lock());
+    assert_eq!(k.info("cheatLines"), 2.0);
 }
 
 // the wire: roam_core's report is the hub's line

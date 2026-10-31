@@ -275,7 +275,7 @@ static void t_roundtrip(void){
             e->cls == -1 && e->rating == 591.1f && e->field == 450.25f && e->factor == 0.75f && e->kw == 368.f && e->kg == 1338.f &&
             e->kmh == 343.f && e->time == 61.25f && !strcmp(e->name, "SKYLINE"), "RACEREP round trip (%d bytes)", n);
       static const struct { int at; uint8_t v; int zero3; } bad[] = { { RC_HDR, 0, 1 }, { RC_HDR + 4, 0, 1 }, { RC_HDR + 13, 0, 0 },
-          { RC_HDR + 12, 7, 0 }, { RC_HDR + 14, 4, 0 }, { RC_HDR + 16, 4, 0 }, { RC_HDR + 23, 0x7F, 0 }, { RC_HDR + 31, 0xFF, 0 },
+          { RC_HDR + 12, 7, 0 }, { RC_HDR + 14, 8, 0 }, { RC_HDR + 16, 4, 0 }, { RC_HDR + 23, 0x7F, 0 }, { RC_HDR + 31, 0xFF, 0 },
           { RC_HDR + 48, 0x07, 0 } };
       int nb = (int)(sizeof bad / sizeof bad[0]);
       for (int k = 0; k < nb; k++){

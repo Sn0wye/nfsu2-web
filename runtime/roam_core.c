@@ -360,7 +360,7 @@ static int lobby_ok(const rc_lobby *l){
 static int in(float f, float lo, float hi){ return f_finite(f) && f >= lo && f <= hi; }
 static int racerep_ok(const rc_racerep *r){
     if (!r->lobby || !r->race || r->players < 1 || r->players > RC_LOBBY_MAX || r->place > r->players) return 0;
-    if (r->cls < -1 || r->cls > 3 || r->flags & ~(RC_RR_HOST | RC_RR_QUIT)) return 0;
+    if (r->cls < -1 || r->cls > 3 || r->flags & ~(RC_RR_HOST | RC_RR_QUIT | RC_RR_EDITED)) return 0;
     if (!in(r->rating, 0.f, 5000.f) || !in(r->field, 0.f, 5000.f) || !in(r->factor, 0.01f, 100.f) || !in(r->kw, 0.f, 10000.f)
         || !in(r->kg, 0.f, 50000.f) || !in(r->kmh, 0.f, 2000.f) || !in(r->time, 0.f, 100000.f)) return 0;
     uint32_t n = 0; while (n < RC_RACEREP_NAME && r->name[n]) n++;
