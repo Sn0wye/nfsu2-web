@@ -564,11 +564,10 @@ async fn control_frames_pings_answered_a_flood_cut_unasked_pongs_never_count() {
 
 // a receiver that never reads: cut by the keepalive tick once its queue is over the limit
 // B sends to A, which never reads, until A's queue on the switch is just over the limit, then stops: no further
-// send finds it, the next keepalive tick does (before the missing pong would).  The kernel's buffers come first:
-// here they are kept small (the switch's SO_SNDBUF, the server's NFSU2_LAN_SNDBUF, and A's SO_RCVBUF), as Linux
-// otherwise grows them to megabytes and the missing pong ends A first (the test fails that way with Linux's sizes);
-// and "over the limit" counts once it stays so for 100 ms (before the kernel's buffers are full, a delayed ACK
-// frees them again a moment later).
+// send finds it, the next keepalive tick does (before the missing pong would).  A is on an in-memory pipe of 8 KB,
+// full before the switch's queue builds (on a loopback socket the kernel's buffers came first: Linux grew them to
+// megabytes, and the test's 20000 frames never got A's queue past the limit); "over the limit" counts once it stays
+// so for 100 ms.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn a_receiver_that_never_reads_is_cut_by_the_keepalive_tick() {
     let _s = serial().await;
@@ -581,11 +580,10 @@ async fn a_receiver_that_never_reads_is_cut_by_the_keepalive_tick() {
         group_byte_rate: (64 << 20) as f64,
         group_frame_rate: 100000.0,
         peers_ms: 1,
-        send_buffer_os: 32 << 10,
         ..opts()
     })
     .await;
-    let a = raw_ws_with(sw.port, "", Some(8 << 10)).await;
+    let a = stalled_peer(&sw, "A", None, 8 << 10);
     let mut b = Client::connect(sw.port, "B").await;
     b.welcome().await;
     sleep(50).await;

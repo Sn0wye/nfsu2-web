@@ -653,6 +653,18 @@ pub fn frame(op: u8, payload: &[u8]) -> Vec<u8> {
 pub const PING: u8 = 0x9;
 pub const PONG: u8 = 0xA;
 
+/// a client that never reads, with its hello sent, on an in-memory pipe that holds `cap` bytes instead of a socket:
+/// the switch's writer to it stops once they are written, on every system (a loopback socket's buffers are the
+/// kernel's to size; macOS's took a whole burst, and the switch's queue a test measures stayed empty).  Keep the
+/// returned end: dropping it closes the connection.  `group`: as ?g=<id> names it.
+pub fn stalled_peer(sw: &Switch, name: &str, group: Option<&str>, cap: usize) -> tokio::io::DuplexStream {
+    let (ours, theirs) = tokio::io::duplex(cap);
+    let (r, w) = tokio::io::split(theirs);
+    let hello = frame(0x1, json!({ "t": "hello", "name": name }).to_string().as_bytes());
+    sw.lan.attach(r, w, Bytes::from(hello), AttachOpts { group: group.map(str::to_string), ..AttachOpts::default() });
+    ours
+}
+
 /// a client on a plain socket that reads only when told to (a slow or stalled receiver), with its hello sent
 pub async fn raw_peer(port: u16, name: &str, query: &str) -> TcpStream {
     raw_peer_with(port, name, query, None).await

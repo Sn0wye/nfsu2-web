@@ -68,8 +68,9 @@ async fn the_line_lets_them_in_first_come_first_served() {
     assert_eq!(sw.lan.waiting(), 0);
     let i = sw.info().await;
     assert_eq!((i["queued"].as_u64(), i["lineIn"].as_u64(), i["waiting"].as_u64()), (Some(2), Some(2), Some(0)));
-    // the line is empty: a newcomer gets a place at once again (once one is free)
+    // the line is empty: a newcomer gets a place at once again (once one is free: the switch has let Carol go)
     c.close_with(1000, "idle");
+    wait_for(2000, || !sw.lan.full()).await;
     let mut f = waiter(sw.port, "Fay", None).await;
     f.welcome().await;
     assert_eq!(f.got().count("queue"), 0);

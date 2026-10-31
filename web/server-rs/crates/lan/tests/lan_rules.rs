@@ -68,17 +68,14 @@ async fn a_flood_of_datagrams_never_gets_a_slower_receiver_cut() {
 }
 
 // free roam's datagrams (kind 1) are dropped at a much shorter queue than the others: no seconds of old positions
-// (The kernel's buffers to the victim are kept small, so that they are full before the switch's queue builds: a
-// burst reaches the switch faster than the victim's writer hands it to the kernel, and the queue rules shed most of
-// it there, where Node wrote each frame to the kernel at once; the kernel then takes the rest and the queue this
-// test measures is empty.)
+// (The victim is on an in-memory pipe of 8 KB, full before the switch's queue builds.  On a loopback socket the
+// kernel's buffers decided it: macOS's took the whole burst, the queue this test measures stayed empty, and the
+// test passed or failed with how fast the build's code was.)
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn free_roams_datagrams_are_dropped_at_a_much_shorter_queue() {
     let _s = serial().await;
-    let sw =
-        start(LanOptions { send_buffer: 4 << 20, shed_queue: 256 << 10, roam_queue: 16 << 10, send_buffer_os: 32 << 10, ..unlimited() })
-            .await;
-    let victim = raw_peer_with(sw.port, "Victim", "", Some(8 << 10)).await;
+    let sw = start(LanOptions { send_buffer: 4 << 20, shed_queue: 256 << 10, roam_queue: 16 << 10, ..unlimited() }).await;
+    let victim = stalled_peer(&sw, "Victim", None, 8 << 10);
     let mut sender = Client::connect(sw.port, "Sender").await;
     sender.welcome().await;
     sleep(100).await;
@@ -127,11 +124,13 @@ fn stream_opts() -> LanOptions {
 }
 
 // a burst of stream segments (kind 4) at a receiver: the sender is cut, not the receiver
+// (The receiver is on an in-memory pipe of 8 KB: on a loopback socket Linux's buffers took the whole burst, and nothing
+// queued on the switch.)
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn a_burst_of_stream_segments_the_sender_is_cut_not_the_receiver() {
     let _s = serial().await;
     let sw = start(stream_opts()).await;
-    let victim = raw_peer(sw.port, "Victim", "?g=victim").await;
+    let victim = stalled_peer(&sw, "Victim", Some("victim"), 8 << 10);
     let mut attacker = Client::with(sw.port, "Attacker", "?g=attacker", Opts::default()).await;
     attacker.welcome().await;
     sleep(100).await;
