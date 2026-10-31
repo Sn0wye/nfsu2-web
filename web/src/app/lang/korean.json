@@ -5,7 +5,7 @@
   "Tested on Firefox {min} or newer: update it (Help, About Firefox) if something doesn't work.": "Firefox {min} 이상에서 테스트했어요. 제대로 작동하지 않으면 업데이트하세요(도움말 > Firefox 정보).",
   "A tested browser.": "테스트를 거친 브라우저예요.",
   "Only Chrome and Firefox are tested. This browser may still work.": "Chrome과 Firefox에서만 테스트했어요. 이 브라우저에서도 작동할 수는 있어요.",
-  "Only Chrome and Firefox are tested. For full screen on iPhone, add this page to the Home Screen (Share menu) and play from its icon. That copy has its own saves: Cloud saves bring yours over.": "Chrome과 Firefox에서만 테스트했어요. iPhone에서 전체 화면으로 하려면 이 페이지를 홈 화면에 추가하고(공유 메뉴) 그 아이콘으로 플레이하세요. 그 사본은 저장 데이터를 따로 가지니 '클라우드 저장'으로 저장 데이터를 옮기세요.",
+  "For full screen on iPhone, add this page to the Home Screen (Share menu) and play from its icon. That copy has its own saves: Cloud saves bring yours over.": "iPhone에서 전체 화면으로 하려면 이 페이지를 홈 화면에 추가하고(공유 메뉴) 그 아이콘으로 플레이하세요. 그 사본은 저장 데이터를 따로 가지니 '클라우드 저장'으로 저장 데이터를 옮기세요.",
   "Browser": "브라우저",
   "Tested on Chrome {min} or newer: update it (Help, About Google Chrome) if something doesn't work.": "Chrome {min} 이상에서 테스트했어요. 제대로 작동하지 않으면 업데이트하세요(도움말 > Chrome 정보).",
   "Secure, isolated page": "안전하고 격리된 페이지",

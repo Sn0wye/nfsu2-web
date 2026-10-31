@@ -5,7 +5,7 @@
   "Tested on Firefox {min} or newer: update it (Help, About Firefox) if something doesn't work.": "Firefox {min} veya daha yenisinde test edildi: bir şey çalışmazsa güncelle (Yardım, Firefox Hakkında).",
   "A tested browser.": "Test edilmiş bir tarayıcı.",
   "Only Chrome and Firefox are tested. This browser may still work.": "Yalnızca Chrome ve Firefox test edilmiştir. Bu tarayıcı yine de çalışabilir.",
-  "Only Chrome and Firefox are tested. For full screen on iPhone, add this page to the Home Screen (Share menu) and play from its icon. That copy has its own saves: Cloud saves bring yours over.": "Yalnızca Chrome ve Firefox test edilmiştir. iPhone'da tam ekran için bu sayfayı Ana Ekran'a ekle (Paylaş menüsü) ve simgesinden oyna. O kopyanın kendi kayıtları olur: Bulut kayıtları seninkileri oraya taşır.",
+  "For full screen on iPhone, add this page to the Home Screen (Share menu) and play from its icon. That copy has its own saves: Cloud saves bring yours over.": "iPhone'da tam ekran için bu sayfayı Ana Ekran'a ekle (Paylaş menüsü) ve simgesinden oyna. O kopyanın kendi kayıtları olur: Bulut kayıtları seninkileri oraya taşır.",
   "Browser": "Tarayıcı",
   "Tested on Chrome {min} or newer: update it (Help, About Google Chrome) if something doesn't work.": "Chrome {min} veya daha yenisinde test edildi: bir şey çalışmazsa güncelle (Yardım, Google Chrome Hakkında).",
   "Secure, isolated page": "Güvenli, yalıtılmış sayfa",

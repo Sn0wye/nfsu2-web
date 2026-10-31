@@ -6,7 +6,7 @@
   "A tested browser.": "Tesztelt böngésző.",
   "Only Chrome and Firefox are tested. This browser may still work.": "Csak a Chrome és a Firefox van tesztelve. Ez a böngésző is működhet.",
   "Browser": "Böngésző",
-  "Only Chrome and Firefox are tested. For full screen on iPhone, add this page to the Home Screen (Share menu) and play from its icon. That copy has its own saves: Cloud saves bring yours over.": "Csak a Chrome és a Firefox van tesztelve. iPhone-on a teljes képernyőhöz add hozzá ezt az oldalt a Főképernyőhöz (Megosztás menü), és az ikonjáról játssz. Ennek a példánynak saját mentései vannak: a Felhőmentés áthozza a tieidet.",
+  "For full screen on iPhone, add this page to the Home Screen (Share menu) and play from its icon. That copy has its own saves: Cloud saves bring yours over.": "iPhone-on a teljes képernyőhöz add hozzá ezt az oldalt a Főképernyőhöz (Megosztás menü), és az ikonjáról játssz. Ennek a példánynak saját mentései vannak: a Felhőmentés áthozza a tieidet.",
   "Tested on Chrome {min} or newer: update it (Help, About Google Chrome) if something doesn't work.": "Chrome {min} vagy újabb verzión tesztelve: ha valami nem működik, frissítsd (Súgó, A Google Chrome névjegye).",
   "Secure, isolated page": "Biztonságos, izolált oldal",
   "This address is not secure, so {browser} blocks what the game needs. Use the https:// address.": "Ez a cím nem biztonságos, ezért {browser} letiltja, amire a játéknak szüksége van. Használd a https:// címet.",

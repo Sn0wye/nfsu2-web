@@ -1,7 +1,7 @@
 # Playing NFS Underground 2 in the browser
 
-The game runs in Google Chrome and in Firefox, the browsers it is tested in, and on an iPhone or iPad in Safari (iOS 26
-or iPadOS 26). One server hosts it: it keeps the game files, serves the game to the
+The game runs in Google Chrome, Edge and the other Chromium browsers (Brave, Opera), in Firefox, and in Safari 26 (on a
+Mac, or an iPhone or iPad with iOS 26 or iPadOS 26). One server hosts it: it keeps the game files, serves the game to the
 browsers and connects players for free roam. On a Mac it serves that Mac; for other PCs it goes behind HTTPS, usually
 on a VPS ([VPS.md](VPS.md)). Nothing is installed on the players' PCs, and no file is picked by hand.
 
@@ -750,7 +750,8 @@ Good to know:
 | `STORAGE-NONE`: "This browser window cannot store files" | A guest or private window cannot keep saves: open the page in a normal window. |
 | `STORAGE-ASK`: the browser asks whether the site may keep its data | Allow it, so that your saves stay when the disk runs low (section 5). |
 | `BROWSER-CHROME-OLD`, `BROWSER-FIREFOX-OLD` | A warning: the game may still play. Update the browser (Chrome 140 or newer, Firefox 145 or newer). |
-| `BROWSER-CHROMIUM`, `BROWSER-OTHER`, `BROWSER-IPHONE` | A warning: only Google Chrome and Firefox are tested, and this browser may work when every other check passes. On an iPhone, see section 2 for the Home Screen. |
+| `BROWSER-OTHER` | A warning: the page does not know this browser (it knows Chrome, Edge, Brave, Opera, Firefox and Safari). It may work when every other check passes. |
+| `BROWSER-IPHONE` | Not a problem: on an iPhone the page cannot go full screen, but its copy on the Home Screen can (section 2). |
 | `VAULT-…`: a cloud saves problem | The message says what happened: `VAULT-WRONG-KEY` (these saves do not open with this passphrase: check it), `VAULT-TOO-LARGE` (more than the server keeps), `VAULT-HTTP-429` (too many tries: wait a minute), `VAULT-HTTP-503` and `VAULT-HTTP-507` (the server takes no more saves for now), `VAULT-NO-ANSWER` and `VAULT-TIMEOUT` (the server did not answer: try again), `VAULT-LOAD-HALFWAY` (loading the cloud's saves stopped halfway: load again before playing; the copy the page kept of yours is under Put back). |
 | No sound | Click the game or press a key. Check the sound setting and the output latency (try "Robust"). |
 | Stuck on a loading screen | F9, Quit game; then "Close the game now"; then "Stop the game". When the log ends in `[data]` lines, the game was waiting for its data from the server: it goes on when the data comes. |

@@ -5,7 +5,7 @@
   "Tested on Firefox {min} or newer: update it (Help, About Firefox) if something doesn't work.": "已在 Firefox {min} 或更新版本上測試。若有功能無法運作，請更新 Firefox（說明 > 關於 Firefox）。",
   "A tested browser.": "已測試過的瀏覽器。",
   "Only Chrome and Firefox are tested. This browser may still work.": "僅測試過 Chrome 與 Firefox。此瀏覽器仍可能可以運作。",
-  "Only Chrome and Firefox are tested. For full screen on iPhone, add this page to the Home Screen (Share menu) and play from its icon. That copy has its own saves: Cloud saves bring yours over.": "僅測試過 Chrome 與 Firefox。若要在 iPhone 上全螢幕遊玩，請將此頁面加入主畫面（分享選單），並從它的圖示遊玩。該副本有自己的存檔：用「雲端存檔」即可把你的存檔帶過去。",
+  "For full screen on iPhone, add this page to the Home Screen (Share menu) and play from its icon. That copy has its own saves: Cloud saves bring yours over.": "若要在 iPhone 上全螢幕遊玩，請將此頁面加入主畫面（分享選單），並從它的圖示遊玩。該副本有自己的存檔：用「雲端存檔」即可把你的存檔帶過去。",
   "Browser": "瀏覽器",
   "Tested on Chrome {min} or newer: update it (Help, About Google Chrome) if something doesn't work.": "已在 Chrome {min} 或更新版本上測試。若有功能無法運作，請更新 Chrome（說明 > 關於 Google Chrome）。",
   "Secure, isolated page": "安全且隔離的頁面",

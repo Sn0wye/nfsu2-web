@@ -5,7 +5,7 @@
   "Tested on Firefox {min} or newer: update it (Help, About Firefox) if something doesn't work.": "動作確認はFirefox {min}以降で行っています。うまく動かない場合は、Firefoxを更新してください（「ヘルプ」>「Firefox について」）。",
   "A tested browser.": "動作確認済みのブラウザです。",
   "Only Chrome and Firefox are tested. This browser may still work.": "動作確認はChromeとFirefoxでのみ行っています。このブラウザでも動く可能性があります。",
-  "Only Chrome and Firefox are tested. For full screen on iPhone, add this page to the Home Screen (Share menu) and play from its icon. That copy has its own saves: Cloud saves bring yours over.": "動作確認はChromeとFirefoxでのみ行っています。iPhoneで全画面表示にするには、このページをホーム画面に追加し（共有メニュー）、そのアイコンからプレイしてください。そちらはセーブデータを別に持つため、「クラウドセーブ」でセーブデータを移せます。",
+  "For full screen on iPhone, add this page to the Home Screen (Share menu) and play from its icon. That copy has its own saves: Cloud saves bring yours over.": "iPhoneで全画面表示にするには、このページをホーム画面に追加し（共有メニュー）、そのアイコンからプレイしてください。そちらはセーブデータを別に持つため、「クラウドセーブ」でセーブデータを移せます。",
   "Browser": "ブラウザ",
   "Tested on Chrome {min} or newer: update it (Help, About Google Chrome) if something doesn't work.": "動作確認はChrome {min}以降で行っています。うまく動かない場合は、Chromeを更新してください（「ヘルプ」>「Google Chrome について」）。",
   "Secure, isolated page": "安全で分離されたページ",

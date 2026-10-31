@@ -5,7 +5,7 @@
   "Tested on Firefox {min} or newer: update it (Help, About Firefox) if something doesn't work.": "Проверяется в Firefox {min} или новее: если что-то не работает, обновите его (Справка, О Firefox).",
   "A tested browser.": "Проверенный браузер.",
   "Only Chrome and Firefox are tested. This browser may still work.": "Проверяются только Chrome и Firefox. Этот браузер всё же может работать.",
-  "Only Chrome and Firefox are tested. For full screen on iPhone, add this page to the Home Screen (Share menu) and play from its icon. That copy has its own saves: Cloud saves bring yours over.": "Проверяются только Chrome и Firefox. Для полноэкранного режима на iPhone добавьте эту страницу на экран «Домой» (меню «Поделиться») и играйте с её значка. У этой копии свои сохранения: «Облачные сохранения» перенесут туда ваши.",
+  "For full screen on iPhone, add this page to the Home Screen (Share menu) and play from its icon. That copy has its own saves: Cloud saves bring yours over.": "Для полноэкранного режима на iPhone добавьте эту страницу на экран «Домой» (меню «Поделиться») и играйте с её значка. У этой копии свои сохранения: «Облачные сохранения» перенесут туда ваши.",
   "Browser": "Браузер",
   "Tested on Chrome {min} or newer: update it (Help, About Google Chrome) if something doesn't work.": "Проверяется в Chrome {min} или новее: если что-то не работает, обновите его (Справка, О браузере Google Chrome).",
   "Secure, isolated page": "Защищённая изолированная страница",

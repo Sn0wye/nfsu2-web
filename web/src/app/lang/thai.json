@@ -5,7 +5,7 @@
   "Tested on Firefox {min} or newer: update it (Help, About Firefox) if something doesn't work.": "ทดสอบบน Firefox {min} ขึ้นไป หากมีบางอย่างไม่ทำงาน ให้อัปเดต Firefox (ช่วยเหลือ > เกี่ยวกับ Firefox)",
   "A tested browser.": "เบราว์เซอร์ที่ผ่านการทดสอบแล้ว",
   "Only Chrome and Firefox are tested. This browser may still work.": "ทดสอบเฉพาะ Chrome และ Firefox เท่านั้น เบราว์เซอร์นี้อาจยังใช้งานได้",
-  "Only Chrome and Firefox are tested. For full screen on iPhone, add this page to the Home Screen (Share menu) and play from its icon. That copy has its own saves: Cloud saves bring yours over.": "ทดสอบเฉพาะ Chrome และ Firefox เท่านั้น หากต้องการเล่นเต็มจอบน iPhone ให้เพิ่มหน้านี้ไปยังหน้าจอโฮม (เมนูแชร์) แล้วเล่นจากไอคอนของหน้านั้น สำเนานั้นมีเซฟแยกของตัวเอง ใช้ “เซฟบนคลาวด์” เพื่อนำเซฟของคุณไปด้วย",
+  "For full screen on iPhone, add this page to the Home Screen (Share menu) and play from its icon. That copy has its own saves: Cloud saves bring yours over.": "หากต้องการเล่นเต็มจอบน iPhone ให้เพิ่มหน้านี้ไปยังหน้าจอโฮม (เมนูแชร์) แล้วเล่นจากไอคอนของหน้านั้น สำเนานั้นมีเซฟแยกของตัวเอง ใช้ “เซฟบนคลาวด์” เพื่อนำเซฟของคุณไปด้วย",
   "Browser": "เบราว์เซอร์",
   "Tested on Chrome {min} or newer: update it (Help, About Google Chrome) if something doesn't work.": "ทดสอบบน Chrome {min} ขึ้นไป หากมีบางอย่างไม่ทำงาน ให้อัปเดต Chrome (ความช่วยเหลือ > เกี่ยวกับ Google Chrome)",
   "Secure, isolated page": "หน้าเว็บที่ปลอดภัยและแยกส่วน",
