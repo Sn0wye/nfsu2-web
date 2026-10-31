@@ -13,12 +13,6 @@ export const NET_MAX_PAYLOAD = 1472;
 export const NET_TX_SLOTS = 128;
 export const NET_RX_SLOTS = 256;
 export const NET_MAILBOX_BYTES = NET_HDR_BYTES + (NET_TX_SLOTS + NET_RX_SLOTS) * NET_SLOT_BYTES;
-// a module of before (version 2): a 256-byte header, no want (it always wants the switch), 8 words of peer bits
-// by the address's last byte.  This page still serves it, so the page and the module need not change at once.
-export const NET_V2_HDR_BYTES = 256;
-export const NET_V2_MAILBOX_BYTES = NET_V2_HDR_BYTES + (NET_TX_SLOTS + NET_RX_SLOTS) * NET_SLOT_BYTES;
-// a module of version 3: this layout with peer bits for a /22 (32 words); a host past them it asks itself
-export const NET_V3_PEER_BITS = 1024;
 
 // frame kinds (byte 0 of a binary frame on the switch)
 export const NET_KIND_UDP = 1;                // a UDP datagram between virtual addresses

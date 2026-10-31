@@ -279,18 +279,17 @@ class Endpoint {
   sent = 0;
   /** free roam: its game is not driving, as its last HELLO or SNAP said (a race, a shop, the menus, loading) */
   away = false;
-  constructor(readonly kind: 'roam' | 'lan', readonly ver: number, buf: SharedArrayBuffer, ptr: number, size: number) {
+  constructor(readonly kind: 'roam' | 'lan', buf: SharedArrayBuffer, ptr: number, size: number) {
     // shared memory is never detached: views made now stay valid after the
     // memory grows (the mailbox lies inside the current buffer)
-    const hdr = ver === 2 ? P.NET_V2_HDR_BYTES : P.NET_HDR_BYTES;
-    this.i32 = new Int32Array(buf, ptr, hdr / 4);
-    this.f64 = new Float64Array(buf, ptr, hdr / 8);
+    this.i32 = new Int32Array(buf, ptr, P.NET_HDR_BYTES / 4);
+    this.f64 = new Float64Array(buf, ptr, P.NET_HDR_BYTES / 8);
     this.dv = new DataView(buf, ptr, size);
     this.u8 = new Uint8Array(buf, ptr, size);
   }
   mode() { return Atomics.load(this.i32, P.W_MODE); }
-  /** C needs the switch now (a module of before always does) */
-  wants() { return this.ver === 2 || Atomics.load(this.i32, P.W_WANT) !== 0; }
+  /** C needs the switch now */
+  wants() { return Atomics.load(this.i32, P.W_WANT) !== 0; }
   ring() { Atomics.add(this.i32, P.W_RX_BELL, 1); Atomics.notify(this.i32, P.W_RX_BELL); }
   /** a received frame into the RX ring; false = the ring is full */
   put(b: ArrayBuffer): boolean {
@@ -399,15 +398,14 @@ class Link implements NetLink {
     const r = await this.proc.registered(kind);
     if (this.closed) return;
     const buf = this.proc.memory.buffer as unknown as SharedArrayBuffer;
-    const i32 = new Int32Array(buf, r.ptr, P.NET_V2_HDR_BYTES / 4);
+    const i32 = new Int32Array(buf, r.ptr, 8);
     const magic = i32[P.W_MAGIC] >>> 0, ver = i32[P.W_VERSION];
-    const size = ver === 2 ? P.NET_V2_MAILBOX_BYTES : P.NET_MAILBOX_BYTES, hdr = ver === 2 ? P.NET_V2_HDR_BYTES : P.NET_HDR_BYTES;
-    if (magic !== P.NET_MAGIC || (ver !== P.NET_VERSION && ver !== 3 && ver !== 2) || r.size !== size || i32[P.W_HDR_BYTES] !== hdr ||
+    if (magic !== P.NET_MAGIC || ver !== P.NET_VERSION || r.size !== P.NET_MAILBOX_BYTES || i32[P.W_HDR_BYTES] !== P.NET_HDR_BYTES ||
         i32[P.W_SLOT_BYTES] !== P.NET_SLOT_BYTES || i32[P.W_TX_SLOTS] !== P.NET_TX_SLOTS || i32[P.W_RX_SLOTS] !== P.NET_RX_SLOTS) {
       this.log(`${name} mailbox does not match this page (magic ${magic.toString(16)}, version ${ver}, ${r.size} bytes): no ${name === 'lan' ? 'LAN play' : 'free roam'}`);
       return;
     }
-    const ep = new Endpoint(name, ver, buf, r.ptr, r.size);
+    const ep = new Endpoint(name, buf, r.ptr, r.size);
     if (name === 'roam') this.roam = ep; else this.lan = ep;
     if (name === 'roam' && this.solid) Atomics.store(ep.i32, P.W_SOLID, this.solid);
     if (name === 'roam') { this.publishCrews(ep); this.publishRoom(ep); }
@@ -431,19 +429,17 @@ class Link implements NetLink {
     ep.ring();                                     // wake C's network thread so it sees the address now
   }
   private publishPeers(ep: Endpoint) {
-    // bit h: the host h of our network (a module of before: the address's last byte, so 10.77.1.5 sets 10.77.0.5's
-    // bit too; it then only waits for an answer where it could have known at once that nobody is there; one of
-    // version 3 has bits for a /22, and waits the same way for a host past them)
-    const words = ep.ver === 2 ? 8 : ep.ver === 3 ? P.NET_V3_PEER_BITS / 32 : P.NET_PEER_BITS / 32, bits = new Uint32Array(words);
+    // bit h: the host h of our network
+    const words = P.NET_PEER_BITS / 32, bits = new Uint32Array(words);
     for (const v of this.peerVips) {
       if (this.vipNum && ((v ^ this.vipNum) & this.netmask) !== 0) continue;
-      const h = ep.ver === 2 ? v & 255 : (v & ~this.netmask) >>> 0;
+      const h = (v & ~this.netmask) >>> 0;
       if (h < words * 32) bits[h >>> 5] |= 1 << (h & 31);
     }
     for (let i = 0; i < words; i++) Atomics.store(ep.i32, P.W_PEER_BITS + i, bits[i] | 0);
     Atomics.store(ep.i32, P.W_SWITCH_PEERS, this.peers.length);
   }
-  /** LAN play is open: the game's LAN or Online screens (a module of before: once it attached) */
+  /** LAN play is open: the game's LAN or Online screens */
   private lanOpen() { return !!this.lan && this.lan.wants(); }
   /** connect when a mailbox wants the switch, let it go idleMs after none does, and tell the switch about LAN play */
   private checkWant() {
@@ -529,10 +525,9 @@ class Link implements NetLink {
     this.log(`crews: ${this.crews.length} (the page menu)`);
   }
   /** the crews into the roam mailbox once the page changed them: their four words first, then the colours' four,
-   *  then the count, which the game watches (it takes the words when the count moves).  Not into a module of before's
-   *  256-byte header. */
+   *  then the count, which the game watches (it takes the words when the count moves). */
   private publishCrews(ep: Endpoint) {
-    if (!this.crewsGen || ep.i32.length < P.W_CREWS_RGB + P.CREW_WORDS) return;
+    if (!this.crewsGen) return;
     for (let i = 0; i < P.CREW_WORDS; i++) Atomics.store(ep.i32, P.W_CREWS + i, (this.crews[i] ?? 0) | 0);
     for (let i = 0; i < P.CREW_WORDS; i++) Atomics.store(ep.i32, P.W_CREWS_RGB + i, this.crewsRgb[i] ?? 0);
     Atomics.store(ep.i32, P.W_CREWS_GEN, this.crewsGen | 0);
@@ -540,7 +535,7 @@ class Link implements NetLink {
   /** whether the game takes a room changed while it runs (its mailbox says NET_CAP_ROOM; a module of before does not) */
   canRoom(): boolean {
     const ep = this.roam;
-    return !!ep && ep.i32.length > P.W_ROOM_NAME + P.ROOM_WORDS && (Atomics.load(ep.i32, P.W_CAPS) & P.NET_CAP_ROOM) !== 0;
+    return !!ep && (Atomics.load(ep.i32, P.W_CAPS) & P.NET_CAP_ROOM) !== 0;
   }
   setRoom(name: string): boolean {
     let b = new TextEncoder().encode(name);

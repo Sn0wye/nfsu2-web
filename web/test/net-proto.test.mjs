@@ -68,9 +68,8 @@ test('offsets', () => {
     if (m[1] in slot) assert.equal(slot[m[1]], +m[2], m[1]);
   assert.equal(P.S_DATA, P.NET_SLOT_HDR);
   assert.deepEqual([P.S_LEN, P.S_KIND, P.S_SRC_IP, P.S_DST_IP, P.S_SRC_PORT, P.S_DST_PORT], [0, 4, 8, 12, 16, 18]);
-  // the peer bits fit the header, and a module of before (version 2) kept the same words up to them
+  // the peer bits fit the header
   assert.equal(off.peer_bits + P.NET_PEER_BITS / 8 <= P.NET_HDR_BYTES, true);
-  assert.equal(P.W_PEER_BITS * 4 + 8 * 4 <= P.NET_V2_HDR_BYTES, true, 'version 2: 8 words of peer bits in 256 bytes');
 });
 
 test('addresses', () => {

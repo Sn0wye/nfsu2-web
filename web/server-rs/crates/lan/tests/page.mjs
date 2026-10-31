@@ -88,12 +88,12 @@ async function pageNet(port) {
   globalThis.location ??= new URL(`http://127.0.0.1:${port}/`);
   return import('data:text/javascript;base64,' + Buffer.from(pageJs).toString('base64'));
 }
-function mailbox(memory, ptr, ver = P.NET_VERSION) {
-  const hdr = ver === 2 ? P.NET_V2_HDR_BYTES : P.NET_HDR_BYTES, w = new Int32Array(memory.buffer, ptr, hdr / 4);
-  w[P.W_MAGIC] = P.NET_MAGIC; w[P.W_VERSION] = ver; w[P.W_HDR_BYTES] = hdr; w[P.W_SLOT_BYTES] = P.NET_SLOT_BYTES;
+function mailbox(memory, ptr) {
+  const hdr = P.NET_HDR_BYTES, w = new Int32Array(memory.buffer, ptr, hdr / 4);
+  w[P.W_MAGIC] = P.NET_MAGIC; w[P.W_VERSION] = P.NET_VERSION; w[P.W_HDR_BYTES] = hdr; w[P.W_SLOT_BYTES] = P.NET_SLOT_BYTES;
   w[P.W_TX_SLOTS] = P.NET_TX_SLOTS; w[P.W_RX_SLOTS] = P.NET_RX_SLOTS;
   w[P.W_TX_OFF] = hdr; w[P.W_RX_OFF] = hdr + P.NET_TX_SLOTS * P.NET_SLOT_BYTES;
-  return { w, ptr, size: ver === 2 ? P.NET_V2_MAILBOX_BYTES : P.NET_MAILBOX_BYTES };
+  return { w, ptr, size: P.NET_MAILBOX_BYTES };
 }
 function want(mb, on) { Atomics.store(mb.w, P.W_WANT, on); Atomics.add(mb.w, P.W_TX_BELL, 1); Atomics.notify(mb.w, P.W_TX_BELL); }
 const fakeGame = (memory, boxes) => ({ memory, ctl: new Int32Array(1), exited: new Promise(() => {}),
@@ -229,16 +229,15 @@ const cases = {
     } finally { a.close(); }
   },
 
-  // the page: the switch let go when no mailbox wants it, taken again when one does; LAN play open or not; a module of
-  // before
-  async mailboxes([port, port2, port3]) {
+  // the page: the switch let go when no mailbox wants it, taken again when one does; LAN play open or not
+  async mailboxes([port]) {
     const { attachNet } = await pageNet(port);
     const pages = Math.ceil(2 * P.NET_MAILBOX_BYTES / 65536);
     const memory = new WebAssembly.Memory({ initial: pages, maximum: pages, shared: true });
     const roam = mailbox(memory, 0), lanMb = mailbox(memory, P.NET_MAILBOX_BYTES);
     const logs = [];
     const link = attachNet(fakeGame(memory, { 4: roam, 7: lanMb }), { url: `ws://127.0.0.1:${port}/lan`, name: 'P', pingMs: 60_000, idleMs: 300, log: l => logs.push(l) });
-    const peers = async (p = port) => (await state(p)).peers;
+    const peers = async () => (await state(port)).peers;
     try {
       await sleep(300);
       assert.equal((await peers()).length, 0, 'nothing wants the switch yet: no connection');
@@ -282,38 +281,6 @@ const cases = {
       for (const o of others) await o.close();
       assert.ok(logs.some(l => /goes back/.test(l)), 'the console says why it let go');
     } finally { link.close(); }
-    // a module of before: version 2, no want word, always connected
-    {
-      const mem2 = new WebAssembly.Memory({ initial: 10, maximum: 10, shared: true }), old = mailbox(mem2, 0, 2);
-      const l2 = attachNet(fakeGame(mem2, { 7: old }), { url: `ws://127.0.0.1:${port2}/lan`, name: 'Old', pingMs: 60_000, idleMs: 100 });
-      try {
-        await l2.online;
-        await until(async () => { const p = await peers(port2); return p.length === 1 && p[0].hello; });
-        assert.equal((await peers(port2))[0].lan, true, 'its LAN mailbox counts as open');
-        await sleep(400);
-        assert.equal((await peers(port2)).length, 1, 'never let go');
-        const c = new Client(port2, 'C'); await c.welcome();
-        const h = c.vip & 255;                                               // its bitmap: by the last byte, 8 words
-        await until(() => (Atomics.load(old.w, P.W_PEER_BITS + (h >>> 5)) >>> (h & 31)) & 1);
-        await c.close();
-      } finally { l2.close(); }
-    }
-    // a module of version 3: bits for a /22 (32 words), nothing written past them (its header's padding)
-    {
-      const mem3 = new WebAssembly.Memory({ initial: 10, maximum: 10, shared: true }), v3 = mailbox(mem3, 0, 3);
-      want(v3, 1);
-      const l3 = attachNet(fakeGame(mem3, { 7: v3 }), { url: `ws://127.0.0.1:${port3}/lan`, name: 'V3', pingMs: 60_000, idleMs: 60_000 });
-      try {
-        await l3.online;
-        const cs = [1, 2, 3, 4, 5].map(i => new Client(port3, `C${i}`));
-        for (const c of cs) await c.welcome();
-        const hs = cs.map(c => (c.vip & 0xfff) >>> 0), low = hs.filter(h => h < 1024);
-        assert.ok(low.length && low.length < hs.length, `hosts on both sides of 1024 (${hs.map(h => h.toString(16))})`);
-        for (const h of low) await until(() => (Atomics.load(v3.w, P.W_PEER_BITS + (h >>> 5)) >>> (h & 31)) & 1);
-        for (let i = P.NET_V3_PEER_BITS / 32; i < P.NET_PEER_BITS / 32; i++) assert.equal(Atomics.load(v3.w, P.W_PEER_BITS + i), 0, `word ${i} untouched`);
-        for (const c of cs) await c.close();
-      } finally { l3.close(); }
-    }
   },
 
   // the page: away, the place goes back while the game wants it and stays free; back, it is taken again
