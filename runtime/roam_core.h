@@ -57,11 +57,7 @@
 #define RC_EXT_PERF      1
 #define RC_EXT_HORN      2          /* car-look record extension 2: the player's horn, 1 byte */
 #define RC_DUEL_INBOX    16         /* DUEL messages held for the game side */
-#define RC_MAP_ENTRY     5          /* a MAP entry: x, y (int16, m), heading (u8, 256 a turn) */
-#define RC_MAP_PER       230        /* entries per MAP datagram at most */
-#define RC_MAP_PARTS     9          /* MAP datagrams per answer at most */
 #define RC_MAP_MAX       2048       /* entries per answer at most (the hub's nearest) */
-#define RC_MAP_MAX_V1    512        /* ...to a MAPREQ without its most (a core before 2048: 3 datagrams) */
 #define RC_MAPD_GONE     0x8000u    /* a MAPD entry's key (u16: the hub's slot of the player) with this: it went */
 #define RC_MAPD_PLACE    9          /* ...without: x, y (int16, m), heading (u8), velocity x, y (int8, m/s) follow */
 #define RC_MAPD_BYTES    1152       /* entries' bytes per MAPD datagram at most */
@@ -83,20 +79,15 @@
 enum { RC_MSG_HELLO = 1, RC_MSG_PEERS = 2, RC_MSG_SNAP = 3, RC_MSG_CFG = 4, RC_MSG_CFG_REQ = 5,
        RC_MSG_PING = 6, RC_MSG_PONG = 7, RC_MSG_BYE = 8, RC_MSG_DUEL = 9,
        /* the world map's other players: MAPREQ (req: our number for the
-        * question; max: the most entries we take, RC_MAP_MAX_V1 when it is
-        * left out) only to the hub, which answers with MAP datagrams (req
-        * echoed; part of nparts; total: the players in our room past us and
-        * our peers; n entries of RC_MAP_ENTRY bytes: the ones nearest to us,
-        * past our peers, max at most).  A hub before them ignores a
-        * MAPREQ, and only a core that asked gets a MAP */
-       RC_MSG_MAPREQ = 10, RC_MSG_MAP = 11,
-       /* MAPD (a hub since it, to a MAPREQ that names base: the answer the
-        * core holds, 0 none): req echoed, base (that answer, or 0: from
-        * nothing), part of nparts, total, n entries by the hub's slot of each
-        * player, in its order: each one come or moved off where the core
-        * moved it placed (RC_MAPD_PLACE: the core moves it on at its
-        * velocity), each one gone gone (RC_MAPD_GONE).  A hub before it
-        * answers a MAPREQ with base with nothing */
+        * question; max: the most entries we take; base: the answer the core
+        * holds, 0 none) only to the hub, which answers with MAPD datagrams:
+        * req echoed, base (that answer, or 0: from nothing), part of nparts,
+        * total (the players in our room past us and our peers), n entries by
+        * the hub's slot of each player, in its order, the nearest max at
+        * most: each one come or moved off where the core moved it placed
+        * (RC_MAPD_PLACE: the core moves it on at its velocity), each one gone
+        * gone (RC_MAPD_GONE).  (11 was MAP, the whole list, before MAPD.) */
+       RC_MSG_MAPREQ = 10,
        RC_MSG_MAPD = 17,
        /* a multiplayer race from free roam (roam_game.c mp_*): LOBBY between
         * players (op RC_LOBBY_*), only to a peer whose HELLO carries
@@ -341,7 +332,6 @@ typedef struct {
         struct { uint8_t op, arg; uint32_t to, duel; } duel;      /* to: the player it is for */
         struct { uint16_t req, max, base; } mapreq;
         struct { uint16_t req, base, total, len; uint8_t part, nparts, n; const uint8_t *data; } mapd;   /* data: n entries, len bytes */
-        struct { uint16_t req, total; uint8_t part, nparts, n; const uint8_t *data; } map;   /* data: n entries */
         rc_lobby lobby;
         struct { uint16_t req; uint8_t n; const uint8_t *data; } lobbies;   /* data: n entries */
         rc_racerep racerep;

@@ -441,11 +441,6 @@ int rc_encode(const rc_msg *m, uint8_t *out, int cap){
         rc_put16(&w, m->u.mapd.req); rc_put16(&w, m->u.mapd.base); rc_put8(&w, m->u.mapd.part); rc_put8(&w, m->u.mapd.nparts);
         rc_put16(&w, m->u.mapd.total); rc_put8(&w, m->u.mapd.n); rc_putb(&w, m->u.mapd.data, m->u.mapd.len);
         break;
-    case RC_MSG_MAP:
-        if (m->u.map.nparts < 1 || m->u.map.nparts > RC_MAP_PARTS || m->u.map.part >= m->u.map.nparts || m->u.map.n > RC_MAP_PER) return -1;
-        rc_put16(&w, m->u.map.req); rc_put8(&w, m->u.map.part); rc_put8(&w, m->u.map.nparts);
-        rc_put16(&w, m->u.map.total); rc_put8(&w, m->u.map.n); rc_putb(&w, m->u.map.data, (uint32_t)m->u.map.n * RC_MAP_ENTRY);
-        break;
     case RC_MSG_LOBBY: {
         const rc_lobby *l = &m->u.lobby;
         if (!lobby_ok(l)) return -1;
@@ -587,9 +582,8 @@ int rc_decode(const uint8_t *buf, int len, rc_msg *m){
         if (m->u.duel.op < 1 || m->u.duel.op >= RC_DUEL__N || !m->u.duel.to || !m->u.duel.duel) return RC_E_FIELD;
         break;
     case RC_MSG_MAPREQ:
-        m->u.mapreq.req = (uint16_t)rc_get16(&r);
-        m->u.mapreq.max = !r.err && r.len - r.n >= 2 ? (uint16_t)rc_get16(&r) : RC_MAP_MAX_V1;   /* (a core before 2048: req only) */
-        m->u.mapreq.base = !r.err && r.len - r.n >= 2 ? (uint16_t)rc_get16(&r) : 0;               /* (...before MAPD: no base) */
+        m->u.mapreq.req = (uint16_t)rc_get16(&r); m->u.mapreq.max = (uint16_t)rc_get16(&r); m->u.mapreq.base = (uint16_t)rc_get16(&r);
+        if (r.err) return RC_E_SHORT;
         break;
     case RC_MSG_MAPD: {
         m->u.mapd.req = (uint16_t)rc_get16(&r); m->u.mapd.base = (uint16_t)rc_get16(&r);
@@ -607,14 +601,6 @@ int rc_decode(const uint8_t *buf, int len, rc_msg *m){
         m->u.mapd.data = r.p + r.n; m->u.mapd.len = (uint16_t)len; r.n += len;
         break;
     }
-    case RC_MSG_MAP:
-        m->u.map.req = (uint16_t)rc_get16(&r); m->u.map.part = (uint8_t)rc_get8(&r); m->u.map.nparts = (uint8_t)rc_get8(&r);
-        m->u.map.total = (uint16_t)rc_get16(&r); m->u.map.n = (uint8_t)rc_get8(&r);
-        if (r.err) return RC_E_SHORT;
-        if (m->u.map.nparts < 1 || m->u.map.nparts > RC_MAP_PARTS || m->u.map.part >= m->u.map.nparts || m->u.map.n > RC_MAP_PER) return RC_E_FIELD;
-        if (!r_have(&r, (uint32_t)m->u.map.n * RC_MAP_ENTRY)) return RC_E_SHORT;
-        m->u.map.data = r.p + r.n; r.n += (uint32_t)m->u.map.n * RC_MAP_ENTRY;
-        break;
     case RC_MSG_LOBBY: {
         rc_lobby *l = &m->u.lobby;
         l->op = (uint8_t)rc_get8(&r); l->arg = (uint8_t)rc_get8(&r); l->state = (uint8_t)rc_get8(&r); l->max = (uint8_t)rc_get8(&r);
