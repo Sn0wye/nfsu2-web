@@ -376,9 +376,13 @@ struct VOut { @builtin(position) pos: vec4f; @location(0) col0: vec4f; @location
   - `web/tools/aliastest.sh`: guest memory type punning (`tests/web/aliastest.c`). It runs
     `web/tools/aliasguard.sh` first, a structural check that every guest access macro of `runtime/cpu.h`'s wasm
     branches keeps its `may_alias` type; `web/build.sh` runs the guard before it compiles anything.
-  - `cd web && node --test test/*.test.mjs`: the unit tests (the LAN backend `lan_unit.c`, free roam, the C ns* key
-    driver against the page's key path, `settings.ts` against `bundle.m`, the alias guard and test, the server,
-    deployment, the security and privacy audit's regressions: `audit.test.mjs`, `page-audit.test.mjs`). They build their wasm programs with wasi-sdk from `deps/`, and refuse a server binary older than its sources.
+  - `cd web && npm test` (`web/tools/unit-tests.mjs`, about 80 s): the unit tests (the LAN backend `lan_unit.c`, free
+    roam, the C ns* key driver against the page's key path, `settings.ts` against `bundle.m`, the alias guard and test,
+    the server, deployment, the security and privacy audit's regressions: `audit.test.mjs`, `page-audit.test.mjs`).
+    They build their wasm programs with wasi-sdk from `deps/`, and refuse a server binary older than its sources.
+    `npm run test:fast` leaves out the six slow files (about 11 s).
+  - `.github/workflows/tests.yml` runs every crate's `cargo test` and the fast unit tests on each push to main and each
+    pull request; it does not hold back the image yet.
 - `node web/tools/predownload-test.mjs` checks "Preload the game data" in Chrome against its own server and a
   made-up game folder: byte-exact cache, no movies, zstd where the bytes compress, stop and resume, retries, a refused
   file, Play pausing it, a second tab. `web/test/data-blocks.test.mjs` checks the server's `/data-blocks/` (and its kept blocks),
