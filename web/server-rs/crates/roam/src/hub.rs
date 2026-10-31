@@ -38,8 +38,6 @@ struct HubLobby {
     ids: [u32; wire::LOBBY_PLAYERS],
 }
 
-/// A page before MAPD gets one world map answer a second at most (it asks a second after each)
-const MAP_V2_GAP_MS: f64 = 1000.0;
 /// MAPD: the page moves each player's marker on from where the hub last said, at its velocity; the hub says it again
 /// once the marker would be this far (m) from where the player is, or its heading this far off (256 a turn, 45°).  One
 /// pixel or two on the whole city's map, a car turning off now and then, a car standing never: four answers a second
@@ -402,8 +400,8 @@ fn sanitize(o: RoamOptions) -> RoamOptions {
         look_ms: f(o.look_ms, d.look_ms),
         away_m: f(o.away_m, d.away_m),
         view_m: f(o.view_m, d.view_m),
-        // (one answer is MAP_PARTS datagrams at most)
-        map_max: n(o.map_max, d.map_max).min(wire::MAP_PER * wire::MAP_PARTS),
+        // (one answer is MAPD_PARTS datagrams at most)
+        map_max: n(o.map_max, d.map_max).min(MAPD_MAX),
         map_gap_ms: f(o.map_gap_ms, d.map_gap_ms),
         map_fresh_ms: f(o.map_fresh_ms, d.map_fresh_ms),
     }
@@ -568,8 +566,7 @@ pub struct Hub {
     /// each browser's lobbies in `joined`, oldest first; when `joined` was last pruned
     joined_by_vip: HashMap<u32, Vec<u32>>,
     joined_pruned: f64,
-    /// when each virtual address's next world map is answered at the soonest (map_gap_ms; MAP_V2_GAP_MS for a page
-    /// before MAPD), kept past its players: a BYE and a HELLO (or
+    /// when each virtual address's next world map is answered at the soonest (map_gap_ms), kept past its players: a BYE and a HELLO (or
     /// another port) make a new player, and when a player's own time was the limit, a new player's first answer came
     /// at once (the second security audit, 2026-10-22: a map walks every player on the hub's one thread, and a few
     /// clients asking that way kept it busy); dropped at each tick once past
@@ -978,10 +975,8 @@ impl Hub {
             results.add(now, by, r, &|id| self.who(id));
             self.results = results;
         }
-        match ask {
-            Some((req, max, Some(base))) => self.mapd(slot, req, max, base, now),
-            Some((req, max, None)) => self.map(slot, req, max, now),
-            None => {}
+        if let Some((req, max, base)) = ask {
+            self.mapd(slot, req, max, base, now);
         }
     }
 
@@ -1062,65 +1057,10 @@ impl Hub {
         Some(format!("{} \"{}\"", nfsu2_util::vip_str((k >> 16) as u32), w.name))
     }
 
-    /// The world map's answer to the player in `slot` (roam_core.h RC_MSG_MAP): the players of its room in free roam
-    /// (or paused there) with a position younger than map_fresh_ms, past itself and its links, nearest first (at one
-    /// distance in the order they came), map_max of them at most (and the most it asks for), in datagrams of MAP_PER;
-    /// one answer to a browser (its virtual address, whatever its endpoints) every map_gap_ms at most (a page asks
-    /// again when an answer does not come).
-    fn map(&mut self, slot: u32, req: u16, most: u16, now: f64) {
-        let (gap, fresh, max) = (self.o.map_gap_ms.max(MAP_V2_GAP_MS), self.o.map_fresh_ms, self.o.map_max.min(most as usize));
-        let Some(p) = self.player(slot) else { return };
-        if self.map_at.get(&p.vip).is_some_and(|&t| now < t) {
-            return;
-        }
-        if p.impostor {
-            return;
-        }
-        let (room, at) = (p.room, p.p.unwrap_or_default());
-        let mut near: Vec<(u64, (i16, i16, u8))> = Vec::new();
-        for &q in &self.order {
-            let Some(o) = self.player(q) else { continue };
-            let Some(pos) = o.p else { continue };
-            if q == slot
-                || o.impostor
-                || o.room != room
-                || now - o.pos_at > fresh
-                || !matches!(o.status, 2 | 5)
-                || p.links.iter().any(|l| l.slot == q)
-            {
-                continue;
-            }
-            if self.apart_from(slot, q, p, o) {
-                continue;
-            }
-            let c = |x: f64| (x + 0.5).floor().clamp(-32767.0, 32767.0) as i16;
-            near.push((order_key(distance(&at, &pos)), (c(pos[0]), c(pos[1]), o.heading)));
-        }
-        let (vip, port, hub_port) = (p.vip, p.port, p.hub_port);
-        // (a stable sort: at one distance the order they came)
-        near.sort_by_key(|e| e.0);
-        let total = near.len().min(u16::MAX as usize) as u16;
-        near.truncate(max);
-        let list: Vec<(i16, i16, u8)> = near.into_iter().map(|e| e.1).collect();
-        let parts = list.len().div_ceil(wire::MAP_PER).max(1);
-        for (k, part) in list.chunks(wire::MAP_PER).chain(list.is_empty().then_some(&[][..])).enumerate() {
-            let mut f = vec![0u8; F_DATA + wire::map_len(part.len())];
-            f[0] = KIND_UDP;
-            f[4..8].copy_from_slice(&ROAM_HUB_VIP.to_be_bytes());
-            f[8..12].copy_from_slice(&vip.to_be_bytes());
-            f[12..14].copy_from_slice(&hub_port.to_be_bytes());
-            f[14..16].copy_from_slice(&port.to_be_bytes());
-            wire::write_map(&mut f[F_DATA..], self.id, self.seq, req, k as u8, parts as u8, total, part);
-            self.seq = self.seq.wrapping_add(1);
-            (self.send)(vip, Bytes::from(f));
-        }
-        self.map_at.insert(vip, now + gap);
-        self.lobbies(slot, req, now);
-    }
-
-    /// The world map's answer to a page that holds one (roam_core.h RC_MSG_MAPD): the players `map` would list (by
-    /// slot, the nearest when there are more), as what changed since its answer `base` the hub sent (from nothing when
-    /// the hub has no such answer): a player come or moved off where the page has it now (`MAP_TOL_M`, `MAP_TOL_H`;
+    /// The world map's answer to the player in `slot` (roam_core.h RC_MSG_MAPD): the players of its room in free roam
+    /// (or paused there) with a position younger than map_fresh_ms, past itself and its links (`map_room`), map_max of
+    /// them at most (and the most it asks for; by slot, the nearest when there are more), as what changed since its
+    /// answer `base` the hub sent (from nothing when the hub has no such answer): a player come or moved off where the page has it now (`MAP_TOL_M`, `MAP_TOL_H`;
     /// the page moves each marker on at the velocity it was given) is placed, a player gone goes.  One answer to a
     /// browser every map_gap_ms at most, and its race lobbies with it every MAP_LOBBIES_GAP_MS.
     fn mapd(&mut self, slot: u32, req: u16, most: u16, base: u16, now: f64) {

@@ -17,9 +17,7 @@
 //!   room in free roam, past its links, map_max (2048) of them at most (the nearest), or as many as the MAPREQ asks
 //!   for, by the hub's slot of each, as what changed since that answer: each player come, or moved off where the
 //!   page has it, placed (x, y in whole metres, heading a byte, velocity in m/s: the page moves its marker on at
-//!   it), each one gone gone.  A player standing costs nothing, a car going straight little.  A page before MAPD
-//!   asks each second without naming one and gets the whole list in MAP datagrams (at most nine of 230), nearest
-//!   first, each place and heading (512 from a page before 2048).
+//!   it), each one gone gone.  A player standing costs nothing, a car going straight little.
 //!
 //! The links, in each room: the pairs of players with a position younger than `stale_ms` (60 s: one in a shop or a
 //! race keeps its links for a while), nearest first, each player at most its degree of them.  "Nearest" looks ahead,
@@ -168,9 +166,8 @@ pub struct RoamOptions {
     /// a player's view point, this far ahead of where its car points (m): a car in front counts from there too, so it
     /// is linked from farther away than one beside or behind
     pub view_m: f64,
-    /// the world map (MAPREQ): at most this many players a answer, one answer a browser every map_gap_ms at most (a
-    /// second for a page before MAPD), of the players in free roam (or paused there) with a position younger than
-    /// map_fresh_ms
+    /// the world map (MAPREQ): at most this many players a answer, one answer a browser every map_gap_ms at most, of
+    /// the players in free roam (or paused there) with a position younger than map_fresh_ms
     pub map_max: usize,
     pub map_gap_ms: f64,
     pub map_fresh_ms: f64,
