@@ -11,19 +11,22 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+# a newer push to a pull request stops its run; on main every push is tested to the end (several sessions push there)
 concurrency:
-  group: tests-${{ github.ref }}
-  cancel-in-progress: true
+  group: tests-${{ github.ref }}-${{ github.event_name == 'pull_request' && 'pr' || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   tests:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v5
-      # node and the page's packages (ws, esbuild): the page's tests, the LAN crate's page tests, the Node comparisons
+      # node and the page's packages (ws, esbuild): the page's tests, the LAN crate's page tests, the Node comparisons.
+      # Those (crates/http cross_node, src/app/url.rs, crates/names cross_check) were checked against this Node: 24 reads
+      # a "^" in a path, a few malformed headers and some new Unicode letters otherwise
       - uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version: 23.9.0
           cache: npm
           cache-dependency-path: web/package-lock.json
       - run: npm ci
@@ -39,10 +42,12 @@ jobs:
       - if: steps.wasi.outputs.cache-hit != 'true'
         run: mkdir -p deps && curl -sSfL https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-34/wasi-sdk-34.0-x86_64-linux.tar.gz | tar xz -C deps
       - uses: dtolnay/rust-toolchain@stable
+      # the build is kept also when a test failed (by default only a run that passed saves it)
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: web/server-rs
-      # the release build's code with a quicker link (Cargo.toml's profile.ci)
+          cache-on-failure: true
+      # the release build's code without its slow link (Cargo.toml's profile.ci)
       - name: server tests
         run: cargo test --profile ci --locked --workspace --no-fail-fast
         working-directory: web/server-rs
