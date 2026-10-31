@@ -97,6 +97,18 @@ async fn the_page_takes_friends_car_states_by_their_fields() {
     sw.close().await;
 }
 
+// its hello took every other datagram as what changed too: a race's datagrams reach the game byte for byte
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn the_page_takes_races_datagrams_as_what_changed() {
+    let _s = serial().await;
+    if no_node() {
+        return;
+    }
+    let sw = start(opts()).await;
+    page("races", &[sw.port]).await;
+    sw.close().await;
+}
+
 // the page: kicked, it tells the game and stays off the switch for the rest of the game, whatever wants it; a page
 // whose id is banned is turned away at its hello the same way
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]

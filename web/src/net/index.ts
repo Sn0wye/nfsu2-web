@@ -340,6 +340,9 @@ class Link implements NetLink {
   private refs = new Map<number, Uint8Array>();
   /** friends' last car states, for the compact bundles' entries by their fields (proto.ts fpredTake) */
   private fp: P.FpredState = new Map();
+  /** the last other datagrams (LAN play's UDP: races) it was sent by source and kind, which the switch's deltas of
+   *  those are made against (proto.ts unpackCompact) */
+  private others = new Map<number, Uint8Array>();
   /** while a bundle from the switch is taken apart: the endpoints to ring once it is */
   private ringLater: Set<Endpoint> | null = null;
   private pings = new Map<number, number>();
@@ -574,6 +577,7 @@ class Link implements NetLink {
     this.state = 'connecting'; this.setPage(P.NET_PAGE_CONNECTING);
     this.refs = new Map();
     this.fp = new Map();
+    this.others = new Map();
     const ws = new WebSocket(u.href);
     ws.binaryType = 'arraybuffer';
     this.ws = ws;
@@ -582,9 +586,10 @@ class Link implements NetLink {
       // play is open, so it takes LAN broadcasts; bundle: this page takes bundles; compact: and compact ones (a
       // switch of before ignores it and sends bundles as they were); delta: and in those a free-roam datagram as
       // what changed since its source's last one (proto.ts unpackCompact; `refs`, kept for this connection); fpred: and
-      // a friend's car state by its fields, rounded (proto.ts fpredTake; `fp`)
+      // a friend's car state by its fields, rounded (proto.ts fpredTake; `fp`); ldelta: and every other datagram (a
+      // race's) as what changed since its source's last one of its kind (`others`)
       this.lanSent = this.lanOpen();
-      ws.send(JSON.stringify({ t: 'hello', name: this.o.name ?? 'player', deltas: 1, lan: this.lanSent ? 1 : 0, bundle: 1, compact: 1, delta: 1, fpred: 1,
+      ws.send(JSON.stringify({ t: 'hello', name: this.o.name ?? 'player', deltas: 1, lan: this.lanSent ? 1 : 0, bundle: 1, compact: 1, delta: 1, fpred: 1, ldelta: 1,
         ...(this.o.id ? { id: this.o.id } : {}), ...(this.o.id && this.o.was?.length ? { was: this.o.was } : {}),
         ...(this.o.claim ? { claim: this.o.claim } : {}), ...(this.o.block?.length ? { block: this.o.block } : {}),
         ...(this.vipNum && this.token ? { vip: P.ipStr(this.vipNum), token: this.token } : {}), ...(this.ticket ? { ticket: this.ticket } : {}) }));
@@ -815,7 +820,7 @@ class Link implements NetLink {
       // the same, each frame put together again first (proto.ts unpackCompact)
       const ring = this.ringLater = new Set();
       this.st.compactIn++;
-      this.st.deltaIn += P.unpackCompact(u, this.vipNum, f => this.rxFrame(f), this.refs, this.fp);
+      this.st.deltaIn += P.unpackCompact(u, this.vipNum, f => this.rxFrame(f), this.refs, this.fp, this.others);
       this.ringLater = null;
       for (const ep of ring) ep.ring();
     } else this.rxFrame(b);

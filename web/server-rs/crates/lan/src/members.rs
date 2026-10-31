@@ -685,7 +685,7 @@ fn greet(peer: &Peer, m: &Map<String, Value>, fpred: bool) {
     peer.hello.store(true, Relaxed);
     peer.deltas.store(is_num(m.get("deltas"), 1.0), Relaxed);
     peer.bundle.store(is_num(m.get("bundle"), 1.0), Relaxed);
-    use crate::conn::{COMPACT, DELTAS, FPRED, PLAIN};
+    use crate::conn::{COMPACT, DELTAS, FPRED, OTHERS, PLAIN};
     let compact = match (is_num(m.get("compact"), 1.0), is_num(m.get("delta"), 1.0), is_num(m.get("fpred"), 1.0)) {
         (false, ..) => PLAIN,
         (true, false, _) => COMPACT,
@@ -693,6 +693,7 @@ fn greet(peer: &Peer, m: &Map<String, Value>, fpred: bool) {
         (true, true, true) => FPRED,
     };
     let compact = if compact == FPRED && !fpred { DELTAS } else { compact };
+    let compact = if compact >= DELTAS && is_num(m.get("ldelta"), 1.0) { compact | OTHERS } else { compact };
     peer.conn.compact.store(compact, Relaxed);
     let lan = m.get("lan");
     if is_num(lan, 0.0) || is_num(lan, 1.0) {

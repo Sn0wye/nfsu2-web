@@ -112,8 +112,16 @@ export function ipNum(s: string): number | null {
 // hello said "delta":1): the type, a bitmap of the body's bytes (bit i % 8 of byte i / 8: byte i is new; the body as
 // long as the last one), the new bytes in order.  Every 0x20 entry without 0x08 and 0x10 is its source's and type's
 // last for the next; past COMPACT_REFS_MAX of them, a new one clears them all first, as the switch does.
+// To a page whose hello said "ldelta":1 too, any other datagram to it (LAN play's UDP: races; the race horn's) may come
+// as what changed since the last one of its kind from its source: 0x80 without 0x20 (bits 0-2 its kind; 0x10: its
+// length, u16, follows, else it is as long as the last one), then a bitmap of its bytes from its ports on (bit i % 8
+// of byte i / 8: byte i is new; past the last one's end always), the new bytes in order.  Every such datagram to the
+// page's own address (not 0x08) of at most COMPACT_OTHER_MAX bytes from its ports on, as it came or not, is its
+// source's and kind's last for the next, kept apart from free roam's (`others`, COMPACT_REFS_MAX of them too).
 const C_BCAST = 0x08, C_PORTS = 0x10, C_ROAM = 0x20, C_WHOLE = 0x40, C_DELTA = 0x80, ROAM_PORT = 47210, ROAM_CUT = 11;
 export const COMPACT_REFS_MAX = 256;
+/** the longest other datagram (from its ports on) kept as its source's last (nfsu2-lan compact.rs OTHER_MAX) */
+export const COMPACT_OTHER_MAX = 1500;
 const CRC_TABLE = (() => {
   const t = new Int32Array(256);
   for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c; }
@@ -231,9 +239,10 @@ export function fpredTake(st: FpredState, src: number, e: Uint8Array): Uint8Arra
  *  rounded as the switch rounded it), to `take` in order; `own` the address this page holds; `refs` the last bodies
  *  (a free-roam datagram past its type) by source and type, for a page that takes deltas, and `fp` its friends' last
  *  car states, for one that takes them by their fields (both kept for its connection).  A broken entry ends it.
+ *  `others` the last other datagrams (from their ports on) by source and kind, for one that takes those as deltas too.
  *  Returns how many came as deltas (those by their fields too). */
 export function unpackCompact(u: Uint8Array, own: number, take: (f: ArrayBuffer) => void, refs?: Map<number, Uint8Array>,
-  fp?: FpredState): number {
+  fp?: FpredState, others?: Map<number, Uint8Array>): number {
   const dv = new DataView(u.buffer, u.byteOffset, u.byteLength);
   let deltas = 0;
   for (let at = 4; at + 5 <= u.length;) {
@@ -251,6 +260,30 @@ export function unpackCompact(u: Uint8Array, own: number, take: (f: ArrayBuffer)
     if (end > u.length) return deltas;
     at = end;
     if (flags === C_WHOLE) { take(u.slice(p, end).buffer); continue; }
+    const okey = src << 8 | (flags & 7);
+    if ((flags & (C_DELTA | C_ROAM)) === C_DELTA) {
+      // another datagram: what changed put on its source's last one of its kind, from its ports on
+      const last = others?.get(okey);
+      if (!last) return deltas;
+      let n = last.length;
+      if (flags & C_PORTS) { if (p + 2 > end) return deltas; n = dv.getUint16(p); p += 2; }
+      let next = p + ((n + 7) >> 3);
+      if (next > end) return deltas;
+      const f = new Uint8Array(F_SPORT + n), fv = new DataView(f.buffer);
+      for (let i = 0; i < n; i++) {
+        if ((u[p + (i >> 3)] >> (i & 7)) & 1) f[F_SPORT + i] = u[next++];
+        else if (i < last.length) f[F_SPORT + i] = last[i];
+        else return deltas;
+      }
+      if (next !== end) return deltas;
+      f[F_KIND] = flags & 7;
+      fv.setUint32(F_SRC, (0x0a4d0000 | src) >>> 0);
+      fv.setUint32(F_DST, own >>> 0);
+      others!.set(okey, f.slice(F_SPORT));
+      deltas++;
+      take(f.buffer);
+      continue;
+    }
     const ports = (flags & C_PORTS) !== 0, roam = (flags & C_ROAM) !== 0, d = p + (ports ? 4 : 0);
     if (end < d) return deltas;
     // a free-roam datagram's type and body (as it came, or what changed put on its source's last one)
@@ -282,7 +315,13 @@ export function unpackCompact(u: Uint8Array, own: number, take: (f: ArrayBuffer)
     if (ports) f.set(u.subarray(p, p + 4), F_SPORT);
     else { fv.setUint16(F_SPORT, ROAM_PORT); fv.setUint16(F_DPORT, ROAM_PORT); }
     if (body) roamDatagram(f, len, kind, body);
-    else f.set(u.subarray(d, end), F_DATA);
+    else {
+      f.set(u.subarray(d, end), F_DATA);
+      if (others && !(flags & C_BCAST) && f.length - F_SPORT <= COMPACT_OTHER_MAX) {
+        if (others.size >= COMPACT_REFS_MAX && !others.has(okey)) others.clear();
+        others.set(okey, f.slice(F_SPORT));
+      }
+    }
     take(f.buffer);
   }
   return deltas;

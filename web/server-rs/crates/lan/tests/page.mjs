@@ -502,6 +502,53 @@ const cases = {
     } finally { link.close(); }
   },
 
+  // its hello took every other datagram as what changed too ("ldelta":1, nfsu2-lan compact.rs Refs::other): a race's
+  // LAN UDP from two rivals, a few bytes new each time, now and then of another length or on other ports, with a LAN
+  // broadcast and the race horn's UDP among them, reaches the game byte for byte, most of it as deltas
+  async races([port]) {
+    const { attachNet } = await pageNet(port);
+    const memory = new WebAssembly.Memory({ initial: 10, maximum: 10, shared: true }), lanMb = mailbox(memory, 0);
+    want(lanMb, 1); Atomics.store(lanMb.w, P.W_MODE, P.NET_MODE_LAN);
+    const link = attachNet(fakeGame(memory, { 7: lanMb }), { url: `ws://127.0.0.1:${port}/lan`, name: 'P', pingMs: 60_000 });
+    try {
+      const me = P.ipNum(await link.online);
+      const r1 = new Client(port, 'R1', '', null, { bundle: true }), r2 = new Client(port, 'R2', '', null, { bundle: true });
+      await r1.welcome(); await r2.welcome(); await sleep(100);
+      const pk = [Buffer.alloc(140), Buffer.alloc(140)];
+      pk.forEach((b, j) => { for (let i = 0; i < b.length; i++) b[i] = (i * 31 + 7 * j) & 255; });
+      const sent = [];
+      for (let i = 0; i < 90; i++) {
+        const j = i % 2, c = j ? r2 : r1;
+        let b = pk[j];
+        b[(i * 7) % b.length] = i; b[(i * 13 + 5) % b.length] ^= 0x5a; b.writeFloatLE(i * 1.5, 20);
+        if (i % 20 === 10) pk[j] = b = Buffer.concat([b, Buffer.from([i])]);
+        if (i % 20 === 15) pk[j] = b = b.subarray(0, b.length - 3);
+        const data = Buffer.concat([Buffer.from([0, 64, 0, 0, 0, 0, 0, 0]), b]);
+        const dport = i === 41 ? 6114 : 6113;
+        sent.push({ c, kind: 3, dst: me, sport: 6112, dport, data, f: frameOf(me, data, 3, 6112, dport) });
+        if (i % 9 === 4) {
+          const bc = Buffer.from([0, 64, 0, 0, 0, 0, 0, 0, 1, 2, 3, i]);
+          sent.push({ c, kind: 3, dst: P.NET_BROADCAST, sport: 6112, dport: 6112, data: bc, f: frameOf(P.NET_BROADCAST, bc, 3, 6112, 6112) });
+        }
+      }
+      for (let i = 0; i < sent.length; i += 6) {
+        const part = sent.slice(i, i + 6);
+        for (const c of [r1, r2]) { const mine = part.filter(x => x.c === c); if (mine.length) c.sendBundle(mine.map(({ f }) => ({ f }))); }
+        await until(() => Atomics.load(lanMb.w, P.W_RX_HEAD) - Atomics.load(lanMb.w, P.W_RX_TAIL) >= part.length);
+        const got = rxTakeRaw(memory, lanMb);
+        const key = g => `${g.src >>> 0}/${g.dst >>> 0}/${g.sport}/${g.dport}/${g.data.toString('hex')}`;
+        // (the two rivals' bundles may come in either order: each one's own in order)
+        for (const c of [r1, r2])
+          assert.deepEqual(got.filter(g => g.src >>> 0 === c.vip).map(key), part.filter(x => x.c === c).map(x => key({ ...x, src: c.vip })), `datagrams ${i} on`);
+      }
+      assert.ok(link.stats().deltaIn >= 70, `as deltas (${link.stats().deltaIn} of ${sent.length})`);
+      const mix = (await state(port)).info.mix;
+      console.log(`race datagrams: ${mix['LAN UDP'][1]}, ${(mix['LAN UDP'][0] / mix['LAN UDP'][1]).toFixed(1)} bytes each (plain ${5 + 4 + 8 + 141})`);
+      assert.ok(mix['LAN UDP'][0] / mix['LAN UDP'][1] < 60, `${(mix['LAN UDP'][0] / mix['LAN UDP'][1]).toFixed(1)} bytes a race datagram`);
+      await r1.close(); await r2.close();
+    } finally { link.close(); }
+  },
+
   // its hello took friends' car states by their fields (nfsu2-lan fpred.rs, proto.ts fpredTake): each reaches the game
   // rounded, as the switch rounded it, with a CRC that checks out; one of a layout that does not go so (three states)
   // and a HELLO reach it as they were
