@@ -22,14 +22,19 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const read = f => fs.readFileSync(path.join(ROOT, f), 'utf8');
 
-// C string literals of a source, comments skipped: [{ line, text }] (text as written, escapes kept)
+// C string literals of a source, comments skipped: [{ line, text, row }] (text as written, escapes kept; row: the first
+// literal of the braces it is in, when that came right after the brace)
 function cLiterals(src) {
   const out = [];
   let i = 0, line = 1;
   const n = src.length;
+  // braces open now: where each opened, and its first literal when that came right after it ({ "turkish", "..." })
+  const open = [];
   while (i < n) {
     const c = src[i];
     if (c === '\n') { line++; i++; continue; }
+    if (c === '{') { open.push({ at: i, first: undefined }); i++; continue; }
+    if (c === '}') { open.pop(); i++; continue; }
     if (c === '/' && src[i + 1] === '/') { while (i < n && src[i] !== '\n') i++; continue; }
     if (c === '/' && src[i + 1] === '*') {
       const e = src.indexOf('*/', i + 2), j = e < 0 ? n : e + 2;
@@ -42,7 +47,11 @@ function cLiterals(src) {
         if (src[j] === '\\' && j + 1 < n) { text += src[j] + src[j + 1]; j += 2; continue; }
         text += src[j++];
       }
-      if (c === '"') out.push({ line, text });
+      if (c === '"') {
+        const top = open.at(-1);
+        if (top && top.first === undefined) top.first = src.slice(top.at + 1, i).trim() === '' ? text : null;
+        out.push({ line, text, row: top?.first ?? null });
+      }
       i = j + 1; continue;
     }
     i++;
@@ -154,6 +163,10 @@ const TURKISH = new Set(`kare kareler diger doku kose cizim cagri hedef dosya ko
   toplami olarak satir ustu konum turu ortografik olmali kopyasiz bekleyen terfi sikistirma sifirlama ozet denetimi kopyasi
   maske icerik kuruluyor dagilimi gorunum dortgen kaldi yuklendi zamanlayici matris tampon ses yok sn`.split(/\s+/).filter(Boolean));
 
+// the game's languages (runtime/language.c's LANGS): a row of a table that starts with one of them, as
+// { "turkish", "Foto Modu" } or sms.c's messages, is that language's text the game shows, not a log line
+const LANGUAGES = new Set([...read('runtime/language.c').matchAll(/^\s*\{ "([a-z]+)",\s+"/gm)].map(m => m[1]));
+
 function lintFiles() {
   const list = [];
   for (const d of ['runtime', 'runtime/web']) {
@@ -166,9 +179,12 @@ test('no Turkish word in a string literal of the runtime or the C test harnesses
   const bad = [];
   const files = lintFiles();
   assert.ok(files.length > 60, `${files.length} files`);
+  assert.ok(LANGUAGES.has('turkish') && LANGUAGES.has('english') && LANGUAGES.size >= 15, [...LANGUAGES].join(' '));
   for (const f of files) {
-    for (const { line, text } of cLiterals(read(f))) {
-      const t = text.replace(/\/\*.*?\*\//g, '');                 // shader source comments
+    for (const { line, text, row } of cLiterals(read(f))) {
+      if (row !== text && LANGUAGES.has(row)) continue;
+      // shader source comments out; \u escapes as their letters (the runtime writes its own letters as escapes)
+      const t = text.replace(/\/\*.*?\*\//g, '').replace(/\\u([0-9a-fA-F]{4})/g, (m, h) => String.fromCharCode(parseInt(h, 16)));
       const words = t.replace(/\\[ntr"\\]/g, ' ').split(/[^A-Za-z\u00c0-\u024f]+|(?<=[a-z])(?=[A-Z])/).map(w => w.toLowerCase());
       const hit = words.filter(w => TURKISH.has(w));
       if (hit.length || /[\u00e7\u011f\u0131\u00f6\u015f\u00fc\u00c7\u011e\u0130\u00d6\u015e\u00dc]/.test(t)) bad.push(`${f}:${line}: [${hit.join(',')}] "${text.slice(0, 100)}"`);

@@ -7,12 +7,17 @@ import path from 'node:path';
 import zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import { WebSocket } from 'ws';
+import fs from 'node:fs';
 import * as esbuild from 'esbuild';
 import * as P from '../../../../src/net/proto.ts';
+import { sourceKeys } from '../../../../tools/i18n-keys.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const WEB = path.join(HERE, '../../../..');
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+/** the page's own texts (web/src/net/index.ts's English, the keys the page translates): a notice is checked as one of
+ *  them, so new wording needs no change here */
+const TEXTS = new Set(sourceKeys(fs.readFileSync(path.join(WEB, 'src/net/index.ts'), 'utf8')).keys.map(k => k.key));
 const ipStr = (v) => [v >>> 24, (v >>> 16) & 255, (v >>> 8) & 255, v & 255].join('.');
 
 /** the switch's insides, as these tests read them: { peers: [{ vip, name, hello, lan }], info, reserved } */
@@ -200,7 +205,8 @@ const cases = {
         await until(() => qb.length === 1);
         assert.deepEqual(qb[0], { pos: 1, of: 1 });
         assert.equal(b.state, 'queued');
-        assert.deepEqual(nb, ["The server is full: you're in line and join the others when it's your turn"]);
+        assert.equal(nb.length, 1, 'a notice once');
+        assert.ok(TEXTS.has(nb[0]), nb[0]);
         assert.equal((await state(port)).info.waiting, 1);
         // its link drops: back to the same place, with no second notice
         b['ws'].close(4000, 'dropped');
@@ -212,7 +218,7 @@ const cases = {
         a.close();
         assert.match(await b.online, /^10\.77\.([0-9]|1[0-9])\.\d+$/);
         await until(() => nb.length === 2);
-        assert.equal(nb[1], 'A place on the server freed up: you can play with others now');
+        assert.ok(TEXTS.has(nb[1]) && nb[1] !== nb[0], `another notice once in: ${nb[1]}`);
         assert.equal(qb.at(-1), null, 'out of line');
         assert.deepEqual([na, qa], [[], []], 'the first game heard nothing');
         // a third waits in line, then stops waiting (the page menu's Play offline): out of line for good

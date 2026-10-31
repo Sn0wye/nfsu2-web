@@ -513,7 +513,8 @@ if (argv.includes('--canary')) {
 }
 // the server's view: every race's result was taken (the online host logs one line per race)
 const srvLog = fs.readFileSync(path.join(OUT, 'server.log'), 'utf8');
-summary.serverResults = srvLog.split('\n').filter(l => /^\[online\] ".*" \((circuit|sprint|drift|drag|streetx|url|type \d+), (un)?ranked\): /.test(l));
+// (a drift race's line also names its track and laps: lobby.rs)
+summary.serverResults = srvLog.split('\n').filter(l => /^\[online\] ".*" \((circuit|sprint|drift|drag|streetx|url|type \d+), (un)?ranked(, track \d+, \d+ laps?)?\): /.test(l));
 if (flow && OWN && summary.serverResults.length < RACES) summary.why.push(`server:results-${summary.serverResults.length}-of-${RACES}`);
 summary.pass = summary.why.length === 0;
 fs.writeFileSync(path.join(OUT, 'summary.json'), JSON.stringify(summary, null, 2));
