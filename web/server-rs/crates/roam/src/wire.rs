@@ -36,6 +36,10 @@ pub(crate) const HF_LOBBY: u16 = 0x0080;
 /// ids it hears: a count (at most CREWS), then that many hashes (u32 LE, rc_room_hash of each crew's word, never 0);
 /// whatever comes after them is skipped (room for what a newer core adds)
 pub(crate) const HF_CREW: u16 = 0x0200;
+/// HELLO's flag: this player reads the hub's crew marks (roam_core.h RC_HF_HUBCREW; `write_peers`)
+pub(crate) const HF_HUBCREW: u16 = 0x0400;
+/// in a list's crew marks, past the crews' bits: that player is a friend (roam_core.h RC_MARK_FRIEND; `write_peers`)
+pub(crate) const MARK_FRIEND: u8 = 0x80;
 /// the most crews a player is in (roam_core.h RC_CREW_MAX: the start page's four words)
 pub(crate) const CREWS: usize = 4;
 /// the most ids a HELLO names (roam_core.h RC_MAX_PEERS: its decoder takes no more)
@@ -72,6 +76,8 @@ pub(crate) enum Msg<'a> {
         name: &'a [u8],
         /// its flags say it takes race lobbies (HF_LOBBY)
         lobbies: bool,
+        /// ...and reads the hub's crew marks (HF_HUBCREW)
+        marks: bool,
         /// its crews as it sent them (HF_CREW), 0 after them: none for a HELLO without the flag, or with the flag
         /// and nothing after its ids
         crews: [u32; CREWS],
@@ -332,7 +338,7 @@ pub(crate) fn decode(d: &[u8]) -> Option<(u8, u32, Msg<'_>)> {
                     }
                 }
             }
-            Msg::Hello { sender, core, status, room, name, lobbies: flags & HF_LOBBY != 0, crews }
+            Msg::Hello { sender, core, status, room, name, lobbies: flags & HF_LOBBY != 0, marks: flags & HF_HUBCREW != 0, crews }
         }
         MSG_SNAP => {
             if end < 22 + 52 {
@@ -406,11 +412,11 @@ pub(crate) fn peers_crew_len(n: usize, k: usize) -> usize {
     peers_len(n) + 1 + 4 * k + n
 }
 
-/// Writes a PEERS datagram into `b` (exactly `peers_len(n)` bytes long, or `peers_crew_len(n, mine.len())` with crews):
-/// list = [{ vip, port, id }] (at most 32: roam_core's RC_MAX_PEERS).  With `mine` (the
-/// receiver's crews, at most CREWS, none 0) the list ends in its crew marks (HF_CREW on it): `mine`, then a byte per
-/// entry, `marks[i]` bit c: entry i is in crew `mine[c]` too.  So a player learns which of its peers are in its crews
-/// without anyone's crews but its own going out.
+/// Writes a PEERS datagram into `b` (exactly `peers_len(n)` bytes long, or `peers_crew_len(n, mine.len())` with marks):
+/// list = [{ vip, port, id }] (at most 32: roam_core's RC_MAX_PEERS).  With marks (`b` the longer, `marks` n bytes) the
+/// list ends in the receiver's crew marks (HF_CREW on it): `mine` (its crews, at most CREWS, none 0; maybe none), then
+/// a byte per entry, `marks[i]` bit c: entry i is in crew `mine[c]` too; MARK_FRIEND: entry i is its friend.  So a
+/// player learns which of its peers are in its crews, and its friends, without anyone's crews but its own going out.
 pub(crate) fn write_peers(
     b: &mut [u8],
     sender: u32,
@@ -421,13 +427,14 @@ pub(crate) fn write_peers(
 ) {
     let len = b.len();
     let n = list.len();
+    let with = len > peers_len(n);
     b[..4].copy_from_slice(b"N2FR");
     b[4] = 1;
     b[5] = MSG_PEERS;
     b[6..8].copy_from_slice(&(len as u16).to_le_bytes());
     b[8..12].copy_from_slice(&sender.to_le_bytes());
     b[12..14].copy_from_slice(&seq.to_le_bytes());
-    b[14..16].copy_from_slice(&if mine.is_empty() { 0 } else { HF_CREW }.to_le_bytes());
+    b[14..16].copy_from_slice(&if with { HF_CREW } else { 0 }.to_le_bytes());
     // the count's low byte: one byte holds every count roam_core reads (RC_MAX_PEERS at most, as above)
     b[16] = n as u8;
     for (i, e) in list.enumerate() {
@@ -436,7 +443,7 @@ pub(crate) fn write_peers(
         b[o + 4..o + 6].copy_from_slice(&e.port.to_le_bytes());
         b[o + 6..o + 10].copy_from_slice(&e.id.to_le_bytes());
     }
-    if !mine.is_empty() {
+    if with {
         let mut o = 17 + 10 * n;
         b[o] = mine.len() as u8;
         o += 1;
@@ -455,9 +462,10 @@ pub fn encode_peers(sender: u32, seq: u16, list: &[PeerEntry]) -> Vec<u8> {
     encode_peers_crews(sender, seq, list, &[], &[])
 }
 
-/// A PEERS datagram with crew marks (`write_peers`; none with `mine` empty)
+/// A PEERS datagram with crew marks (`write_peers`; none with `mine` and `marks` empty)
 pub fn encode_peers_crews(sender: u32, seq: u16, list: &[PeerEntry], mine: &[u32], marks: &[u8]) -> Vec<u8> {
-    let mut b = vec![0u8; if mine.is_empty() { peers_len(list.len()) } else { peers_crew_len(list.len(), mine.len()) }];
+    let with = !mine.is_empty() || !marks.is_empty();
+    let mut b = vec![0u8; if with { peers_crew_len(list.len(), mine.len()) } else { peers_len(list.len()) }];
     write_peers(&mut b, sender, seq, list.iter().copied(), mine, marks);
     b
 }

@@ -1129,6 +1129,10 @@ async fn free_roams_friends_through_the_server() {
     assert_eq!(first(&al, "can", k).await["st"], "friends");
     // the start page: Bo plays in free roam, in the room of everyone; then Bo leaves
     assert_eq!(lists('A').await["friends"], serde_json::json!([{ "name": "Bo_", "where": "roam", "room": "" }]));
+    // ...and the game's page on its link (its notices, the page menu's Friends)
+    let k = n(&al);
+    al.text(r#"{"t":"friend","op":"where"}"#);
+    assert_eq!(first(&al, "where", k).await["friends"], serde_json::json!([{ "name": "Bo_", "where": "roam", "room": "" }]));
     bo.close().await;
     sleep(1200).await;
     assert_eq!(lists('A').await["friends"], serde_json::json!([{ "name": "Bo_", "where": "" }]));

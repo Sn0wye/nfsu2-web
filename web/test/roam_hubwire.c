@@ -14,7 +14,8 @@
  *   roam_hubwire hellocrew        a session's HELLO to the hub, in hex: its crews "Blue Room" and "Night Owls"
  *                                 (rc_room_hash) after the ids of the two players the hub listed, who said hello
  *   roam_hubwire hubcrew <hex>    a session in those two crews takes this list from the hub; then each player
- *                                 listed as "a.b.c.d:port:crew" (rc_peer_crew: 0 or 1, -1 for none) */
+ *                                 listed as "a.b.c.d:port:crew" (rc_peer_crew: 0 or 1, -1 for none), "f" after
+ *                                 it for a friend (rc_peer_friend) */
 #include "roam_core.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -93,10 +94,12 @@ int main(int argc, char **argv){
         rc_receive(&S, 0x0A4D00FDu, 47210, b, n, t += 1000);
         printf("ok");
         for (int k = 0; k < m.u.peers.n; k++){
-            uint32_t ip = m.u.peers.e[k].ip; int crew = -2;
+            uint32_t ip = m.u.peers.e[k].ip; int crew = -2, friend = 0;
             for (int i = 0; i < RC_TABLE; i++)
-                if (S.peer[i].state != RC_PS_FREE && S.peer[i].ip == ip && S.peer[i].port == m.u.peers.e[k].port) crew = rc_peer_crew(&S, i);
-            printf(" %u.%u.%u.%u:%u:%d", ip >> 24, (ip >> 16) & 255u, (ip >> 8) & 255u, ip & 255u, m.u.peers.e[k].port, crew);
+                if (S.peer[i].state != RC_PS_FREE && S.peer[i].ip == ip && S.peer[i].port == m.u.peers.e[k].port){
+                    crew = rc_peer_crew(&S, i); friend = rc_peer_friend(&S, i);
+                }
+            printf(" %u.%u.%u.%u:%u:%d%s", ip >> 24, (ip >> 16) & 255u, (ip >> 8) & 255u, ip & 255u, m.u.peers.e[k].port, crew, friend ? "f" : "");
         }
         printf("\n");
         return 0;

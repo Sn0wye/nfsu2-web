@@ -306,6 +306,7 @@
     <button type="button" class="btn" data-act="fps">Frame-rate counter: off</button>
     <button type="button" class="btn" data-act="solid" data-i18n-attr="title" title="On: drive through other players' cars. Off: collide with them." hidden>Ghost mode: off</button>
     <button type="button" class="btn" data-act="crews" aria-haspopup="dialog" hidden>Crews: none</button>
+    <button type="button" class="btn" data-act="friends" aria-haspopup="dialog" hidden data-i18n>Friends</button>
     <button type="button" class="btn selected" data-act="friend" hidden></button>
     <div class="menu-radio">
       <button type="button" class="btn" data-act="radio" aria-pressed="false"><span id="radio-label">Radio: off</span></button>
@@ -326,6 +327,15 @@
   <div class="crews-pop-box" id="crews-pop-box"></div>
   <div class="row end">
     <button type="button" class="btn selected" data-act="crews-done" data-i18n>Done</button>
+  </div>
+</dialog>
+<!-- the menu's Friends (a game in free roam, with friends), over the menu, as its Crews -->
+<dialog class="dlg friends-pop" id="friends-pop" aria-labelledby="friends-pop-title" aria-describedby="friends-pop-help">
+  <h2 id="friends-pop-title" data-i18n>Friends</h2>
+  <p class="hint" id="friends-pop-help" data-i18n>Join a friend's room: free roam shows its players from now on.</p>
+  <div class="friends-pop-box" id="friends-pop-box"></div>
+  <div class="row end">
+    <button type="button" class="btn selected" data-act="friends-done" data-i18n>Done</button>
   </div>
 </dialog>
 <dialog class="dlg playlist" id="playlist" aria-labelledby="playlist-title">

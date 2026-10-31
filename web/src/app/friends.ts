@@ -6,15 +6,19 @@
 //   (runtime/roam_game.c bump_*, NET_KIND_FRIEND), the page asks the server what that player is to it ("can"), and a
 //   line under the middle of the picture offers it: "Add Bravo as a friend" (F, a click or a tap on the line, or the
 //   page's menu: a controller's every button is the game's), "Bravo wants to be friends: accept", or says why not;
-//   gone once the cars part.  It also tells the server the room's name once the player has friends (their Join).
-// - FriendsPanel, on the start page (the Online section): the friends with where each one plays and a Join, the
-//   requests to answer, the ones sent.
+//   gone once the cars part.  It also tells the server the room's name once the player has friends (their Join), asks
+//   where the friends play every minute ("where"), says in the notices when one comes into free roam, and fills the
+//   page menu's Friends popup (Join a friend's room).
+// - FriendsPanel, on the start page (the Online section): one line a friend, where it plays after its name and a
+//   Join in free roam, the requests to answer, the ones sent; icons for what each line does.
 // - FriendsApi: /friends, asked with the keyphrase's token (claim.ts NameClaims does the same for /names).
 import type { GameSession } from './game';
 import { touchFirst } from './device';
 import { t } from './i18n';
 import { pageDialog } from './padnav';
 import { onlineName } from './claim';
+import { roomHash } from './players';
+import { iconButton } from './settings-ui';
 
 /** two names of one player: the same Online form, in any case (the name over a car, a claimed name) */
 function sameName(a: string, b: string): boolean {
@@ -28,6 +32,14 @@ export interface Friend { name: string; where: 'roam' | 'online' | ''; room?: st
  *  answer and its own that wait; `done` what the last change did (friends.rs) */
 export interface FriendLists { me: string | null; friends: Friend[]; asks: string[]; sent: string[]; done?: string }
 
+/** the friends of an answer of the server's (GET /friends, "where"), read leniently */
+function friendsOf(v: unknown): Friend[] {
+  return Array.isArray(v) ? v.filter((f: any) => typeof f?.name === 'string').map((f: any) => ({
+    name: f.name, where: f.where === 'roam' || f.where === 'online' ? f.where : '',
+    ...(typeof f.room === 'string' ? { room: f.room } : {}), ...(typeof f.contact === 'string' ? { contact: f.contact } : {}),
+  })) : [];
+}
+
 /** /friends on this server: null when the page has no keyphrase or the server none (404) */
 export class FriendsApi {
   constructor(private token: () => Promise<string | null>) {}
@@ -39,11 +51,7 @@ export class FriendsApi {
     if (!r.ok) return null;
     const j = await r.json();
     const names = (v: unknown) => Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
-    const friends: Friend[] = Array.isArray(j.friends) ? j.friends.filter((f: any) => typeof f?.name === 'string').map((f: any) => ({
-      name: f.name, where: f.where === 'roam' || f.where === 'online' ? f.where : '',
-      ...(typeof f.room === 'string' ? { room: f.room } : {}), ...(typeof f.contact === 'string' ? { contact: f.contact } : {}),
-    })) : [];
-    return { me: typeof j.me === 'string' ? j.me : null, friends, asks: names(j.asks), sent: names(j.sent), done: typeof j.done === 'string' ? j.done : undefined };
+    return { me: typeof j.me === 'string' ? j.me : null, friends: friendsOf(j.friends), asks: names(j.asks), sent: names(j.sent), done: typeof j.done === 'string' ? j.done : undefined };
   }
 
   list(): Promise<FriendLists | null> { return this.ask(); }
@@ -52,12 +60,70 @@ export class FriendsApi {
   }
 }
 
+/** the room f plays in is `mine` (the game's room: '' none), in free roam */
+function inRoom(f: Friend, mine: string): boolean {
+  return f.where === 'roam' && f.room !== undefined && roomHash(f.room) === roomHash(mine);
+}
+
+/** where a friend plays, after its name: free roam (and its room; `mine`: the game's own room, in the game), the
+ *  Online lobby, offline */
+export function whereText(f: Friend, mine?: string): string {
+  if (f.where === 'roam') {
+    if (mine !== undefined && inRoom(f, mine)) return t('free roam · your room');
+    return f.room ? t('free roam · {room}', { room: f.room }) : t('free roam');
+  }
+  return f.where === 'online' ? t('Online lobby') : t('offline');
+}
+
+/** the signs of the friends' icons (24-unit boxes, as settings-ui.ts's) */
+const CHECK = 'M5 12.5l4.5 4.5L19 7.5', CROSS = 'M6 6l12 12M18 6L6 18', TRASH = 'M4 7h16M10 11v6M14 11v6M9 7V4h6v3M6 7l1 13h10l1-13';
+const JOIN = 'M10 17l5-5-5-5M15 12H3M14 4h6v16h-6';
+
+/** a line of a friends list: the name, where it plays (or the request's state) after it in small text, lime while it
+ *  plays; dimmed while it does not; the icons at its end; the friend's own line under it, when it has one */
+interface Line { name: string; state: string; ok?: boolean; off?: boolean; acts: HTMLButtonElement[]; contact?: string }
+
+function icon(cls: string, name: string, path: string, f: () => void): HTMLButtonElement {
+  const b = iconButton(cls, name, path);
+  b.onclick = () => f();
+  return b;
+}
+
+function friendList(lines: Line[]): HTMLUListElement {
+  const ul = document.createElement('ul');
+  ul.className = 'fl';
+  for (const l of lines) {
+    const li = document.createElement('li');
+    if (l.off) li.className = 'off';
+    const name = document.createElement('span');
+    name.className = 'fl-name';
+    const st = document.createElement('span');
+    st.className = l.ok ? 'fl-st ok' : 'fl-st';
+    st.textContent = l.state;
+    name.append(l.name, st);
+    const acts = document.createElement('span');
+    acts.className = 'fl-act';
+    acts.append(...l.acts);
+    li.append(name, acts);
+    if (l.contact) {
+      const c = document.createElement('span');
+      c.className = 'fl-contact';
+      c.textContent = l.contact;
+      li.append(c);
+    }
+    ul.append(li);
+  }
+  return ul;
+}
+
 /** where the line goes, in HUD units (640x480 in the picture): its top under the middle (above the game's own
  *  prompts at the bottom, under its outrun line) */
 const TOP_U = 128;
 
 /** how often the list is tried until the game's link to the server is up (ms) */
 const LIST_TRY_MS = 2000;
+/** how often the game asks where its friends play, while it has some (ms) */
+const WHERE_MS = 60_000;
 
 /** what touching the other car may lead to: the server's answer to "can", or what the page did since */
 type St = 'wait' | 'new' | 'asks' | 'asked' | 'friends' | 'claim' | 'theirs';
@@ -69,6 +135,12 @@ export interface FriendPromptDeps {
   room(): string;
   /** a line over the game for a moment (shell.ts toast) */
   toast(text: string): void;
+  /** a friend's line in the notices (shell.ts friendNotice): text names it */
+  notice(name: string, text: string): void;
+  /** "the menu (F9)", with what opens it here (shell.ts menuName) */
+  menu(): string;
+  /** where the friends play changed (the page menu's Friends popup is drawn again) */
+  placed(): void;
   log(line: string): void;
 }
 
@@ -85,6 +157,11 @@ export class FriendPrompt {
   /** the list asked of the server on this link (once it is up: tried every LIST_TRY_MS until then) */
   private listed = false;
   private triedAt = 0;
+  /** where the friends play, as the server last said ("where", asked every WHERE_MS; null: not yet), and what each
+   *  was then (by its name in lower case: a notice when one comes into free roam) */
+  private where: Friend[] | null = null;
+  private was = new Map<string, Friend['where']>();
+  private whereAt = 0;
 
   constructor(stage: HTMLElement, private deps: FriendPromptDeps) {
     const b = this.root = document.createElement('button');
@@ -100,9 +177,11 @@ export class FriendPrompt {
   /** a game started: friends on (free roam with others) or off */
   start(s: GameSession, on: boolean) {
     this.session = s; this.on = on; this.who = null; this.friends = []; this.roomSent = null; this.listed = false; this.triedAt = -Infinity;
+    this.where = null; this.was.clear(); this.whereAt = -Infinity;
     const tick = () => {
       const now = performance.now();
       if (!this.listed && now - this.triedAt > LIST_TRY_MS) { this.triedAt = now; this.listed = this.deps.send({ op: 'list' }); }
+      if (this.listed && this.friends.length && now - this.whereAt > WHERE_MS) this.askWhere();
       this.place();
       this.raf = requestAnimationFrame(tick);
     };
@@ -131,6 +210,18 @@ export class FriendPrompt {
     if (this.deps.send({ t: 'room', name: room })) this.roomSent = room;
   }
 
+  /** where the friends play, asked now (and again in WHERE_MS): the page menu's Friends popup opened */
+  askWhere() {
+    if (!this.on || !this.friends.length) return;
+    this.whereAt = performance.now();
+    this.deps.send({ op: 'where' });
+  }
+
+  /** the page menu has its Friends button: free roam with friends */
+  hasFriends(): boolean {
+    return this.on && this.friends.length > 0;
+  }
+
   /** the game: the cars touch nose to nose for 3 s (on 1), or parted (NET_KIND_FRIEND: {"id","name","on"}) */
   bump(json: string) {
     let m: any;
@@ -155,6 +246,10 @@ export class FriendPrompt {
       case 'list':
         this.friends = Array.isArray(m.friends) ? m.friends.filter((f: unknown) => typeof f === 'string') : [];
         this.sendRoom();
+        this.whereAt = -Infinity;                    // (where they are, with the next frame)
+        return;
+      case 'where':
+        this.placedNow(friendsOf(m.friends));
         return;
       case 'can':
         if (!mine || !this.who) return;
@@ -163,6 +258,7 @@ export class FriendPrompt {
         break;
       case 'add':
         // (the line says it while the cars touch; the note says it once they parted)
+        if (m.done === 'friends') this.was.set(name.toLowerCase(), 'roam');
         if (m.done === 'friends' && !mine) this.deps.toast(t('You and {name} are friends now', { name }));
         else if (m.done === 'full') this.deps.toast(t('A friends list is full (50 at most)'));
         if (mine && this.who && ['asked', 'friends', 'claim', 'theirs'].includes(m.done)) this.who = { name, st: m.done };
@@ -174,6 +270,8 @@ export class FriendPrompt {
         else this.deps.toast(t('{name} wants to be friends: answer under Friends on the start page', { name }));
         break;
       case 'friends':
+        // (just met here: no notice that it is in free roam)
+        this.was.set(name.toLowerCase(), 'roam');
         if (mine && this.who) this.who = { name, st: 'friends' };
         else this.deps.toast(t('You and {name} are friends now', { name }));
         break;
@@ -181,6 +279,44 @@ export class FriendPrompt {
         return;
     }
     this.draw();
+  }
+
+  /** the server's "where": a notice for each friend that came into free roam since the last one (or is there at the
+   *  first), the popup drawn again */
+  private placedNow(list: Friend[]) {
+    const room = this.deps.room(), was = this.was;
+    this.was = new Map(list.map(f => [f.name.toLowerCase(), f.where]));
+    this.where = list;
+    for (const f of list) {
+      if (f.where !== 'roam' || was.get(f.name.toLowerCase()) === 'roam') continue;
+      const name = f.name, menu = this.deps.menu();
+      this.deps.notice(name, f.room === undefined || inRoom(f, room) ? t('Your friend {name} is in free roam', { name })
+        : f.room ? t('Your friend {name} is in free roam, room {room}: Join in {menu}', { name, room: f.room, menu })
+        : t('Your friend {name} is in free roam, in no room: Join in {menu}', { name, menu }));
+    }
+    this.deps.placed();
+  }
+
+  /** The page menu's Friends popup, in box: the friends in free roam, a Join for each one in another room (join: the
+   *  room's name, '' the room of everyone); the others in a line */
+  drawPlaced(box: HTMLElement, join: (room: string) => void) {
+    const p = (text: string) => Object.assign(document.createElement('p'), { className: 'hint', textContent: text });
+    const all = this.where, room = this.deps.room();
+    if (!all) { box.replaceChildren(p(t('Checking.'))); return; }
+    const roam = all.filter(f => f.where === 'roam');
+    const nodes: Node[] = [];
+    if (roam.length) {
+      nodes.push(friendList(roam.map(f => ({
+        name: f.name, state: whereText(f, room), ok: true,
+        acts: f.room !== undefined && !inRoom(f, room) ? [icon('fl-join', t('Join'), JOIN, () => join(f.room!))] : [],
+      }))));
+    } else {
+      nodes.push(p(t('None of your friends is in free roam now.')));
+    }
+    const names = (w: Friend['where']) => all.filter(f => f.where === w).map(f => f.name).join(', ');
+    const rest = [names('online') && t('In the Online lobby: {names}.', { names: names('online') }), names('') && t('Offline: {names}.', { names: names('') })];
+    if (rest.some(Boolean)) nodes.push(p(rest.filter(Boolean).join(' ')));
+    box.replaceChildren(...nodes);
   }
 
   /** what the line offers: a request, or the answer to theirs */
@@ -252,6 +388,9 @@ export interface FriendsPanelDeps {
 /** how often the start page asks for the list while it is in front */
 const POLL_MS = 60_000;
 
+/** the friends in the order the list shows them: in free roam, in the Online lobby, offline */
+const ORDER: Record<Friend['where'], number> = { roam: 0, online: 1, '': 2 };
+
 export class FriendsPanel {
   private lists: FriendLists | null = null;
   private timer = 0;
@@ -294,63 +433,33 @@ export class FriendsPanel {
     const h = document.createElement('h3');
     h.textContent = t('Friends');
     const nodes: Node[] = [h];
-    const help = (s: string) => { const p = document.createElement('p'); p.className = 'hint'; p.textContent = s; return p; };
+    const help = (s: string) => { const p = document.createElement('p'); p.className = 'hint fl-hint'; p.textContent = s; return p; };
     if (!l.me) {
       nodes.push(help(t('Claim your name (Your name, above) to add friends.')));
       root.replaceChildren(...nodes);
       return;
     }
-    nodes.push(help(t('In free roam, touch front bumpers with another player for 3 seconds to add them.')));
+    const lines: Line[] = [];
     for (const name of l.asks) {
-      nodes.push(this.row(name, t('Wants to be friends'), 'ok', [
-        this.button(t('Accept'), 'btn', () => this.act('accept', name)),
-        this.button(t('Decline'), 'text-btn', () => this.act('decline', name)),
-      ]));
+      lines.push({ name, state: t('wants to be friends'), ok: true, acts: [
+        icon('fl-yes', t('Accept'), CHECK, () => this.act('accept', name)),
+        icon('fl-no', t('Decline'), CROSS, () => this.act('decline', name)),
+      ] });
     }
-    for (const f of l.friends) {
-      const where = f.where === 'roam'
-        ? (f.room === '' ? t('In free roam') : f.room ? t('In free roam, room {room}', { room: f.room }) : t('In free roam, another room'))
-        : f.where === 'online' ? t('In the Online lobby') : t('Offline');
-      const ctl: HTMLElement[] = [];
-      if (f.where === 'roam' && f.room !== undefined) ctl.push(this.button(t('Join'), 'btn', () => this.deps.join(f.room!)));
-      ctl.push(this.button(t('Remove'), 'text-btn', async () => {
+    for (const f of [...l.friends].sort((a, b) => ORDER[a.where] - ORDER[b.where])) {
+      const acts: HTMLButtonElement[] = [];
+      if (f.where === 'roam' && f.room !== undefined) acts.push(icon('fl-join', t('Join'), JOIN, () => this.deps.join(f.room!)));
+      acts.push(icon('fl-del', t('Remove'), TRASH, async () => {
         if (await this.deps.confirm(t('Remove {name}?', { name: f.name }), t('You are friends no more, on both lists.'), t('Remove'))) void this.act('remove', f.name);
       }));
-      nodes.push(this.row(f.name, where, f.where ? 'ok' : 'free', ctl, f.contact));
+      lines.push({ name: f.name, state: whereText(f), ok: !!f.where, off: !f.where, acts, contact: f.contact });
     }
     for (const name of l.sent) {
-      nodes.push(this.row(name, t('Request sent'), 'free', [this.button(t('Cancel'), 'text-btn', () => this.act('remove', name))]));
+      lines.push({ name, state: t('request sent'), off: true, acts: [icon('fl-del', t('Take back'), CROSS, () => this.act('remove', name))] });
     }
+    if (lines.length) nodes.push(friendList(lines));
+    nodes.push(help(t('Touch front bumpers in free roam for 3 s to add a player.')));
     root.replaceChildren(...nodes);
-  }
-
-  private row(name: string, state: string, cls: string, ctl: HTMLElement[], contact?: string): HTMLElement {
-    const r = document.createElement('div');
-    r.className = 'set friend';
-    const label = document.createElement('div');
-    label.className = 'set-label';
-    label.textContent = name;
-    const help = document.createElement('p');
-    help.className = `set-help friend-state ${cls}`;
-    help.textContent = state;
-    const c = document.createElement('div');
-    c.className = 'set-control';
-    c.append(...ctl);
-    r.append(label, help, c);
-    if (contact) {
-      const p = document.createElement('p');
-      p.className = 'set-state friend-contact';
-      p.textContent = contact;
-      r.append(p);
-    }
-    return r;
-  }
-
-  private button(text: string, cls: string, f: () => void): HTMLButtonElement {
-    const b = document.createElement('button');
-    b.type = 'button'; b.className = cls; b.textContent = text;
-    b.onclick = () => f();
-    return b;
   }
 
   dispose() { clearInterval(this.timer); }

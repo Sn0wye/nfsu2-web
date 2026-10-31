@@ -905,7 +905,7 @@ function endStage() {
   radio?.stop('the game closed');
   radioLink = null; statusAt = null;
   lobbyPanel.clear();
-  for (const id of ['#crews-pop', '#menu']) { const d = $<HTMLDialogElement>(id); if (d.open) d.close(); }
+  for (const id of ['#crews-pop', '#friends-pop', '#menu']) { const d = $<HTMLDialogElement>(id); if (d.open) d.close(); }
   // a Quit question still open belongs to the game that ended (its answer would
   // do nothing, and the open question would keep that game reachable)
   const ask = $<HTMLDialogElement>('#confirm'); if (ask.open && ask.dataset.about === 'quit') ask.close();
@@ -1017,6 +1017,19 @@ function notice(text: string, who?: string) {
   while (box.childElementCount > 4) box.firstElementChild!.remove();
   setTimeout(() => line.remove(), 5000);
 }
+/** a person: what marks a line in the log as a friend's (friendNotice), as the speech balloon marks quick chat's */
+const FRIEND_ICON = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM2 15c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5z"/></svg>';
+/** free roam: a friend (friends.ts: the server's friends lists) came into free roam: a line in the log as quick chat's
+ *  (chatLine), a person first, the text with the friend's name in bold; these come seldom, so they show, where other
+ *  players' joins are only logged */
+function friendNotice(name: string, text: string) {
+  privacy.name(name, 'player');
+  log.add(`[notice] ${name} is in free roam (a friend)`);
+  const b = document.createElement('b'), at = text.indexOf(name);
+  b.textContent = name;
+  placeNotices();
+  iconLine('chat', FRIEND_ICON, at < 0 ? [text] : [text.slice(0, at), b, text.slice(at + name.length)]);
+}
 /** free roam: quick chat (quickchat.ts), a phrase said, from the game; and the lines over the cars in each frame */
 function say(json: string) {
   placeNotices();
@@ -1026,13 +1039,19 @@ function marks(n: number, m: Float32Array, ids: Uint32Array) { quickChat.marks(n
 /** free roam's friends: front bumpers touching (the game), and the server's friend messages (friends.ts) */
 function bump(json: string) { friendPrompt.bump(json); }
 function friendMsg(m: Record<string, unknown>) { friendPrompt.server(m); }
-/** quick chat's line in the log: a speech balloon, the name, the phrase; in the notices' box, for 8 s */
+/** quick chat's line in the log: a speech balloon, the name, the phrase */
 function chatLine(name: string, text: string, me: boolean) {
-  const box = $('#notices'), line = document.createElement('div'), b = document.createElement('b');
-  line.className = 'chat' + (me ? ' me' : '');
-  line.innerHTML = CHAT_ICON;
+  const b = document.createElement('b');
   b.textContent = name;
-  line.append(b, ` ${text}`);
+  iconLine('chat' + (me ? ' me' : ''), CHAT_ICON, [b, ` ${text}`]);
+}
+/** a line in the notices' box with an icon first (quick chat's, a friend's), for 8 s */
+function iconLine(cls: string, icon: string, parts: (string | Node)[]) {
+  const box = $('#notices'), line = document.createElement('div'), span = document.createElement('span');
+  line.className = cls;
+  line.innerHTML = icon;
+  span.append(...parts);
+  line.append(span);
   box.append(line);
   while (box.childElementCount > 4) box.firstElementChild!.remove();
   setTimeout(() => line.remove(), 8000);
@@ -1159,6 +1178,7 @@ function openMenu() {
   const crews = m.querySelector<HTMLButtonElement>('[data-act="crews"]')!;
   crews.hidden = roamCrews === null || !session?.net?.crews;
   crews.textContent = crewsLabel();
+  m.querySelector<HTMLButtonElement>('[data-act="friends"]')!.hidden = !friendPrompt.hasFriends();
   const fr = m.querySelector<HTMLButtonElement>('[data-act="friend"]')!, item = friendPrompt.menuItem();
   fr.hidden = !item;
   if (item) fr.textContent = item.label;
@@ -1227,6 +1247,30 @@ async function menuCrews(list: Crew[], focus: (root: HTMLElement) => Element | n
   try { await writeFile(SAVE, 'settings.ini', text); settingsText = text; void settings.refresh(); }
   catch (e) { log.add(`[app] settings.ini not written: ${e}`); }
   log.add(`[app] crews: ${list.length ? list.map(c => `${c.name} (${c.rgb})`).join(', ') : 'none'} (the page menu)`);
+}
+
+/** The menu's Friends popup (free roam, with friends), over the menu: the friends in free roam, a Join for each one in
+ *  another room (the game switches to it at once, as an invite link's Join does), the others in a line.  Asked of the
+ *  server as it opens, drawn again with its answer; Done, Esc or a controller's B closes it, back on the menu's Friends
+ *  button. */
+function openFriends() {
+  const pop = $<HTMLDialogElement>('#friends-pop');
+  if (!friendPrompt.hasFriends() || pop.open) return;
+  drawPopFriends();
+  pop.showModal();
+  ($('#friends-pop-box').querySelector<HTMLElement>('button') ?? pop.querySelector<HTMLElement>('[data-act="friends-done"]'))?.focus();
+  friendPrompt.askWhere();
+}
+function drawPopFriends() {
+  const box = $('#friends-pop-box'), had = box.contains(document.activeElement);
+  friendPrompt.drawPlaced(box, room => void joinFriend(room));
+  if (had) ($('#friends-pop-box').querySelector<HTMLElement>('button') ?? $('#friends-pop').querySelector<HTMLElement>('[data-act="friends-done"]'))?.focus();
+}
+/** a Join in the menu's Friends: that friend's room, at once, and back to the game */
+async function joinFriend(room: string) {
+  for (const id of ['#friends-pop', '#menu']) { const d = $<HTMLDialogElement>(id); if (d.open) d.close(); }
+  log.add('[app] the menu\'s Friends: joining a friend\'s room');
+  tell(joinedText(await applyInvite({ room })));
 }
 
 // --------------------------------------------------------- invite links --
@@ -1443,6 +1487,7 @@ async function menuAction(act: string) {
       break;
     }
     case 'crews': openCrews(); break;
+    case 'friends': openFriends(); break;
     case 'friend': m.close(); friendPrompt.menuItem()?.act(); break;
     case 'radio-folder': case 'radio': await radioClick(act); showRadio(m); break;
     case 'playlist': openPlaylist(); break;
@@ -1796,7 +1841,7 @@ export async function boot() {
   $('#playlist-body').addEventListener('change', setTrackMode);
   $('#playlist-shuffle').addEventListener('change', setShuffle);
   $('#menu').addEventListener('close', () => {
-    const pop = $<HTMLDialogElement>('#crews-pop'); if (pop.open) pop.close();      // the menu's Crews go with it
+    for (const id of ['#crews-pop', '#friends-pop']) { const d = $<HTMLDialogElement>(id); if (d.open) d.close(); }   // the menu's Crews and Friends go with it
     $('#stage').classList.remove('cursor'); $('#stage').querySelector('canvas')?.focus();
   });
   // the menu's Crews popup: Done closes it; back on the menu's Crews button, with its count as it is now
@@ -1806,6 +1851,9 @@ export async function boot() {
     b.textContent = crewsLabel();
     if ($<HTMLDialogElement>('#menu').open) b.focus();
   });
+  // ...and its Friends popup
+  $('#friends-pop').addEventListener('click', e => { if ((e.target as HTMLElement).closest('[data-act="friends-done"]')) $<HTMLDialogElement>('#friends-pop').close(); });
+  $('#friends-pop').addEventListener('close', () => { if ($<HTMLDialogElement>('#menu').open) $<HTMLButtonElement>('#menu [data-act="friends"]').focus(); });
 
   // F8 / F9 belong to the page while the game runs (the game binds neither,
   // Chrome reserves neither); caught first, so the game never sees them.  F12
@@ -1858,6 +1906,7 @@ export async function boot() {
     settings: () => openHelp('keys') });
   friendPrompt = new FriendPrompt($('#stage'), {
     send: m => session?.net?.friend?.(m) ?? false, room: () => roamRoom ?? '', toast: s => toast(s, 5000), log: logLine,
+    notice: friendNotice, menu: menuName, placed: () => { if ($<HTMLDialogElement>('#friends-pop').open) drawPopFriends(); },
   });
   textField = new TextField($('#stage'), { log: logLine });
   pauseHint = new PauseHint($('#stage'), {

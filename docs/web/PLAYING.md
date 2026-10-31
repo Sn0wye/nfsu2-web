@@ -558,10 +558,14 @@ Good to know:
   line, or use the page menu (F9, ☰, or Home on a controller). The other player's line then says **Al wants to be
   friends: accept**; once both said yes you are friends. Touching the side or the back of a car offers nothing, nor
   does a race, an outrun or a race lobby. Both of you need a claimed name ("Your name": a claim needs cloud saves);
-  without one the line says so. Your friends are listed under **Friends** in the Online section of the start page:
-  where each one plays now (free roam and its room, the game's Online lobby, offline), with **Join** to drive in their
-  room, and **Remove**; a request you could not answer in the game waits there (30 days), with Accept and Decline.
-  In free roam the server pairs friends first, as crew-mates, so you see each other however busy it is. A friend is a
+  without one the line says so. Your friends are listed under **Friends** in the Online section of the start page,
+  one line each: where each one plays now after the name (free roam and its room, the game's Online lobby, offline),
+  with a Join arrow to drive in their room and a grey bin to remove them; a request you could not answer in the game
+  waits there (30 days), with ✓ and ✕, and one you sent has a ✕ to take it back.
+  In free roam the server pairs friends first, as crew-mates, so you see each other however busy it is: a friend's
+  name over the car shows at any distance, in a pale lime white (a friend in one of your crews has the crew's colour),
+  and so do their arrows on the minimap and the world map. When a friend comes into free roam, the notices on the left
+  say so; the page menu then has **Friends**: who is in free roam, with **Join** for one in another room. A friend is a
   friend in the game's Online mode too (EA Messenger), up to 50. The server takes a request only between two players
   whose cars are within 30 m of each other, so nobody can ask you from across the map. Your friends see the name of
   the room you play in, nobody else (it is told to the server only once you have a friend, and kept in memory only).

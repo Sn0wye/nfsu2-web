@@ -722,10 +722,25 @@ html:has(> body > .stage:not([hidden])) { overflow: hidden; }
 .pause-hint-list { color: var(--muted); }
 .pause-hint-list::before { content: " · "; }
 /* free roam's friends (friends.ts): the line over the game while front bumpers touch, as the pause menu's line; one
- * that offers nothing (a request sent, or why not) is no button.  On the start page a row a friend, where it plays in
- * lime while it plays */
+ * that offers nothing (a request sent, or why not) is no button.  On the start page (and in the page menu's Friends) a
+ * line a friend: the name, where it plays after it in small text (lime while it plays; the name dimmed while it does
+ * not), the icons at its end (Remove a grey can, red under the pointer); the friend's own line under it */
 .friend-prompt:not(.offer), .friend-prompt:not(.offer):active { cursor: default; color: var(--muted); }
-.friend-state.ok { color: var(--lime); }
+.fl, .dlg ul.fl { list-style: none; margin: 0; padding: 0; color: inherit; font-size: inherit; line-height: inherit; }
+.fl li { display: flex; flex-wrap: wrap; align-items: center; column-gap: 8px; min-height: 40px; }
+.fl li + li { box-shadow: inset 0 1px var(--line); }
+.fl-name { flex: 1; min-width: 0; font-style: italic; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fl-st { margin-left: 8px; color: var(--muted); font: 400 14px/20px var(--font); }
+.fl-st.ok { color: var(--lime); }
+.fl li.off .fl-name { color: var(--muted); }
+.fl-act { flex: none; display: flex; gap: 2px; margin-left: auto; }
+.fl .fl-yes { color: var(--lime); }
+.fl .fl-del { color: var(--edge); opacity: 0.6; }
+.fl .fl-del:is(:hover, :focus-visible) { color: var(--bad); opacity: 1; }
+.fl-contact { flex-basis: 100%; margin-top: -8px; padding-bottom: 8px; color: var(--muted); font-size: 14px; line-height: 20px; }
+.fl-hint { margin-top: 8px; }
+.friends-pop-box { margin-bottom: 16px; }
+.friends-pop-box .hint:last-child { margin-bottom: 0; }
 /* the away check (away.ts): in the middle, until the player is back; a kick or a ban (shell.ts netRemoved) the same,
  * over the touch controls it leaves; upright, in the middle of the picture */
 .toast.away {
@@ -784,8 +799,8 @@ html:has(> body > .stage:not([hidden])) { overflow: hidden; }
 .drift-pop span { font: 400 calc(13 * var(--u)) / 1 var(--font); letter-spacing: 0.08em; }
 .drift-pop b { font: italic 700 calc(26 * var(--u)) / 1 var(--font); font-variant-numeric: tabular-nums; }
 @keyframes drift-pop { 0%, 70% { opacity: 1; } 100% { opacity: 0; } }
-/* quick chat's lines in the log (shell.ts chatLine): a speech balloon first, upright and brighter than the notices,
- * as big as the race lobby card's text, for 8 s */
+/* quick chat's lines in the log (shell.ts chatLine), and a friend's coming into free roam (friendNotice) the same: a
+ * speech balloon (a person) first, upright and brighter than the notices, as big as the race lobby card's text, 8 s */
 .notices div.chat {
   display: flex; align-items: center; gap: calc(2 * var(--u)); animation-duration: 8s;
   font-style: normal; font-size: max(13px, calc(11 * var(--u))); color: rgba(255, 255, 255, 0.9);

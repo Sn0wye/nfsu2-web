@@ -295,6 +295,8 @@ struct Player {
     seen: f64,
     /// its HELLO says it takes race lobbies (its map questions get the room's lobbies too)
     lobbies: bool,
+    /// ...and reads the hub's crew marks (wire::HF_HUBCREW): its friends are marked in its lists even out of crews
+    marks: bool,
     /// its crews as its last HELLO named them (wire::HF_CREW), each once, 0 after them: its crew-mates of its room are
     /// linked with it first (`crew_pairs`), and /players counts them (`crew_counts`)
     crews: [u32; wire::CREWS],
@@ -892,6 +894,7 @@ impl Hub {
                     pos_at: 0.0,
                     seen: 0.0,
                     lobbies: false,
+                    marks: false,
                     crews: [0; wire::CREWS],
                     lobby: None,
                     join: None,
@@ -924,7 +927,7 @@ impl Hub {
         // (a HELLO: its name against the claims)
         let mut check = false;
         match m {
-            Msg::Hello { sender, status, room, name, lobbies, crews, .. } => {
+            Msg::Hello { sender, status, room, name, lobbies, marks, crews, .. } => {
                 // another start of the game on the same endpoint (where its car was, and its clock's epochs, start again)
                 if p.id != sender {
                     p.links.clear();
@@ -951,6 +954,7 @@ impl Hub {
                 check = true;
                 p.degree = degree;
                 p.lobbies = lobbies;
+                p.marks = marks;
                 let was = p.crews[0] != 0;
                 p.crews = distinct(crews);
                 crewed = Some((was, p.crews[0] != 0));
@@ -1514,16 +1518,30 @@ impl Hub {
             let links = &s.fresh[slot as usize];
             let slots = &self.slots;
             // its crews and, a link each, which of them that player is in too: only to a player in a crew (so no crews
-            // but its own go out)
+            // but its own go out); and which are its friends (both ways: the friendship's id is both players'), to a
+            // player with friends whose core reads it
             let mine = if self.crewed > 0 { &p.crews[..crews_of(p).count()] } else { &[][..] };
+            let befriended = p.marks && !p.friend_ids.is_empty();
+            let with = !mine.is_empty() || befriended;
             s.marks.clear();
-            if !mine.is_empty() {
+            if with {
                 s.marks.extend(links.iter().map(|l| match slots.get(l.slot as usize) {
-                    Some(Some(q)) => mine.iter().enumerate().fold(0u8, |m, (c, h)| m | (q.crews.contains(h) as u8) << c),
+                    Some(Some(q)) => {
+                        let crews = mine.iter().enumerate().fold(0u8, |m, (c, h)| m | (q.crews.contains(h) as u8) << c);
+                        let friend = befriended
+                            && match (&p.owner, &q.owner) {
+                                (Some(a), Some(b)) if a != b => {
+                                    let id = friend_id(a, b);
+                                    p.friend_ids.binary_search(&id).is_ok() && q.friend_ids.binary_search(&id).is_ok()
+                                }
+                                _ => false,
+                            };
+                        crews | if friend { wire::MARK_FRIEND } else { 0 }
+                    }
                     _ => 0,
                 }));
             }
-            let n = F_DATA + if mine.is_empty() { wire::peers_len(links.len()) } else { wire::peers_crew_len(links.len(), mine.len()) };
+            let n = F_DATA + if with { wire::peers_crew_len(links.len(), mine.len()) } else { wire::peers_len(links.len()) };
             if s.buf.capacity() < n {
                 s.buf = BytesMut::with_capacity(LIST_BLOCK.max(n));
             }

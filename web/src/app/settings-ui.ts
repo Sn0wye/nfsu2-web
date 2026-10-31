@@ -116,7 +116,7 @@ const READ_ONLY = N('Read only: the game runs in another tab. Change settings th
 const NOTE = N('Changes apply the next time you press Play.');
 
 /** a small button with a drawn sign (the Crews row's Join and Leave), its name for a screen reader and as its tooltip */
-function iconButton(cls: string, name: string, path: string): HTMLButtonElement {
+export function iconButton(cls: string, name: string, path: string): HTMLButtonElement {
   const b = document.createElement('button'); b.type = 'button'; b.className = `icon-btn ${cls}`;
   b.setAttribute('aria-label', name); b.title = name;
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svg.setAttribute('viewBox', '0 0 24 24'); svg.setAttribute('aria-hidden', 'true');

@@ -14,6 +14,8 @@
 //! - {"t":"friend","op":"add","name":...}: a request, or friends at once when the other one asked first ->
 //!   {"t":"friend","op":"add","name":...,"done":"asked"|"friends"|<a `can` state>|"full"}; the other page hears
 //!   {"t":"friend","op":"asks"|"friends","name":<this page's name>}, and on friends both get their lists again
+//! - {"t":"friend","op":"where"}: where its friends play, for its notices and the page menu's Friends (asked every
+//!   minute while it has friends) -> {"t":"friend","op":"where","friends":[as GET /friends has them]}
 //! - {"t":"room","name":<its room's name>}: for its friends' Join on their start pages (the server knows rooms only
 //!   by their hashes; a page sends it once it has friends, and it is kept in memory only)
 //!
@@ -112,6 +114,12 @@ impl Friends {
                 self.say(vip, json!({ "t": "friend", "op": "can", "name": c.name, "st": c.st }));
             }
             (Some("friend"), Some("add")) => self.add(vip, owner, group, &name).await,
+            (Some("friend"), Some("where")) => {
+                let Some(o) = owner else { return };
+                let r = self.lists(o, group, FriendAsk::List).await;
+                let friends = self.placed(&r).await;
+                self.say(vip, json!({ "t": "friend", "op": "where", "friends": friends }));
+            }
             _ => {}
         }
     }
@@ -186,12 +194,17 @@ impl Friends {
 
     /// the start page's view of the lists: each friend where it plays
     async fn page_json(&self, r: FriendReply) -> Value {
+        let friends = self.placed(&r).await;
+        json!({ "me": r.me, "done": r.done, "friends": friends, "asks": r.asks, "sent": r.sent })
+    }
+
+    /// the friends of the lists, each where it plays (the module's doc, GET /friends)
+    async fn placed(&self, r: &FriendReply) -> Vec<Value> {
         let now = Self::now();
         let owners: Vec<Option<Arc<str>>> = r.friends.iter().map(|f| self.claims.holder(&f.name, now)).collect();
         let found: Vec<Arc<str>> = owners.iter().flatten().cloned().collect();
         let mut at = self.roam.whereabouts(found).await.unwrap_or_default().into_iter();
-        let friends: Vec<Value> = r
-            .friends
+        r.friends
             .iter()
             .zip(owners)
             .map(|(f, o)| {
@@ -214,8 +227,7 @@ impl Friends {
                 }
                 Value::Object(m)
             })
-            .collect();
-        json!({ "me": r.me, "done": r.done, "friends": friends, "asks": r.asks, "sent": r.sent })
+            .collect()
     }
 }
 

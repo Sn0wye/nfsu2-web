@@ -355,7 +355,8 @@ static struct {
     char name[RC_NAME_MAX + 1], room[64];
     char crew[RC_CREW_MAX][100]; int ncrew;   /* NFSU2_ROAM_CREW: the crews' names, in the player's order (crews_parse; the
                                                  page's 24 characters are up to 96 bytes of UTF-8) */
-    uint32_t crew_rgb[RC_CREW_MAX];           /* ...and their colours (NFSU2_ROAM_CREW_RGB, the player's picks; else CREW_RGB) */
+    uint32_t crew_rgb[RC_CREW_MAX + 1];       /* ...and their colours (NFSU2_ROAM_CREW_RGB, the player's picks; else CREW_RGB);
+                                                 the last a friend's (FRIEND_CREW, FRIEND_RGB) */
 } O;
 
 /* ---- state ------------------------------------------------------------------------------- */
@@ -429,7 +430,8 @@ typedef struct {
     uint32_t blinks;                          /* times the game blinked the car out (unblink) */
     uint32_t hits; float hit_max;             /* hits with the player's car; the most speed the game gave the player's car in one (m/s) */
     int64_t  touch_t;                         /* when the car last touched the player's car (host time; block_hit) */
-    int      crew;                            /* the friend is in our crew number crew - 1 (O.crew; 0: none) */
+    int      crew;                            /* the friend is in our crew number crew - 1 (O.crew; FRIEND_CREW: our friend
+                                                 in none of them; 0: none) */
 } Slot;
 static Slot g_sl[NSLOT];
 static uint32_t g_world_seen;
@@ -3147,7 +3149,8 @@ typedef struct { int idx; uint32_t id; char name[RC_NAME_MAX + 1]; int visible, 
                  uint8_t cfg[RC_CFG_MAX]; int have_pose; rc_pose pose; float err; uint32_t look;
                  int64_t newest, rt;   /* the sender's time of its newest snapshot, and the one the car is drawn at (push_pose) */
                  int horn;             /* their horn (horn.h's kinds) */
-                 int crew;             /* in our crew number crew - 1 (rc_peer_crew + 1; 0: none) */ } PeerView;
+                 int crew;             /* in our crew number crew - 1 (rc_peer_crew + 1; FRIEND_CREW: our friend in none
+                                          of them, rc_peer_friend; 0: none) */ } PeerView;
 static PeerView g_pv[RC_TABLE]; static int g_npv;
 static struct { uint32_t id, gen; int horn; } g_phorn[RC_TABLE];   /* each peer's horn, as its record (cfg_gen) has it */
 
@@ -5392,6 +5395,11 @@ static uint8_t local_status(int in_roam){
  * red (Thom's pick, 2026-10-24); the page's CREW_PALETTE starts with them.
  * No green or orange: the game's own arrows for the player and the others */
 static const uint32_t CREW_RGB[RC_CREW_MAX] = { 0x3cd2ff, 0xff50c8, 0xa078ff, 0xff4646 };
+/* friends (the server's friends lists: the hub marks them, RC_MARK_FRIEND) are seen as crew-mates are, wherever they
+ * are, their names in front at any distance, their arrows on the minimap and the world map, in a crew of their own:
+ * a faint lime white, barely apart from other names.  A friend in one of our crews has the crew's colour */
+#define FRIEND_CREW     (RC_CREW_MAX + 1)
+#define FRIEND_RGB      0xe4efd2u
 static void crew_rgb_parse(const char *rgb);
 /* The Crews setting: names joined by commas (the start page's list), each
  * trimmed; empty ones, one that hashes as an earlier one (rc_room_hash:
@@ -5419,6 +5427,7 @@ static void crews_parse(const char *v, rc_config *cf){
  * values joined by commas in the crews' order, an empty or unreadable one
  * the place's CREW_RGB */
 static void crew_rgb_parse(const char *rgb){
+    O.crew_rgb[RC_CREW_MAX] = FRIEND_RGB;
     for (int i = 0; i < RC_CREW_MAX; i++){
         O.crew_rgb[i] = CREW_RGB[i];
         if (!rgb || !*rgb) continue;
@@ -6044,6 +6053,7 @@ void roam_game_frame(CPU *c){
                           (p->status == RC_ST_ROAM && host - p->last_snap_rx < 2000000));
             v->paused = p->status == RC_ST_PAUSED; v->duels = p->duels; v->listed = rc_peer_listed(&g_s, i);
             v->crew = rc_peer_crew(&g_s, i) + 1;
+            if (!v->crew && rc_peer_friend(&g_s, i)) v->crew = FRIEND_CREW;
             v->cfg_gen = p->cfg_gen; v->cfg_len = 0; v->has_cfg = p->cfg_len > 0; v->err = 0;
             int slotted = -1;
             for (int k = 0; k < NSLOT; k++) if (g_sl[k].st != SL_FREE && g_sl[k].st != SL_PARKED && g_sl[k].peer == i && g_sl[k].peer_id == p->id) slotted = k;
@@ -6291,7 +6301,7 @@ static int colour_crew(uint32_t o){
     if (!fe_colour_get(o, col)) return 0;
     uint32_t rgb = (uint32_t)(col[2] & 0xff) << 16 | (uint32_t)(col[1] & 0xff) << 8 | (uint32_t)(col[0] & 0xff);
     for (int i = 0; i < O.ncrew; i++) if (O.crew_rgb[i] == rgb) return i + 1;
-    return 0;
+    return O.crew_rgb[RC_CREW_MAX] == rgb ? FRIEND_CREW : 0;
 }
 /* an FE object has the AI racers' grey (mp status, mp map) */
 static int colour_ai(uint32_t o){
@@ -6338,6 +6348,16 @@ int roam_game_cmd(CPU *c, const char *args, long *wait_start){
         return 1;
     }
 #if SAYS
+    if (!strcasecmp(sub, "waitbump")){
+        /* "mp waitbump NAME [T]": until our car's front bumper has touched that friend's for 3 s (the page offers
+         * Add friend then: bump_page); T frames at most */
+        long tmo = a2[0] ? atol(a2) : 0; int on = 0;
+        if (*wait_start < 0) *wait_start = f;
+        for (int k = 0; k < NSLOT; k++) on |= g_bump[k].on && !strcasecmp(g_bump[k].name, a1);
+        if (on){ rlog("[roam] f=%ld mp waitbump %s satisfied after %ld frames\n", f, a1, f - *wait_start); *wait_start = -1; return 1; }
+        if (tmo && f - *wait_start >= tmo){ rlog("[roam] f=%ld mp waitbump %s TIMEOUT\n", f, a1); *wait_start = -1; return 1; }
+        return 0;
+    }
     if (!strcasecmp(sub, "bump")){
         /* front bumpers (bump_*): for each friend's car, how the two cars stand to each other now */
         uint32_t me = player_car();
@@ -6363,9 +6383,9 @@ int roam_game_cmd(CPU *c, const char *args, long *wait_start){
         for (int i = 0; i < RC_TABLE; i++){
             const rc_peer *p = &g_s.peer[i]; char b[16];
             if (p->state == RC_PS_FREE) continue;
-            rlog("[roam]   peer %d %s:%u id %08x state %d %s (%s) cfg rev %u%s, %d states, crew %d (%d crews, reads them %d; %d of ours by the hub)\n", i,
+            rlog("[roam]   peer %d %s:%u id %08x state %d %s (%s) cfg rev %u%s, %d states, crew %d (%d crews, reads them %d; %d of ours by the hub)%s\n", i,
                     roam_ip_str(p->ip, b), p->port, p->id, p->state, p->name, rc_status_name(p->status), p->cfg_rev, p->cfg_len ? "" : " (none yet)",
-                    p->mo.n, rc_peer_crew(&g_s, i) + 1, p->n_crews, p->reads_crews, p->n_hub_crews);
+                    p->mo.n, rc_peer_crew(&g_s, i) + 1, p->n_crews, p->reads_crews, p->n_hub_crews, p->hub_friend ? ", our friend" : "");
         }
         roam_plat_unlock();
         uint32_t icons = rd32(G_MM_ICONS); int arrows = 0, freev = 0, tinted = 0, wrong = 0, ais = 0, grey = 0, greyf = 0; uint8_t has[256] = {0};
@@ -6665,6 +6685,20 @@ int roam_game_cmd(CPU *c, const char *args, long *wait_start){
         for (int i = 0; i < g_npv; i++) if (!strcasecmp(g_pv[i].name, a1) && g_pv[i].visible && g_pv[i].have_pose) d = (long)g_pv[i].dist;
         if (d >= 0 && (float)d >= m){ rlog("[roam] f=%ld mp waitfar %s %.0f satisfied after %ld frames (%ld m)\n", f, a1, (double)m, f - *wait_start, d); *wait_start = -1; return 1; }
         if (tmo && f - *wait_start >= tmo){ rlog("[roam] f=%ld mp waitfar %s %.0f TIMEOUT (%ld m)\n", f, a1, (double)m, d); *wait_start = -1; return 1; }
+        return 0;
+    }
+    if (!strcasecmp(sub, "waitgone") || !strcasecmp(sub, "waitfriend")){
+        /* "mp waitgone NAME [T]": until no friend of that name is established (it left, or another room took it or
+         * us); "mp waitfriend NAME [T]": until the one of that name is established and the hub marks it our friend
+         * (rc_peer_friend: the server's friends lists); T frames at most */
+        long tmo = a2[0] ? atol(a2) : 0; int here = 0, friend = 0;
+        if (*wait_start < 0) *wait_start = f;
+        roam_plat_lock();
+        for (int i = 0; i < RC_TABLE; i++)
+            if (g_s.peer[i].state == RC_PS_EST && !strcasecmp(g_s.peer[i].name, a1)){ here = 1; friend |= rc_peer_friend(&g_s, i); }
+        roam_plat_unlock();
+        if (!strcasecmp(sub, "waitgone") ? !here : friend){ rlog("[roam] f=%ld mp %s %s satisfied after %ld frames\n", f, sub, a1, f - *wait_start); *wait_start = -1; return 1; }
+        if (tmo && f - *wait_start >= tmo){ rlog("[roam] f=%ld mp %s %s TIMEOUT\n", f, sub, a1); *wait_start = -1; return 1; }
         return 0;
     }
     if (!strcasecmp(sub, "waitpeers") || !strcasecmp(sub, "waitcars") || !strcasecmp(sub, "waitsolid") || !strcasecmp(sub, "waithidden")){
