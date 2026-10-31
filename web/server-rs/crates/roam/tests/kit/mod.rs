@@ -84,7 +84,7 @@ pub struct HelloOpts<'a> {
 
 impl Default for HelloOpts<'_> {
     fn default() -> Self {
-        HelloOpts { room: 0, status: 2, name: b"p", seen: &[], cfg_rev: 3, core: 1, crews: None, hubcrew: false }
+        HelloOpts { room: 0, status: 2, name: b"p", seen: &[], cfg_rev: 3, core: 9, crews: None, hubcrew: false }
     }
 }
 

@@ -21,8 +21,6 @@ use crate::watch::{self, Seen, Watch};
 use crate::wire::{self, F_DATA, KIND_UDP, Msg};
 use crate::{PeerEntry, ROAM_HUB_VIP, RoamOptions};
 
-/// roam_core.h RC_PEERS_V1: what a core of version 1 reads (its group was 8, and it drops a longer list)
-const DEGREE_V1: usize = 7;
 /// no slot, no place in a room
 const NONE: u32 = u32::MAX;
 
@@ -876,7 +874,7 @@ impl Hub {
         // (a HELLO: its name against the claims)
         let mut check = false;
         match m {
-            Msg::Hello { sender, core, status, room, name, lobbies, marks, crews } => {
+            Msg::Hello { sender, status, room, name, lobbies, marks, crews, .. } => {
                 // another start of the game on the same endpoint (where its car was, and its clock's epochs, start again)
                 if p.id != sender {
                     p.links.clear();
@@ -900,7 +898,7 @@ impl Hub {
                     p.checked = 0;
                 }
                 check = true;
-                p.degree = if core >= 2 { degree } else { degree.min(DEGREE_V1) };
+                p.degree = degree;
                 p.lobbies = lobbies;
                 p.marks = marks;
                 let was = p.crews[0] != 0;

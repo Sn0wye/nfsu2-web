@@ -10,8 +10,7 @@
 //! - player -> hub: a HELLO every second (its id, room, status, name, and its crews), a SNAP twice a second (where
 //!   its car is), a BYE when it stops.
 //! - hub -> player: twice a second (`tick_ms`) a PEERS message: the players linked to it, { virtual address, port, id }, at most
-//!   `degree` (32: roam_core's group of 33 with itself), or 7 for a player whose HELLO says core version 1 (its group
-//!   was 8, and it drops a longer list); an empty one says the hub is there.  To a player in a crew whose HELLO says
+//!   `degree` (32: roam_core's group of 33 with itself); an empty one says the hub is there.  To a player in a crew whose HELLO says
 //!   it reads them (core 8), the list ends in crew marks: its own crews, then which of them each listed player is in.
 //! - player -> hub -> player: when its world map opens, and a quarter second after each answer while it is open, a
 //!   MAPREQ naming the answer it holds; the hub answers with MAPD datagrams (at most 16): the other players of its
