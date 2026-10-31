@@ -249,7 +249,7 @@ players.
 
 ## Where it differs from the Node server
 
-- 7000 players (`--max-peers` 1 to 7000; the image's `NFSU2_MAX_PEERS=6500`), Node's 2000: the switch's network is
+- 7000 players (`--max-peers` 1 to 7000; the image's `NFSU2_MAX_PEERS=7000`), Node's 2000: the switch's network is
   10.77.0.0/19 (the welcome's mask 255.255.224.0; addresses round twenty-eight of its /24s, 10.77.0-27.x), the free-roam
   hub takes 7168 players, Online mode 3500 lobby sessions, 1050 games and 14000 streams.  The game module's peer bits
   (mailbox v4) cover a /21: for a player on 10.77.8-27.x the game asks that host itself (`runtime/web/net_lan.c`): a LAN race's
