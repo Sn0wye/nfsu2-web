@@ -36,9 +36,9 @@
 // and tells C NET_PAGE_IDLE (Online and LAN play lose their connections, free
 // roam its friends), and nothing connects until setAway(false).
 //
-// With a switch that takes bundles (its welcome's "bundle":1, nfsu2-lan) what C
-// queued at once goes as one message: free roam's snapshot to each friend, the
-// same bytes, once with the friends' addresses (TxBundle); and the switch sends
+// What C queued at once goes to the switch as one message (a bundle, nfsu2-lan):
+// free roam's snapshot to each friend, the same bytes, once with the friends'
+// addresses (TxBundle); and the switch sends
 // this page its datagrams as bundles too (the hello's "bundle":1), compact ones
 // (kind 33: the same frames, about a quarter fewer bytes, proto.ts unpackCompact)
 // once its hello says "compact":1 as well.
@@ -331,8 +331,6 @@ class Link implements NetLink {
   private idleTimer: ReturnType<typeof setTimeout> | null = null;
   /** whether LAN play is open, as the switch last heard it (hello or {"t":"lan"}) */
   private lanSent = false;
-  /** the switch takes bundles (its welcome said so) */
-  private bundles = false;
   /** the last body of each source's free-roam datagrams of each type in this connection's compact bundles (the
    *  switch's deltas are made against them: proto.ts unpackCompact) */
   private refs = new Map<number, Uint8Array>();
@@ -632,7 +630,6 @@ class Link implements NetLink {
       const again = this.vipNum === vip;
       this.vipNum = vip; this.vip = P.ipStr(vip); this.netmask = mask; this.generation++;
       this.token = typeof m.token === 'string' ? m.token : '';
-      this.bundles = m.bundle === 1;
       this.state = 'online'; this.backoff = 250; this.failed = 0; this.st.connections++;
       for (const ep of this.eps()) { this.publishPeers(ep); this.publishOnline(ep); }
       this.log(`on the virtual LAN as ${this.vip}${this.st.connections > 1 ? (again ? ' (the same address again)' : ' (a new address)') : ''}`);
@@ -719,10 +716,10 @@ class Link implements NetLink {
     }
   }
   /** how long free roam's TX ring may wait still (ms; 0: send it now): while it holds only free roam's own datagrams,
-   *  until the next car state to a friend comes or TX_HOLD_MS after the last send (to a switch that takes bundles), or
-   *  TX_HOLD_AWAY_MS while the game is not driving (half the ring at most) */
+   *  until the next car state to a friend comes or TX_HOLD_MS after the last send, or TX_HOLD_AWAY_MS while the game
+   *  is not driving (half the ring at most) */
   private txHold(ep: Endpoint): number {
-    if (ep.kind !== 'roam' || !this.bundles || this.state !== 'online') return 0;
+    if (ep.kind !== 'roam' || this.state !== 'online') return 0;
     const i32 = ep.i32, dv = ep.dv, txOff = i32[P.W_TX_OFF], head = Atomics.load(i32, P.W_TX_HEAD);
     let tail = Atomics.load(i32, P.W_TX_TAIL);
     if (tail === head || ((head - tail) | 0) >= P.NET_TX_SLOTS / 2) return 0;
@@ -743,7 +740,7 @@ class Link implements NetLink {
     if (tail === head) return;
     const c0 = performance.now();
     const txOff = i32[P.W_TX_OFF], ws = this.ws, open = !!ws && ws.readyState === WebSocket.OPEN && this.state === 'online';
-    const t = now(), bundle = open && this.bundles ? new TxBundle() : null;
+    const t = now(), bundle = new TxBundle();
     let waitSum = 0, waitMax = ep.f64[P.D_TX_WAIT_MS_MAX], n = 0;
     while (tail !== head) {
       const s = txOff + ((tail >>> 0) % P.NET_TX_SLOTS) * P.NET_SLOT_BYTES;
@@ -772,7 +769,7 @@ class Link implements NetLink {
           sentNow(f, len, t - dv.getFloat64(s + P.S_T_MS, true));
           ep.away = roamAway(dv, s + P.S_DATA, len) ?? ep.away;
         }
-        if (bundle) bundle.add(f, dst >>> 0); else ws!.send(f);
+        bundle.add(f, dst >>> 0);
         this.st.framesOut++; this.st.bytesOut += len;
         if (ep.kind === 'lan') this.st.lanOut++;
         const w = t - dv.getFloat64(s + P.S_T_MS, true);
@@ -781,7 +778,7 @@ class Link implements NetLink {
       tail = (tail + 1) | 0;
       Atomics.store(i32, P.W_TX_TAIL, tail);
     }
-    if (bundle) for (const m of bundle.messages()) ws!.send(m);
+    if (open) for (const m of bundle.messages()) ws!.send(m);
     if (open) ep.sent = performance.now();
     if (n) {
       ep.f64[P.D_TX_WAIT_MS_SUM] += waitSum; ep.f64[P.D_TX_WAIT_MS_MAX] = waitMax;
