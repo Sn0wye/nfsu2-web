@@ -328,7 +328,7 @@
   "Clown horn": "Klaxon de clown",
   "Sad trombone": "Trombone triste",
   "Room": "Salle",
-  "With a name, free roam shows only players in the same room. Not private: everyone still sees your name.": "Avec un nom, le mode Exploration n'affiche que les joueurs de la même salle. Ce n'est pas privé : tout le monde voit toujours votre nom.",
+  "With a name, free roam shows only players in the same room.": "Avec un nom, le mode Exploration n'affiche que les joueurs de la même salle.",
   "everyone": "tout le monde",
   "Blocked players": "Joueurs bloqués",
   "Names, separated by commas: you never see each other in free roam. The server's operator sees who blocks whom.": "Noms, séparés par des virgules : vous ne vous voyez jamais en mode Exploration. L'opérateur du serveur voit qui bloque qui.",

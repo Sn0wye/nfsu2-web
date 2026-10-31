@@ -272,7 +272,7 @@
   "Clown horn": "小丑喇叭",
   "Sad trombone": "悲傷長號",
   "Room": "房間",
-  "With a name, free roam shows only players in the same room. Not private: everyone still sees your name.": "輸入名稱後，自由漫遊只會顯示同一房間的玩家。這不具隱私性：所有人仍看得到你的名稱。",
+  "With a name, free roam shows only players in the same room.": "輸入名稱後，自由漫遊只會顯示同一房間的玩家。",
   "everyone": "所有人",
   "Blocked players": "封鎖的玩家",
   "Names, separated by commas: you never see each other in free roam. The server's operator sees who blocks whom.": "名稱，以逗號分隔：你們在自由漫遊中永遠看不到彼此。伺服器的管理者看得到誰封鎖了誰。",

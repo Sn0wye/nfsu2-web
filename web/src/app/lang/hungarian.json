@@ -525,7 +525,7 @@
   "Clown horn": "Bohócduda",
   "Sad trombone": "Szomorú harsona",
   "Room": "Szoba",
-  "With a name, free roam shows only players in the same room. Not private: everyone still sees your name.": "Névvel a Felfedező mód csak az azonos szobában lévő játékosokat mutatja. Nem privát: továbbra is mindenki látja a nevedet.",
+  "With a name, free roam shows only players in the same room.": "Névvel a Felfedező mód csak az azonos szobában lévő játékosokat mutatja.",
   "everyone": "mindenki",
   "Blocked players": "Letiltott játékosok",
   "Names, separated by commas: you never see each other in free roam. The server's operator sees who blocks whom.": "Nevek, vesszővel elválasztva: sosem látjátok egymást Felfedező módban. A szerver üzemeltetője látja, ki kit tilt le.",

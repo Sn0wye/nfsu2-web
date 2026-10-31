@@ -342,7 +342,7 @@
   "Clown horn": "Клоунский гудок",
   "Sad trombone": "Грустный тромбон",
   "Room": "Комната",
-  "With a name, free roam shows only players in the same room. Not private: everyone still sees your name.": "Если указать название, в свободной езде будут видны только игроки из той же комнаты. Это не приватно: все по-прежнему видят ваше имя.",
+  "With a name, free roam shows only players in the same room.": "Если указать название, в свободной езде будут видны только игроки из той же комнаты.",
   "everyone": "все",
   "Blocked players": "Заблокированные игроки",
   "Names, separated by commas: you never see each other in free roam. The server's operator sees who blocks whom.": "Имена через запятую: вы никогда не видите друг друга в свободной езде. Оператор сервера видит, кто кого блокирует.",

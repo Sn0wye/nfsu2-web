@@ -57,7 +57,7 @@ const GROUPS: Group[] = [
     { key: 'horn', label: N('Your horn'), help: N('N or the left stick click, with other players.'), c: { t: 'select', opts: [
       ['dual', N('Dual tone')], ['single', N('Single tone')], ['truck', N('Air horn')], ['train', N('Train horn')], ['klaxon', N('Klaxon')],
       ['cucaracha', N('La Cucaracha')], ['clown', N('Clown horn')], ['trombone', N('Sad trombone')]], preview: { play: playHorn, stop: stopHorn } } },
-    { key: 'roam_room', label: N('Room'), help: N('With a name, free roam shows only players in the same room. Not private: everyone still sees your name.'), c: { t: 'text', placeholder: N('everyone'), invite: true } },
+    { key: 'roam_room', label: N('Room'), help: N('With a name, free roam shows only players in the same room.'), c: { t: 'text', placeholder: N('everyone'), invite: true } },
     { key: 'roam_block', label: N('Blocked players'), help: N('Names, separated by commas: you never see each other in free roam. The server\'s operator sees who blocks whom.'), c: { t: 'text', placeholder: N('nobody') }, more: true },
     { key: 'roam_collide', label: N('Ghost mode'), help: N('Drive through other players\' cars instead of hitting them.'), c: { t: 'switch', inv: true } },
     { key: 'quick_chat', label: N('Quick chat'), help: N('Send phrases to players near you in free roam: 1 to 4, then 1 to 4 (controller: right stick twice; touch: the chat button).'), c: { t: 'switch' } },

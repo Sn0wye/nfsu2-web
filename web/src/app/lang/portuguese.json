@@ -328,7 +328,7 @@
   "Clown horn": "Buzina de palhaço",
   "Sad trombone": "Trombone triste",
   "Room": "Sala",
-  "With a name, free roam shows only players in the same room. Not private: everyone still sees your name.": "Com um nome, o Modo Livre mostra só os jogadores da mesma sala. Não é privado: todos continuam vendo seu nome.",
+  "With a name, free roam shows only players in the same room.": "Com um nome, o Modo Livre mostra só os jogadores da mesma sala.",
   "everyone": "todos",
   "Blocked players": "Jogadores bloqueados",
   "Names, separated by commas: you never see each other in free roam. The server's operator sees who blocks whom.": "Nomes, separados por vírgulas: vocês nunca se veem no Modo Livre. O operador do servidor vê quem bloqueia quem.",

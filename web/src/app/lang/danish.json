@@ -314,7 +314,7 @@
   "Clown horn": "Klovnehorn",
   "Sad trombone": "Trist trombone",
   "Room": "Rum",
-  "With a name, free roam shows only players in the same room. Not private: everyone still sees your name.": "Med et navn viser udforsknings-mode kun spillere i samme rum. Ikke privat: alle ser stadig dit navn.",
+  "With a name, free roam shows only players in the same room.": "Med et navn viser udforsknings-mode kun spillere i samme rum.",
   "everyone": "alle",
   "Blocked players": "Blokerede spillere",
   "Names, separated by commas: you never see each other in free roam. The server's operator sees who blocks whom.": "Navne, adskilt af kommaer: I ser aldrig hinanden i udforsknings-mode. Serverens operatør kan se, hvem der blokerer hvem.",

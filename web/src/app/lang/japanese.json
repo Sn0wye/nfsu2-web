@@ -272,7 +272,7 @@
   "Clown horn": "ピエロのホーン",
   "Sad trombone": "悲しいトロンボーン",
   "Room": "ルーム",
-  "With a name, free roam shows only players in the same room. Not private: everyone still sees your name.": "名前を入れると、フリーロームには同じルームのプレイヤーだけが表示されます。非公開ではありません: 全員にあなたの名前は見えています。",
+  "With a name, free roam shows only players in the same room.": "名前を入れると、フリーロームには同じルームのプレイヤーだけが表示されます。",
   "everyone": "全員",
   "Blocked players": "ブロックしたプレイヤー",
   "Names, separated by commas: you never see each other in free roam. The server's operator sees who blocks whom.": "名前をカンマ区切りで: フリーロームでお互いに見えなくなります。サーバーの運営者には誰が誰をブロックしたかが見えます。",
