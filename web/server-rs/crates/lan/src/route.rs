@@ -276,8 +276,9 @@ impl LanSwitch {
     }
 
     /// a datagram to p, into its bundle when it takes them, else as it is.  Free roam's wait for the bundle clock's
-    /// next tick; LAN play's go at once (with whatever else is queued): a race's car updates, 5 to 20 a second for each
-    /// car, a tick's wait apart (up to `bundle_max_ms`, at random) made the other cars wobble
+    /// next tick; LAN play's for LAN play's short one (`lan_ms`, with whatever else is queued): a race's creator sends
+    /// each joiner a datagram a frame (60 a second at 60 fps) and the joiners' own come in between, each a message of
+    /// its own to the page until 2026-10-31, while a tick's wait of up to 25 ms, at random, made the other cars wobble
     fn post(&self, p: &Arc<Peer>, data: &Bytes, src: u32, dst: u32) -> bool {
         if !p.takes_bundles() {
             return self.send(p, Out::Frame { data: data.clone(), src, dst });
@@ -287,7 +288,7 @@ impl LanSwitch {
             return false;
         }
         let clock = if (KIND_LAN_UDP..=KIND_LAN_ICMP).contains(&data[0]) {
-            None
+            self.lan_clock.as_deref()
         } else if p.away.load(Relaxed) && data[1] == compact::ROAM_OK && Some(src) != self.roam_vip && self.slow.is_some() {
             // free roam from another player to one who is not driving: the slow clock's tick, or sooner with whatever
             // else goes to it (away.rs)

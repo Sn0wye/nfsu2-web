@@ -91,8 +91,8 @@ pub(crate) struct OutQueue {
     /// datagrams waiting for the bundle clock (their bytes as bundle entries)
     dgram: AtomicUsize,
     wake: Notify,
-    /// on the bundle clock's list for its next tick, and on the slow clock's (`Clock::lane`)
-    armed: [AtomicBool; 2],
+    /// on the bundle clock's list for its next tick, on the slow clock's, and on LAN play's (`Clock::lane`)
+    armed: [AtomicBool; 3],
 }
 
 impl OutQueue {
@@ -162,7 +162,7 @@ impl Conn {
                 buffered: AtomicUsize::new(0),
                 dgram: AtomicUsize::new(0),
                 wake: Notify::new(),
-                armed: [AtomicBool::new(false), AtomicBool::new(false)],
+                armed: [AtomicBool::new(false), AtomicBool::new(false), AtomicBool::new(false)],
             },
             close: Mutex::new(CloseState::default()),
             peer: Mutex::new(None),
@@ -647,8 +647,8 @@ pub(crate) struct Clock {
     shards: Box<[Shard]>,
     period_us: AtomicU64,
     jitter: f64,
-    /// which of a connection's two flags says it is on this clock's list: 0 the bundle clock, 1 the slow one (away.rs).
-    /// Either's tick wakes the writer, which takes all that waits.
+    /// which of a connection's flags says it is on this clock's list: 0 the bundle clock, 1 the slow one (away.rs), 2
+    /// LAN play's (`LanOptions::lan_ms`).  Each one's tick wakes the writer, which takes all that waits.
     lane: usize,
 }
 
@@ -656,7 +656,7 @@ impl Clock {
     pub(crate) fn new(period: Duration, jitter: f64, lane: usize) -> Self {
         let shards = (0..SHARDS).map(|_| Shard(Mutex::new(Vec::new()))).collect();
         let jitter = if jitter.is_finite() { jitter.clamp(0.0, 0.9) } else { 0.0 };
-        Clock { shards, period_us: AtomicU64::new(period.as_micros() as u64), jitter, lane: lane.min(1) }
+        Clock { shards, period_us: AtomicU64::new(period.as_micros() as u64), jitter, lane: lane.min(2) }
     }
 
     /// the next tick's length: the period, give or take `jitter` of it (`rng` a shard's own xorshift state)

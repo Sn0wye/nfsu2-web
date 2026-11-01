@@ -183,9 +183,15 @@
 //!   datagrams queued (one frame alone goes as it is), and free roam's datagrams wait for the next tick of the
 //!   bundle clock when nothing else is queued: Node bundled what came in one turn of its event loop, a turn that
 //!   grew with the load; here the clock does it (without it every datagram wakes its writer: the .NET port measured
-//!   2.19 against 0.94 cores).  Text, stream segments and LAN play's datagrams wake it at once: a race sends each
-//!   car 5 to 20 times a second, and a tick's wait (up to 25 ms, at random, at each pass through the switch: two
-//!   between joiners, whose updates go through the race's creator) made the other cars wobble.
+//!   2.19 against 0.94 cores).  Text and stream segments wake it at once.  LAN play's datagrams wait for a clock of
+//!   their own, `lan_ms` (4 ms, no jitter): a race's creator sends each joiner a datagram every frame, the joiners
+//!   send it theirs and each other their car states (runtime/racenet.c), and each went to the page as a message of
+//!   its own: a 4-player race's pages got 386 messages a second and sent 206, 148 for each player, nearly four times
+//!   a player driving in free roam (web/tools/lan-pair.mjs, 2026-10-31).  What comes for a page in a tick goes in one
+//!   message: 227 a second (182 with the page's own wait for the rest of a frame, web/src/net/index.ts
+//!   TX_HOLD_LAN_MS, and 139 sent), the cars 2-3 ms later.  The bundle clock's tick (up to 25 ms, at random, at each
+//!   pass through the switch: two between joiners, whose updates go through the race's creator) made the other cars
+//!   wobble.
 //! - The clock ticks every `bundle_ms` (50 ms): a page gets at most 20 bundles a second, as many as each friend sends
 //!   snapshots (roam_rate 20), however few play.  What a crowd costs is its messages, not its bytes: each is a TCP
 //!   segment, which the kernel (and the tunnel in front, cloudflared, again) pays for whole.  2000 players in free
@@ -397,6 +403,9 @@ pub struct LanOptions {
     /// the slow clock's tick: what friends send a player in free roam who is not driving (a race, a shop, the menus)
     /// waits this long at most (away.rs; 0: as for anyone)
     pub away_ms: u64,
+    /// LAN play's datagrams (a race's) wait for the next tick of a clock this short (no jitter), so that what comes
+    /// for a page in it goes in one message (0, or no bundle clock: each wakes its writer at once)
+    pub lan_ms: u64,
     /// friends' car states by their fields to a page whose hello asks for them (fpred.rs); false: as byte deltas still
     pub fpred: bool,
     /// SO_SNDBUF for /lan connections (NFSU2_LAN_SNDBUF; 0: the kernel's own, which Linux grows to megabytes)
@@ -444,6 +453,7 @@ impl Default for LanOptions {
             bundle_budget: 125_000,
             bundle_jitter: 0.4,
             away_ms: 500,
+            lan_ms: 4,
             fpred: true,
             send_buffer_os: 0,
             max_payload: 64 << 10,
@@ -894,10 +904,11 @@ pub struct LanSwitch {
     probes: AtomicU64,
     conn_ids: AtomicU64,
     stats: Arc<Stats>,
-    /// the bundle clock (none at bundle_ms 0), and the slow one for players who are not driving (away.rs; none at
-    /// away_ms 0)
+    /// the bundle clock (none at bundle_ms 0), the slow one for players who are not driving (away.rs; none at away_ms
+    /// 0), and LAN play's (none at lan_ms 0)
     clock: Option<Arc<conn::Clock>>,
     slow: Option<Arc<conn::Clock>>,
+    lan_clock: Option<Arc<conn::Clock>>,
     /// the players who left in the last `GONE_MS`, oldest first (`who`)
     gone: Mutex<std::collections::VecDeque<Who>>,
     stopped: CancellationToken,
@@ -949,6 +960,7 @@ impl LanSwitch {
         let clock = (o.bundle_ms > 0).then(|| Arc::new(conn::Clock::new(Duration::from_millis(o.bundle_ms), o.bundle_jitter, 0)));
         let slow = (o.bundle_ms > 0 && o.away_ms > o.bundle_ms)
             .then(|| Arc::new(conn::Clock::new(Duration::from_millis(o.away_ms), o.bundle_jitter, 1)));
+        let lan_clock = (o.bundle_ms > 0 && o.lan_ms > 0).then(|| Arc::new(conn::Clock::new(Duration::from_millis(o.lan_ms), 0.0, 2)));
         let sw = Arc::new_cyclic(|me| LanSwitch {
             impair: impair::Impair::parse(impair),
             online_vip: online.as_ref().map(|h| h.vip()),
@@ -972,6 +984,7 @@ impl LanSwitch {
             stats: Arc::new(Stats::default()),
             clock,
             slow,
+            lan_clock,
             gone: Mutex::new(Default::default()),
             stopped: CancellationToken::new(),
             on_text: OnceLock::new(),
@@ -1032,6 +1045,9 @@ impl LanSwitch {
         }
         if let Some(slow) = &self.slow {
             conn::Clock::start(Arc::downgrade(slow));
+        }
+        if let Some(c) = &self.lan_clock {
+            conn::Clock::start(Arc::downgrade(c));
         }
         if let Some(clock) = &self.clock {
             conn::Clock::start(Arc::downgrade(clock));

@@ -190,6 +190,8 @@ pub async fn run(o: Options, cores: usize) {
         bundle_max_ms: fixed.unwrap_or_else(|| env_num("NFSU2_BUNDLE_MAX_MS", d.bundle_max_ms)),
         bundle_budget: env_num("NFSU2_BUNDLE_BUDGET", d.bundle_budget),
         bundle_jitter: env_num("NFSU2_BUNDLE_JITTER", (d.bundle_jitter * 100.0) as u64) as f64 / 100.0,
+        // LAN play's clock, 4 ms; NFSU2_LAN_MS another (0: none, each datagram at once), for measurements
+        lan_ms: env_num("NFSU2_LAN_MS", d.lan_ms),
         fpred: env_num("NFSU2_FPRED", 1) != 0,
         send_buffer_os: lan_sndbuf,
         ..d
