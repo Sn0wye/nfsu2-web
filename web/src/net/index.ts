@@ -196,6 +196,11 @@ const TX_HOLD_MS = 50;
  *  roam, 70 % of a driving player's messages).  The server holds what its friends send it as long (nfsu2-lan away.rs);
  *  a HELLO or SNAP that says it drives again goes at once. */
 const TX_HOLD_AWAY_MS = 500;
+/** LAN play's TX ring waits this long after its first frame came: a race's creator sends each joiner a datagram every
+ *  frame, one after the other, and the page woke at the first, so the rest of the frame's went in messages of their
+ *  own (web/tools/lan-pair.mjs, 4 players: the creator's page sent 74 messages a second for 178 datagrams, about a
+ *  quarter fewer this way); the switch puts what comes for a page in 4 ms together (nfsu2-lan `lan_ms`) */
+const TX_HOLD_LAN_MS = 1;
 /** runtime/roam_core.h: a datagram's type (header byte 5): HELLO, the car state, a ping and its answer */
 const RC_MSG_HELLO = 1, RC_MSG_SNAP = 3, RC_MSG_PING = 6, RC_MSG_PONG = 7;
 
@@ -289,6 +294,8 @@ class Endpoint {
   sent = 0;
   /** free roam: its game is not driving, as its last HELLO or SNAP said (a race, a shop, the menus, loading) */
   away = false;
+  /** LAN play: when its TX ring got its first frame since the last drain (performance.now(); 0: empty) */
+  firstAt = 0;
   constructor(readonly kind: 'roam' | 'lan', buf: SharedArrayBuffer, ptr: number, size: number) {
     // shared memory is never detached: views made now stay valid after the
     // memory grows (the mailbox lies inside the current buffer)
@@ -745,6 +752,7 @@ class Link implements NetLink {
    *  until the next car state to a friend comes or TX_HOLD_MS after the last send, or TX_HOLD_AWAY_MS while the game
    *  is not driving (half the ring at most) */
   private txHold(ep: Endpoint): number {
+    if (ep.kind === 'lan' && this.state === 'online') return this.lanHold(ep);
     if (ep.kind !== 'roam' || this.state !== 'online') return 0;
     const i32 = ep.i32, dv = ep.dv, txOff = i32[P.W_TX_OFF], head = Atomics.load(i32, P.W_TX_HEAD);
     let tail = Atomics.load(i32, P.W_TX_TAIL);
@@ -759,7 +767,18 @@ class Link implements NetLink {
     const left = ep.sent + (ep.away ? TX_HOLD_AWAY_MS : TX_HOLD_MS) - performance.now();
     return left > 0 ? Math.ceil(left) : 0;
   }
+  /** how long LAN play's TX ring may wait still (ms; 0: send it now): TX_HOLD_LAN_MS from its first frame (half the
+   *  ring at most) */
+  private lanHold(ep: Endpoint): number {
+    const head = Atomics.load(ep.i32, P.W_TX_HEAD), tail = Atomics.load(ep.i32, P.W_TX_TAIL);
+    if (tail === head || ((head - tail) | 0) >= P.NET_TX_SLOTS / 2) return 0;
+    const t = performance.now();
+    if (!ep.firstAt) ep.firstAt = t;
+    const left = ep.firstAt + TX_HOLD_LAN_MS - t;
+    return left > 0 ? Math.ceil(left) : 0;
+  }
   private drainTx(ep: Endpoint) {
+    ep.firstAt = 0;
     const i32 = ep.i32, dv = ep.dv;
     let tail = Atomics.load(i32, P.W_TX_TAIL);
     const head = Atomics.load(i32, P.W_TX_HEAD);

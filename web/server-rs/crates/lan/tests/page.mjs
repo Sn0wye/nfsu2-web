@@ -517,6 +517,17 @@ const cases = {
       const mix = (await state(port)).info.mix;
       console.log(`race datagrams: ${mix['LAN UDP'][1]}, ${(mix['LAN UDP'][0] / mix['LAN UDP'][1]).toFixed(1)} bytes each (plain ${5 + 4 + 8 + 141})`);
       assert.ok(mix['LAN UDP'][0] / mix['LAN UDP'][1] < 60, `${(mix['LAN UDP'][0] / mix['LAN UDP'][1]).toFixed(1)} bytes a race datagram`);
+      // the game's own of one frame (a race's creator sends each joiner one, one after the other) go in one message:
+      // the page waits TX_HOLD_LAN_MS (1) after the first before it sends (it sent at once, so the rest of the frame
+      // went in messages of their own)
+      const in0 = (await state(port)).info.bundlesIn, n1 = r1.dgrams().length, n2 = r2.dgrams().length;
+      for (const [c, j] of [[r1, 0], [r2, 1], [r1, 2]]) {
+        txPush(memory, lanMb, { kind: 3, dst: c.vip, sport: 6112, dport: 6112, data: Buffer.from([0, 64, 0, 0, j, 0, 0, 0, 9, 9]) });
+        txBell(lanMb);
+      }
+      await r1.until(() => r1.dgrams().length >= n1 + 2); await r2.until(() => r2.dgrams().length >= n2 + 1);
+      assert.equal((await state(port)).info.bundlesIn, in0 + 1, "a frame's three datagrams, one message");
+      assert.ok(link.stats().txWaitMeanMs >= 0.9, `they waited ${link.stats().txWaitMeanMs.toFixed(2)} ms for the rest of the frame`);
       await r1.close(); await r2.close();
     } finally { link.close(); }
   },
