@@ -201,10 +201,11 @@ its name.
 
 ## Sizing
 
-For up to 8000 players at once (the image's limit; the Node server's was 2000, [From the Node
-server](#from-the-node-server)): 8 vCPU for 2000 and 16 for 4000 to 6000 (4000 in free roam took the Rust server 6-8 cores of a Ryzen 9 5900X,
-and a Cloudflare Tunnel's cloudflared pays for each message again, `web/server-rs/README.md`), 8 GB of memory (the
-compose file's limit), 40 GB of disk and a 1 Gbit/s port with a few TB of traffic a month.
+For up to 12000 players at once (the image's limit; the Node server's was 2000, [From the Node
+server](#from-the-node-server)): 8 vCPU for 2000, 16 for 4000 to 8000 and some 24 for 12000 (4000 in free roam took the Rust server 6-8 cores of a Ryzen 9 5900X,
+and a Cloudflare Tunnel's cloudflared pays for each message again, `web/server-rs/README.md`; at 6,758 players the game used 1.70
+cores a thousand, nfsu2.xyz 2026-10-31), 8 GB of memory (the compose file's limit), 40 GB of disk and a 1 Gbit/s port with a few
+TB of traffic a month, more past about 8000 (the port sent 757 Mbit/s at 6,758).
 
 - Measured on a live server behind a Cloudflare Tunnel (16 vCPU, 2026-10-21): 1209 players, 165 of them in the
   game's Online mode and most of the rest in free roam, took the server 0.7 of a core over its 8 workers and 340 MB,
@@ -346,15 +347,16 @@ NFSU2_IMAGE=ghcr.io/th0mk/nfsu2-web-rs:sha-<commit>
   commit, then `docker compose up -d`. The state volume serves either.
 - `UV_THREADPOOL_SIZE` means nothing to the Rust server; `NFSU2_THREADS` sets its worker threads (by default half
   the cores, 2 to 8). Its console has the Node server's lines.
-- **8000 players** where the Node server took 2000 (`--max-peers` 1 to 8000, the image's `NFSU2_MAX_PEERS=8000`: at 6,758 players the game
-  used 1.70 cores a thousand and the port sent 757 Mbit/s, nfsu2.xyz 2026-10-31, so 8000 at that rate would fill about 91 % of the
-  slice's 15 and ~900 Mbit/s; LAN adverts only to the pages with a socket on their port and the hub's lists in bundles came
-  with the raise, for a quarter of the bytes to the pages and some of the messages): the
-  virtual network is 10.77.0.0/19, all of it (addresses in 10.77.0-31.x), and the game module's peer bits cover a /21, so for a player on 10.77.8-31.x the
+- **12000 players** where the Node server took 2000 (`--max-peers` 1 to 12000, the image's `NFSU2_MAX_PEERS=12000`: at 6,758 players the game
+  used 1.70 cores a thousand and the port sent 757 Mbit/s, nfsu2.xyz 2026-10-31, so past about 8000 a 16 vCPU VPS with a 1 Gbit/s
+  port is full, [Sizing](#sizing)): the virtual network is 10.77.0.0/18 (addresses in 10.77.0-47.x, the welcome's mask
+  255.255.192.0), and the game module's peer bits cover a /21, so for a player on 10.77.8-47.x the
   game asks that host itself (a LAN race's connect to one who has just gone ends after the same 3 s as "timed out"
-  instead of "unreachable"; nothing else differs, and pages and modules of before need no change). Online mode takes
-  4000 lobby sessions and 1200 games (Node: 1000 and 300), the free-roam hub 8192 players. 8000 players need 65536
-  open files (`ulimits: { nofile: 65536 }` in `compose.yml`), and past about 3000 in free roam more workers than 8
+  instead of "unreachable"; nothing else differs, and pages and modules of before need no change). A game open across
+  the restart from the /19 (8000 players) keeps the /19's mask for LAN and Online races until a reload, so it
+  reaches nobody on 10.77.32-47.x there until then; free roam takes the new mask at once. Online mode takes
+  6000 lobby sessions and 1800 games (Node: 1000 and 300), the free-roam hub 12288 players. 12000 players need 131072
+  open files (`ulimits: { nofile: 131072 }` in `compose.yml`), and past about 3000 in free roam more workers than 8
   (`NFSU2_THREADS=12` in `.env`; `compose.yml` passes it on) keep them at 32 friends each instead of the busy cap's 8.
 
 Tested 2026-10-21 on Docker Desktop (WSL), the images built from the checkout: amd64 and arm64 built; the amd64 one
@@ -530,8 +532,8 @@ plays the VP6 movies anyway.
     restarts);
   - closes, without an answer, a connection that asks for another name (the bare address, a scanner's made-up
     name), on 80 and on 443; a TLS handshake without your name fails, so the certificate is not shown;
-  - opens at most 63900 connections to the server (one per request in progress; with 8000 players the Rust server
-    takes 64000, 8 per player; the Node image, at most 2000 players, takes 16000);
+  - opens at most 95900 connections to the server (one per request in progress; with 12000 players the Rust server
+    takes 96000, 8 per player; the Node image, at most 2000 players, takes 16000);
   - has its admin API off: nothing reconfigures it while it runs, and a changed `.env` takes `docker compose up -d`.
 - **NFSU2_HOST is one name.** For a second name, or a wildcard, edit the Caddyfile in `compose.yml` and the
   server's `NFSU2_HOST` (a comma list; `*.example.com` for one label under it). A wildcard certificate needs Let's
@@ -1087,8 +1089,8 @@ paths to the VPS, so pick a VPS location between you.
 - **Keepalive:** the switch pings every connection every 25 s. Proxies and Cloudflare then never cut a quiet player,
   and the switch finds players whose connection died.
 - **Limits:**
-  - 8000 players on the switch with the Rust image (`NFSU2_MAX_PEERS=8000`; the server's own default is 128, and
-    8000 is the most addresses it hands out on its virtual network, 10.77.0.0/19: 250 in each of 10.77.0-31.x), 2000 with
+  - 12000 players on the switch with the Rust image (`NFSU2_MAX_PEERS=12000`; the server's own default is 128, and
+    12000 is the most addresses it hands out on its virtual network, 10.77.0.0/18: 250 in each of 10.77.0-47.x), 2000 with
     the Node image (its network is 10.77.0.0/21);
   - when every place is taken a game waits in line for one, first come first served (nfsu2-lan `queue.rs`): the
     line's first takes the next place that frees up, and while anyone waits a newcomer waits too. The game shows

@@ -249,12 +249,15 @@ players.
 
 ## Where it differs from the Node server
 
-- 8000 players (`--max-peers` 1 to 8000; the image's `NFSU2_MAX_PEERS=8000`), Node's 2000: the switch's network is
-  10.77.0.0/19 (the welcome's mask 255.255.224.0; addresses round all thirty-two of its /24s, 10.77.0-31.x), the free-roam
-  hub takes 8192 players, Online mode 4000 lobby sessions, 1200 games and 16000 streams.  The game module's peer bits
-  (mailbox v4) cover a /21: for a player on 10.77.8-31.x the game asks that host itself (`runtime/web/net_lan.c`): a LAN race's
+- 12000 players (`--max-peers` 1 to 12000; the image's `NFSU2_MAX_PEERS=12000`), Node's 2000: the switch's network is
+  10.77.0.0/18 (the welcome's mask 255.255.192.0; addresses round the forty-eight /24s, 10.77.0-47.x), the free-roam
+  hub takes 12288 players, Online mode 6000 lobby sessions, 1800 games and 24000 streams.  The game module's peer bits
+  (mailbox v4) cover a /21: for a player on 10.77.8-47.x the game asks that host itself (`runtime/web/net_lan.c`): a LAN race's
   connect to one who has just left sends its SYN and ends after the same 3 s with WSAETIMEDOUT instead of
-  WSAEHOSTUNREACH.  Nothing else differs: the page and the module need no change (`crates/lan/tests/page.mjs`).
+  WSAEHOSTUNREACH.  Nothing else differs: the page and the module need no change (`crates/lan/tests/page.mjs`).  A game
+  open across the restart from the /19 keeps the /19's mask for LAN and Online races until its address changes
+  (net_lan.c takes the mask with a new address only), so it reaches nobody on 10.77.32-47.x there until a reload; free
+  roam reads the mask the page has now (`runtime/web/roam_web.c`).
 - A full switch keeps a line (nfsu2-lan `queue.rs`) for the pages that say they can wait (/lan?queue): Node closed
   every newcomer with "LAN full", and the page asked again every 5 s, so whoever asked first after a place freed up
   got it.  A page of before still gets "LAN full".
