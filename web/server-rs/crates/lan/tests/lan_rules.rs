@@ -958,30 +958,43 @@ async fn a_player_behind_gets_a_share_of_the_snapshots_and_all_again_once_it_kee
     sw.close().await;
 }
 
-// the probe times free roam's players every time and the others every 10th: only free roam's car states follow the
-// round trips, and each ping and its pong were two messages through cloudflared for every page (lib.rs `probe`)
+// the probe times free roam's drivers every time and the others every 10th: only free roam's car states follow the
+// round trips (and a player in free roam who is not driving gets one in 16), and each ping and its pong were two
+// messages through cloudflared for every page (lib.rs `probe`)
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn the_probe_times_free_roams_players_every_time_the_others_every_tenth() {
+async fn the_probe_times_free_roams_drivers_every_time_the_others_every_tenth() {
     let _s = serial().await;
     let sw = start(LanOptions { probe_ms: 0, keepalive_ms: 3_600_000, ..unlimited() }).await;
     let mut roamer = Client::connect(sw.port, "Roamer").await;
     roamer.welcome().await;
     let mut menus = Client::connect(sw.port, "Menus").await;
     menus.welcome().await;
-    // the roamer's HELLO to the hub, as its page sends one every second in free roam
+    let mut racer = Client::connect(sw.port, "Racer").await;
+    racer.welcome().await;
+    // the roamer's HELLO to the hub, as its page sends one every second in free roam (its status byte, 122, is none of
+    // the not-driving ones); the racer's says it is in a race (RC_ST 3), its CRC made again
     roamer.udp(0x0A4D_00FD, 47210, 47210, &roam_datagram(1, 40), 1, 0);
-    roamer.ping(vec![1]);
-    roamer.until_true(|g| g.pongs.len() >= 1).await;
-    let (r0, m0) = (roamer.got().pings, menus.got().pings);
+    let mut d = roam_datagram(1, 40);
+    d[19] = 3;
+    let n = d.len() - 4;
+    let crc = crc32fast::hash(&d[..n]);
+    d[n..].copy_from_slice(&crc.to_le_bytes());
+    racer.udp(0x0A4D_00FD, 47210, 47210, &d, 1, 0);
+    for c in [&mut roamer, &mut racer] {
+        c.ping(vec![1]);
+        c.until_true(|g| g.pongs.len() >= 1).await;
+    }
+    let (r0, m0, c0) = (roamer.got().pings, menus.got().pings, racer.got().pings);
     for _ in 0..20 {
         sw.lan.probe();
     }
     roamer.until_true(|g| g.pings >= r0 + 20).await;
     sleep(200).await;
-    let (r, m) = (roamer.got().pings - r0, menus.got().pings - m0);
-    assert_eq!((r, m), (20, 2), "20 probes: the roamer timed by each, the page in the menus by every 10th");
+    let (r, m, c) = (roamer.got().pings - r0, menus.got().pings - m0, racer.got().pings - c0);
+    assert_eq!((r, m, c), (20, 2, 2), "20 probes: the driver timed by each, the pages in the menus and in a race by every 10th");
     roamer.close().await;
     menus.close().await;
+    racer.close().await;
     sw.close().await;
 }
 

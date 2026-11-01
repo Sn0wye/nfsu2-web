@@ -600,8 +600,8 @@ pub struct Breakdown {
 
 /// a player this far behind on its path counts in `Breakdown::behind` (ms)
 pub const BEHIND_MS: f64 = 1000.0;
-/// a player whose own free-roam HELLO or SNAP came within this is timed by every probe (its page sends the hub a HELLO
-/// every second while in free roam)
+/// a player whose own free-roam HELLO or SNAP came within this, and said it drives, is timed by every probe (its page
+/// sends the hub a HELLO every second while in free roam)
 const PROBE_ROAM_MS: f64 = 5000.0;
 /// the others every this many probes
 const PROBE_OTHERS: u64 = 10;
@@ -1511,18 +1511,20 @@ impl LanSwitch {
         }
     }
 
-    /// a ping to every player in free roam, its round trip timed (every `probe_ms`; public for the tests), and to each
-    /// of the others every PROBE_OTHERS-th time: their round trips decide nothing (only free roam's car states follow
-    /// them, lag.rs), and each ping and its pong were two of the messages cloudflared carries for every page, the 4,500
-    /// on the LAN or Online screens or in the menus too (nfsu2.xyz 2026-10-31).  The keepalive's pings still go to all.
+    /// a ping to every player driving in free roam, its round trip timed (every `probe_ms`; public for the tests), and to
+    /// each of the others every PROBE_OTHERS-th time: their round trips decide nothing (only free roam's car states
+    /// follow them, lag.rs, and a player who is not driving gets one in 16 of those anyway, away.rs), and each ping and
+    /// its pong were two of the messages cloudflared carries for every page, the 4,500 on the LAN or Online screens or
+    /// in the menus too, and the 3,700 in free roam not driving (nfsu2.xyz 2026-10-31).  The keepalive's pings still go
+    /// to all.
     #[doc(hidden)]
     pub fn probe(&self) {
         let now = nfsu2_util::mono_ms();
         let round = self.probes.fetch_add(1, Relaxed);
         for p in self.all.load().iter().filter(|p| p.open()) {
             let at = p.roam_at.load(Relaxed);
-            let roams = at > 0 && now - (at as f64) < PROBE_ROAM_MS;
-            if !roams && (round + u64::from(p.vip)) % PROBE_OTHERS != 0 {
+            let drives = at > 0 && now - (at as f64) < PROBE_ROAM_MS && !p.away.load(Relaxed);
+            if !drives && (round + u64::from(p.vip)) % PROBE_OTHERS != 0 {
                 continue;
             }
             let data = p.probe.lock().ping(now);
